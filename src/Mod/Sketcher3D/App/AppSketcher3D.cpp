@@ -22,6 +22,7 @@
 
 
 #include "PreCompiled.h"
+#include "Sketch3DObject.h"
 #ifndef _PreComp_
 # include <Python.h>
 #endif
@@ -38,12 +39,26 @@ PyDoc_STRVAR(module_Sketcher3D_doc,
 
 /* Python entry */
 extern "C" {
-void Sketcher3DAppExport initSketcher3D() {
+void Sketcher3DExport initSketcher3D() {
 
-    // ADD YOUR CODE HERE
-    //
-    //
+    // load dependent module
+    try {
+        Base::Interpreter().runString("import Part");
+    }
+    catch(const Base::Exception& e) {
+        PyErr_SetString(PyExc_ImportError, e.what());
+        return;
+    }
+    
     (void) Py_InitModule3("Sketcher3D", Sketcher3D_methods, module_Sketcher3D_doc);   /* mod name, table ptr */
+    
+    // NOTE: To finish the initialization of our own type objects we must
+    // call PyType_Ready, otherwise we run into a segmentation fault, later on.
+    // This function is responsible for adding inherited slots from a type's base class.
+ 
+    Sketcher3D::Sketch3DObject::init();
+    Sketcher3D::Sketch3DObjectPython::init();
+    
     Base::Console().Log("Loading Sketcher3D module... done\n");
 }
 
