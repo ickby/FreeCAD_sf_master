@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<GenerateModel xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="generateMetaModel_Module.xsd">
+  <PythonExport
+    Father="PartFeaturePy"
+    Name="Sketch3DObjectPy"
+    Twin="Sketch3DObject"
+    TwinPointer="Sketch3DObject"
+    Include="Mod/Sketcher3D/App/Sketch3DObject.h"
+    Namespace="Sketcher3D"
+    FatherInclude="Mod/Part/App/PartFeaturePy.h"
+    FatherNamespace="Part">
+    <Documentation>
+      <Author Licence="LGPL" Name="Stefan Tröger" EMail="stefantroeger@gmx.net" />
+      <UserDocu>With this objects you can handle 3d sketches</UserDocu>
+    </Documentation>
+    <Methode Name="addGeometry">
+      <Documentation>
+        <UserDocu>add a geometric object to the sketch</UserDocu>
+      </Documentation>
+    </Methode>
+    <Attribute Name="GeometryCount" ReadOnly="true">
+      <Documentation>
+        <UserDocu>Number of geometric objects in this sketch</UserDocu>
+      </Documentation>
+      <Parameter Name="GeometryCount" Type="Int"/>
+    </Attribute>
+  </PythonExport>
+</GenerateModel>
