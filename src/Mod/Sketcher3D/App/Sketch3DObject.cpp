@@ -40,7 +40,7 @@ Sketch3DObject::~Sketch3DObject() {};
 
 int Sketch3DObject::addGeometry(const Part::Geometry* geo) {
 
-    m_solver.initSetValue();
+    m_solver.initChange();
     
     Part::Geometry* geoNew = geo->clone();
     m_geom_idx++;
@@ -50,16 +50,16 @@ int Sketch3DObject::addGeometry(const Part::Geometry* geo) {
       m_solver.createGeometry3D(p, m_geom_idx);
     }
     
-    m_solver.finishSetValue();
+    m_solver.finishChange();
     
     return m_geom_idx;
 };
 
 void Sketch3DObject::delGeometry(int id) {
   
-    m_solver.initSetValue();
+    m_solver.initChange();
     m_solver.removeGeometry3D(id);
-    m_solver.finishSetValue();
+    m_solver.finishChange();
 }
 
 

@@ -27,9 +27,11 @@
 #endif
 
 #include <Base/Console.h>
+#include <Base/Interpreter.h>
 #include <Gui/Application.h>
 
 #include "Workbench.h"
+#include "ViewProviderSketch3D.h"
 
 // use a different name to CreateCommand()
 void CreateSketcher3DCommands(void);
@@ -50,14 +52,21 @@ void Sketcher3DGuiExport initSketcher3DGui()
         PyErr_SetString(PyExc_ImportError, "Cannot load Gui module in console application.");
         return;
     }
+    try {
+        Base::Interpreter().runString("import PartGui");
+        Base::Interpreter().runString("import Sketcher3D");
+    }
+    catch(const Base::Exception& e) {
+        PyErr_SetString(PyExc_ImportError, e.what());
+        return;
+    }
 
     // instanciating the commands
     CreateSketcher3DCommands();
     Sketcher3DGui::Workbench::init();
 
-    // ADD YOUR CODE HERE
-    //
-    //
+    Sketcher3DGui::ViewProviderSketch3D::init();
+    //Sketcher3DGui::ViewProviderPython::init();
 
     (void) Py_InitModule3("Sketcher3DGui", Sketcher3DGui_methods, module_Sketcher3DGui_doc);   /* mod name, table ptr */
     Base::Console().Log("Loading GUI of Sketcher3D module... done\n");

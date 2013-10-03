@@ -28,9 +28,13 @@
 
 // Exporting of App classes
 #ifdef FC_OS_WIN32
-# define Sketcher3DAppExport __declspec(dllexport)
+# define Sketcher3DExport   __declspec(dllexport)
+# define PartExport         __declspec(dllimport)
+# define MeshExport         __declspec(dllimport)
 #else // for Linux
-# define Sketcher3DAppExport
+# define Sketcher3DExport
+# define PartExport
+# define MeshExport
 #endif
 
 #ifdef _PreComp_

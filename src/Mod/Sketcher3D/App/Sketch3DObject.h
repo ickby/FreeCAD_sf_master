@@ -50,6 +50,7 @@ public:
     
 
     int addGeometry(const Part::Geometry* geo);
+    void delGeometry(int id);
     
     // returns the type name of the ViewProvider
     const char* getViewProviderName(void) const {

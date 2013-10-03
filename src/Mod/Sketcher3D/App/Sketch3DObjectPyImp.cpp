@@ -56,7 +56,7 @@ PyObject* Sketch3DObjectPy::addGeometry(PyObject* args) {
 }
 
 PyObject* Sketch3DObjectPy::delGeometry(PyObject* args) {
-    int Index;
+    int index;
     if(!PyArg_ParseTuple(args, "i", &index))
         return 0;
 

@@ -112,6 +112,7 @@ struct ModuleFreeCAD {
 
         typedef mpl::vector0<> objects;
         typedef mpl::vector0<> properties;
+	typedef mpl::vector0<> geometries;
         typedef dcm::Unspecified_Identifier Identifier;
 
         static void system_init(Sys& sys) {};
@@ -123,7 +124,7 @@ namespace Sketcher3D {
 
 typedef dcm::Kernel<double> Kernel;
 typedef dcm::Module3D< mpl::vector<Part::GeomPoint*>, int > Module3D;
-typedef dcm::System<Kernel, Module3D::type, ModuleFreeCAD::type> Solver;
+typedef dcm::System<Kernel, Module3D, ModuleFreeCAD> Solver;
 
 
 typedef typename Module3D::type<Solver>::Geometry3D Geometry3D;

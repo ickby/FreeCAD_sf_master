@@ -72,6 +72,10 @@ struct drawer : boost::static_visitor<void> {
         data->PointsCoordinate->point.set1Value(index, point[0], point[1], point[2]);
         data->PointSet->coordIndex.set1Value(index, index);
     };
+    
+    //default implementation
+    template<typename T>
+    void operator()(const T& p) {};
 };
 
 ViewProviderSketch3D::ViewProviderSketch3D() : edit(NULL) {

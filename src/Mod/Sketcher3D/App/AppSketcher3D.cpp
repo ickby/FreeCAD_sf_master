@@ -28,6 +28,7 @@
 #endif
 
 #include <Base/Console.h>
+#include <Base/Interpreter.h>
 
 
 /* registration table  */
