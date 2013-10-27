@@ -32,6 +32,7 @@ SET(Sketcher3D_SRCS
 )
 
 SET(Python_SRCS
+    Sketch3DObjectPy.xml
     Sketch3DObjectPyImp.cpp
 )
 

@@ -35,6 +35,7 @@
 #include <Inventor/nodes/SoFont.h>
 #include <Inventor/SoPickedPoint.h>
 #include <Inventor/details/SoPointDetail.h>
+#include <Inventor/details/SoLineDetail.h>
 #include <Inventor/nodes/SoCamera.h>
 
 using namespace Sketcher3DGui;
@@ -60,6 +61,7 @@ struct drawer : boost::static_visitor<void> {
 
     EditData* data;
     int index;
+    Sketcher3D::Shape3D_Ptr shape;
     drawer(EditData* d) : data(d) {};
 
     void setID(int i) {
@@ -72,7 +74,32 @@ struct drawer : boost::static_visitor<void> {
         data->PointsCoordinate->point.set1Value(index, point[0], point[1], point[2]);
         data->PointSet->coordIndex.set1Value(index, index);
     };
-    
+
+    void operator()(Part::GeomLineSegment* const& p) {
+
+        const Base::Vector3d point1 = p->getStartPoint();
+        const Base::Vector3d point2 = p->getEndPoint();
+        index = shape->geometry(dcm::startpoint)->getIdentifier().second;
+        data->PointsCoordinate->point.set1Value(index, point1[0], point1[1], point1[2]);
+	data->CurvesCoordinate->point.set1Value(index, point1[0], point1[1], point1[2]);
+        data->PointSet->coordIndex.set1Value(index, index);
+
+        int index2 = shape->geometry(dcm::endpoint)->getIdentifier().second;
+        data->PointsCoordinate->point.set1Value(index2, point2[0], point2[1], point2[2]);
+	data->CurvesCoordinate->point.set1Value(index2, point2[0], point2[1], point2[2]);
+        data->PointSet->coordIndex.set1Value(index2, index2);
+
+        int index3 = shape->geometry(dcm::line)->getIdentifier().second;
+	Base::Console().Message("Add line: %i", index3);
+ 
+        int lidx = data->CurveSet->coordIndex.getNum();
+	Base::Console().Message(" at index: %i\n", lidx);
+ 
+        data->CurveSet->coordIndex.set1Value(lidx, index);
+        data->CurveSet->coordIndex.set1Value(lidx+1, index2);
+        data->CurveSet->coordIndex.set1Value(lidx+2, -1);
+    };
+
     //default implementation
     template<typename T>
     void operator()(const T& p) {};
@@ -98,7 +125,8 @@ void ViewProviderSketch3D::attach(App::DocumentObject* obj) {
 void ViewProviderSketch3D::updateData(const App::Property* prop) {
 
     ViewProviderPart::updateData(prop);
-    if(edit) draw();
+    if(edit)
+        draw();
     Base::Console().Message("UpdateData\n");
 }
 
@@ -107,7 +135,7 @@ void ViewProviderSketch3D::setupContextMenu(QMenu* menu, QObject* receiver, cons
     Base::Console().Message("Setup Context Menu\n");
 }
 
-bool ViewProviderSketch3D::onDelete(const std::vector<std::string> &) {
+bool ViewProviderSketch3D::onDelete(const std::vector<std::string>&) {
 
     Base::Console().Message("OnDelete\n");
 }
@@ -132,7 +160,6 @@ bool ViewProviderSketch3D::mouseMove(const SbVec2s& pos, Gui::View3DInventorView
     //getCoordsOnSketchPlane(x,y,line.getPosition(),line.getDirection());
 
     SoPickedPoint* pp = this->getPointOnRay(pos, viewer);
-    int PtIndex,GeoIndex,ConstrIndex,CrossIndex;
     detectPreselection(pp);
     delete pp;
 
@@ -255,6 +282,10 @@ void ViewProviderSketch3D::draw() {
     edit->RootCrossCoordinate->point.set1Value(4,SbVec3f(0.0f, 0.0f, -10));
     edit->RootCrossCoordinate->point.set1Value(5,SbVec3f(0.0f, 0.0f, 10));
 
+    //clear stuff in case something was deleted
+    edit->CurveSet->coordIndex.setValue(0);
+    edit->PointSet->coordIndex.setValue(0);
+    
     //draw geometry
     drawer draw(edit);
     Sketcher3D::Solver& solver = getSketch3DObject()->m_solver;
@@ -262,8 +293,20 @@ void ViewProviderSketch3D::draw() {
     for(iter it = solver.begin<Sketcher3D::Geometry3D>(); it != solver.end<Sketcher3D::Geometry3D>(); it++) {
 
         Sketcher3D::Geom3D_Ptr ptr = *it;
-        draw.setID(ptr->getIdentifier());
-        ptr->apply(draw);
+        if(ptr->holdsType()) {
+            draw.setID(ptr->getIdentifier().second);
+            ptr->apply(draw);
+        };
+    };
+    //draw shapes
+    typedef typename std::vector< Sketcher3D::Shape3D_Ptr >::iterator siter;
+    for(siter it = solver.begin<Sketcher3D::Shape3D>(); it != solver.end<Sketcher3D::Shape3D>(); it++) {
+
+        Sketcher3D::Shape3D_Ptr ptr = *it;
+        if(ptr->holdsType()) {
+            draw.shape = *it;
+            ptr->apply(draw);
+        };
     };
 
     updateColor();
@@ -312,7 +355,7 @@ void ViewProviderSketch3D::createEditInventorNodes(void) {
     DrawStyle->lineWidth = 3;
     edit->EditRoot->addChild(DrawStyle);
 
-    edit->CurveSet = new SoLineSet;
+    edit->CurveSet = new SoIndexedLineSet;
 
     edit->EditRoot->addChild(edit->CurveSet);
 
@@ -417,8 +460,9 @@ void ViewProviderSketch3D::updateColor(void) {
 
     if(edit->PreselectCross == 0)
         pcolor[0] = PreselectColor;
-    else if(edit->PreselectPoint != -1)
-        pcolor[edit->PreselectPoint + 1] = PreselectColor;
+    else
+        if(edit->PreselectPoint != -1)
+            pcolor[edit->PreselectPoint + 1] = PreselectColor;
 
     for(std::set<int>::iterator it=edit->SelPointSet.begin();
             it != edit->SelPointSet.end(); it++)
@@ -444,24 +488,27 @@ void ViewProviderSketch3D::updateColor(void) {
     // colors of the cross
     if(edit->SelCurvSet.find(-1) != edit->SelCurvSet.end())
         crosscolor[0] = SelectColor;
-    else if(edit->PreselectCross == 1)
-        crosscolor[0] = PreselectColor;
     else
-        crosscolor[0] = CrossColorH;
+        if(edit->PreselectCross == 1)
+            crosscolor[0] = PreselectColor;
+        else
+            crosscolor[0] = CrossColorH;
 
     if(edit->SelCurvSet.find(-2) != edit->SelCurvSet.end())
         crosscolor[1] = SelectColor;
-    else if(edit->PreselectCross == 2)
-        crosscolor[1] = PreselectColor;
     else
-        crosscolor[1] = CrossColorV;
+        if(edit->PreselectCross == 2)
+            crosscolor[1] = PreselectColor;
+        else
+            crosscolor[1] = CrossColorV;
 
     if(edit->SelCurvSet.find(-2) != edit->SelCurvSet.end())
         crosscolor[2] = SelectColor;
-    else if(edit->PreselectCross == 3)
-        crosscolor[2] = PreselectColor;
     else
-        crosscolor[2] = CrossColorZ;
+        if(edit->PreselectCross == 3)
+            crosscolor[2] = PreselectColor;
+        else
+            crosscolor[2] = CrossColorZ;
 
     // end editing
     edit->CurvesMaterials->diffuseColor.finishEditing();
@@ -476,7 +523,6 @@ bool ViewProviderSketch3D::detectPreselection(const SoPickedPoint* Point) {
 
 
     if(Point) {
-        //Base::Console().Log("Point pick\n");
         SoPath* path = Point->getPath();
         SoNode* tail = path->getTail();
         SoNode* tailFather = path->getNode(path->getLength()-2);
@@ -490,6 +536,28 @@ bool ViewProviderSketch3D::detectPreselection(const SoPickedPoint* Point) {
                 int Index = static_cast<const SoPointDetail*>(point_detail)->getCoordinateIndex();
                 std::stringstream ss;
                 ss << "Vertex" << Index;
+		Base::Console().Message("Point pick: %s\n", ss.str().c_str());
+
+                bool accepted =
+                    Gui::Selection().setPreselect(getSketch3DObject()->getDocument()->getName()
+                                                  ,getSketch3DObject()->getNameInDocument()
+                                                  ,ss.str().c_str()
+                                                  ,Point->getPoint()[0]
+                                                  ,Point->getPoint()[1]
+                                                  ,Point->getPoint()[2]);
+            }
+        }
+        else if(tail == edit->CurveSet) {
+            const SoDetail* line_detail = Point->getDetail(edit->CurveSet);
+            if(line_detail && line_detail->getTypeId() == SoLineDetail::getClassTypeId()) {
+                // get the index
+                int Index1 = static_cast<const SoLineDetail*>(line_detail)->getPoint0()->getCoordinateIndex();
+		int Index2 = static_cast<const SoLineDetail*>(line_detail)->getPoint1()->getCoordinateIndex();
+                
+                std::stringstream ss;
+                ss << "Line" << std::max(Index1, Index2)+1;
+		Base::Console().Message("Point line: %s\n", ss.str().c_str());
+
                 bool accepted =
                     Gui::Selection().setPreselect(getSketch3DObject()->getDocument()->getName()
                                                   ,getSketch3DObject()->getNameInDocument()
@@ -503,13 +571,15 @@ bool ViewProviderSketch3D::detectPreselection(const SoPickedPoint* Point) {
     return true;
 }
 
-void ViewProviderSketch3D::getProjectingLine(const SbVec2s& pnt, const Gui::View3DInventorViewer *viewer, SbLine& line) const
+void ViewProviderSketch3D::getProjectingLine(const SbVec2s& pnt, const Gui::View3DInventorViewer* viewer, SbLine& line) const
 {
     const SbViewportRegion& vp = viewer->getViewportRegion();
 
-    short x,y; pnt.getValue(x,y);
+    short x,y;
+    pnt.getValue(x,y);
     SbVec2f siz = vp.getViewportSize();
-    float dX, dY; siz.getValue(dX, dY);
+    float dX, dY;
+    siz.getValue(dX, dY);
 
     float fRatio = vp.getViewportAspectRatio();
     float pX = (float)x / float(vp.getViewportSizePixels()[0]);
@@ -517,15 +587,17 @@ void ViewProviderSketch3D::getProjectingLine(const SbVec2s& pnt, const Gui::View
 
     // now calculate the real points respecting aspect ratio information
     //
-    if (fRatio > 1.0f) {
+    if(fRatio > 1.0f) {
         pX = (pX - 0.5f*dX) * fRatio + 0.5f*dX;
     }
-    else if (fRatio < 1.0f) {
-        pY = (pY - 0.5f*dY) / fRatio + 0.5f*dY;
-    }
+    else
+        if(fRatio < 1.0f) {
+            pY = (pY - 0.5f*dY) / fRatio + 0.5f*dY;
+        }
 
     SoCamera* pCam = viewer->getCamera();
-    if (!pCam) return;
+    if(!pCam)
+        return;
     SbViewVolume  vol = pCam->getViewVolume();
 
     float focalDist = pCam->focalDistance.getValue();

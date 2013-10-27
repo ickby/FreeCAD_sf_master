@@ -30,35 +30,63 @@ using namespace Sketcher3D;
 
 PROPERTY_SOURCE(Sketcher3D::Sketch3DObject, Part::Feature)
 
-Sketch3DObject::Sketch3DObject() : Part::Feature(), m_geom_idx(0), m_cons_idx(0)  {
-  
-      ADD_PROPERTY_TYPE(m_solver, (0)  ,"Sketch3D",(App::PropertyType)(App::Prop_None),"three dimensional sketch solver");
+Sketch3DObject::Sketch3DObject() : Part::Feature(), m_point_idx(0), m_curve_idx(0), m_surface_idx(0), m_cons_idx(0)  {
+
+    ADD_PROPERTY_TYPE(m_solver, (0)  ,"Sketch3D",(App::PropertyType)(App::Prop_None),"three dimensional sketch solver");
 };
 
 Sketch3DObject::~Sketch3DObject() {};
 
 
-int Sketch3DObject::addGeometry(const Part::Geometry* geo) {
+SketchIdentifier Sketch3DObject::addGeometry(const Part::Geometry* geo) {
 
     m_solver.initChange();
-    
+
     Part::Geometry* geoNew = geo->clone();
-    m_geom_idx++;
-    
-    if (geo->getTypeId() == Part::GeomPoint::getClassTypeId()) {
-      Part::GeomPoint* p = dynamic_cast<Part::GeomPoint*>(geoNew);
-      m_solver.createGeometry3D(p, m_geom_idx);
+
+    if(geo->getTypeId() == Part::GeomPoint::getClassTypeId()) {
+        Part::GeomPoint* p = dynamic_cast<Part::GeomPoint*>(geoNew);
+        m_solver.createGeometry3D(p, std::make_pair(Point, ++m_point_idx));
+        m_solver.finishChange();
+        return std::make_pair(Point, m_point_idx);
     }
-    
+    else if(geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
+        Part::GeomLineSegment* lineSeg = dynamic_cast<Part::GeomLineSegment*>(geoNew);
+        Sketcher3D::Shape3D_Ptr s = m_solver.createShape3D<dcm::segment3D>(lineSeg);
+
+        //set the geometry index for all required stuff
+        s->geometry(dcm::startpoint)->setIdentifier(std::make_pair(Point, ++m_point_idx));
+        s->geometry(dcm::endpoint)->setIdentifier(std::make_pair(Point, ++m_point_idx));
+        s->geometry(dcm::line)->setIdentifier(std::make_pair(Curve, ++m_curve_idx));
+
+        m_solver.finishChange();
+        return std::make_pair(Curve, m_curve_idx);
+    };
+
     m_solver.finishChange();
-    
-    return m_geom_idx;
+    return std::make_pair(None, -1);
 };
 
-void Sketch3DObject::delGeometry(int id) {
-  
+void Sketch3DObject::delGeometry(SketchIdentifier id) {
+
+  Base::Console().Message("Type: %i, Id: %i", id.first, id.second);
+    if(id.first == Sketcher3D::None)
+        return;
+
     m_solver.initChange();
-    m_solver.removeGeometry3D(id);
+
+    try {
+        if(m_solver.hasGeometry3D(id))
+            m_solver.removeGeometry3D(id);
+        else if(m_solver.hasShape3D(id))
+            m_solver.removeShape3D(id);
+        else
+            Base::Console().Error("No type with this name available\n");
+    }
+    catch(...) {
+        Base::Console().Error("Removing type failed\n");
+    }
+
     m_solver.finishChange();
 }
 
@@ -84,4 +112,5 @@ template<> const char* Sketcher3D::Sketch3DObjectPython::getViewProviderName(voi
 // explicit template instantiation
 template class Sketcher3DExport FeaturePythonT<Sketcher3D::Sketch3DObject>;
 }
+
 

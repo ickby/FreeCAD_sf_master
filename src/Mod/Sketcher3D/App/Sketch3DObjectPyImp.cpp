@@ -23,10 +23,18 @@
 #include "PreCompiled.h"
 #ifndef _PreComp_
 # include <sstream>
+#include <qvarlengtharray.h>
 #endif
 
 #include <Mod/Part/App/GeometryPy.h>
 #include "Mod/Sketcher3D/App/Sketch3DObject.h"
+#include <3rdParty/salomesmesh/inc/Rn.h>
+#include <boost/spirit/include/qi.hpp>
+#include <boost/spirit/include/qi_int.hpp>
+#include <boost/spirit/include/qi_parse.hpp>
+#include <boost/spirit/include/qi_rule.hpp>
+#include <boost/spirit/include/qi_string.hpp>
+#include <boost/spirit/include/phoenix.hpp>
 
 // inclusion of the generated files (generated out of SketchObjectSFPy.xml)
 #include "Sketch3DObjectPy.h"
@@ -35,6 +43,50 @@
 
 
 using namespace Sketcher3D;
+
+std::string sketchstring(SketchIdentifier s) {
+    std::stringstream stream;
+    switch(s.first) {
+
+    case None:
+        stream << "Nothing";
+        return stream.str();
+    case Point:
+        stream << "Point";
+        break;
+    case Curve:
+        stream << "Curve";
+        break;
+    case Surface:
+        stream << "Surface";
+        break;
+    default
+            :
+        stream << "None";
+        return stream.str();
+    };
+
+    stream << s.second;
+    return stream.str();
+};
+
+SketchIdentifier generateID(const std::string& str)
+{
+    namespace qi = boost::spirit::qi;
+    namespace phx = boost::phoenix;
+    std::string::const_iterator begin = str.begin();
+    std::string::const_iterator end = str.end();
+
+    Sketch3DGeomTypes type = None;
+    int index = -1;
+
+    qi::parse(begin, end,
+              (qi::lit("Point")[phx::ref(type)=Point] | qi::lit("Curve")[phx::ref(type)=Curve] | qi::lit("Surface")[phx::ref(type)=Surface])
+              >> qi::int_[phx::ref(index) = qi::_1]
+             );
+
+    return std::make_pair(type, index);
+}
 
 // returns a string which represents the object e.g. when printed in python
 std::string Sketch3DObjectPy::representation(void) const {
@@ -50,19 +102,23 @@ PyObject* Sketch3DObjectPy::addGeometry(PyObject* args) {
 
     if(PyObject_TypeCheck(pcObj, &(Part::GeometryPy::Type))) {
         Part::Geometry* geo = static_cast<Part::GeometryPy*>(pcObj)->getGeometryPtr();
-        return Py::new_reference_to(Py::Int(this->getSketch3DObjectPtr()->addGeometry(geo)));
+        return Py::new_reference_to(Py::String(sketchstring(this->getSketch3DObjectPtr()->addGeometry(geo))));
     }
     Py_Return;
 }
 
 PyObject* Sketch3DObjectPy::delGeometry(PyObject* args) {
-    int index;
-    if(!PyArg_ParseTuple(args, "i", &index))
-        return 0;
 
-    this->getSketch3DObjectPtr()->delGeometry(index);
+    char* name;
+    if(!PyArg_ParseTuple(args, "s",&name))      // convert args: Python->C
+        return NULL;                             // NULL triggers exception
 
-    Py_Return;
+    PY_TRY {
+        std::pair<Sketch3DGeomTypes, int> p = generateID(std::string(name));
+        this->getSketch3DObjectPtr()->delGeometry(p);
+
+        Py_Return;
+    } PY_CATCH;
 }
 
 Py::Int Sketch3DObjectPy::getGeometryCount(void) const {
@@ -74,7 +130,7 @@ PyObject* Sketch3DObjectPy::getCustomAttributes(const char* /*attr*/) const {
 }
 
 int Sketch3DObjectPy::setCustomAttributes(const char* attr, PyObject* obj) {
-  Base::Console().Message("set custom attribute\n");
+    Base::Console().Message("set custom attribute\n");
     // search in PropertyList
     App::Property* prop = getSketch3DObjectPtr()->getPropertyByName(attr);
     if(prop) {

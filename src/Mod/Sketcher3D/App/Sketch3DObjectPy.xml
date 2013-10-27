@@ -18,6 +18,11 @@
         <UserDocu>add a geometric object to the sketch</UserDocu>
       </Documentation>
     </Methode>
+    <Methode Name="delGeometry">
+      <Documentation>
+        <UserDocu>remove geometric object from the sketch</UserDocu>
+      </Documentation>
+    </Methode>
     <Attribute Name="GeometryCount" ReadOnly="true">
       <Documentation>
         <UserDocu>Number of geometric objects in this sketch</UserDocu>

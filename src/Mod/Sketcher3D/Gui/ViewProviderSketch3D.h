@@ -30,6 +30,7 @@
 #include <Part/Gui/ViewProvider.h>
 #include <Inventor/SbColor.h>
 #include <Inventor/nodes/SoLineSet.h>
+#include <Inventor/nodes/SoIndexedLineSet.h>
 #include <Inventor/nodes/SoCoordinate3.h>
 #include <Inventor/nodes/SoMarkerSet.h>
 #include <Inventor/nodes/SoMaterial.h>
@@ -76,7 +77,7 @@ struct EditData {
     SoCoordinate3* CurvesCoordinate;
     SoCoordinate3* RootCrossCoordinate;
     SoCoordinate3* EditCurvesCoordinate;
-    SoLineSet*     CurveSet;
+    SoIndexedLineSet*     CurveSet;
     SoLineSet*     RootCrossSet;
     SoLineSet*     EditCurveSet;
     SoIndexedMarkerSet*   PointSet;

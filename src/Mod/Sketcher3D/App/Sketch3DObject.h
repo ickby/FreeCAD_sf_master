@@ -46,11 +46,11 @@ public:
     Solver   m_solver;
     
     //geometry and constraint numbering counters
-    int m_geom_idx, m_cons_idx;
+    int m_point_idx, m_curve_idx, m_surface_idx, m_cons_idx;
     
 
-    int addGeometry(const Part::Geometry* geo);
-    void delGeometry(int id);
+    SketchIdentifier addGeometry(const Part::Geometry* geo);
+    void delGeometry(SketchIdentifier id);
     
     // returns the type name of the ViewProvider
     const char* getViewProviderName(void) const {

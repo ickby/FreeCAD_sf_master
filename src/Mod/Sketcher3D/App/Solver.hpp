@@ -26,11 +26,33 @@
 
 #include <opendcm/core.hpp>
 #include <opendcm/module3d.hpp>
+#include <opendcm/moduleshape3d.hpp>
 
 #include <App/Property.h>
 #include <Mod/Part/App/Geometry.h>
 
+namespace Sketcher3D {
+
+enum Sketch3DGeomTypes {
+    None,
+    Point,
+    Curve,
+    Surface
+};
+
+typedef std::pair<Sketch3DGeomTypes, int> SketchIdentifier;
+}
+
 namespace dcm {
+  
+//overload comparision if idetifier
+template<>
+struct compare_traits<Sketcher3D::SketchIdentifier> {
+
+    static bool compare(Sketcher3D::SketchIdentifier& first, Sketcher3D::SketchIdentifier& second) {
+        return first.first == second.first  &&   first.second == second.second;
+    };
+}; 
 
 struct point_accessor {
     Base::Vector3d point;
@@ -49,11 +71,43 @@ struct point_accessor {
     };
 };
 
+struct segment_accessor {
+    Base::Vector3d point1, point2;
+
+    template<typename Scalar, int ID, typename T>
+    Scalar get(T& t) {
+        if(ID<3)
+            return t->getStartPoint()[ID];
+        else
+            return t->getEndPoint()[ID-3];
+    };
+    template<typename Scalar, int ID, typename T>
+    void set(Scalar value, T& t) {
+        if(ID<3)
+            point1[ID] = value;
+        else
+            point2[ID-3] = value;
+
+    };
+    template<typename T>
+    void finalize(T& t) {
+        t->setStartPoint(point1);
+        t->setEndPoint(point2);
+    };
+};
+
 template<>
 struct geometry_traits< Part::GeomPoint* > {
     typedef tag::point3D  tag;
     typedef modell::XYZ modell;
     typedef point_accessor accessor;
+};
+
+template<>
+struct geometry_traits< Part::GeomLineSegment* > {
+    typedef tag::segment3D  tag;
+    typedef modell::XYZ2 modell;
+    typedef segment_accessor accessor;
 };
 
 } //dcm
@@ -66,26 +120,34 @@ struct ModuleFreeCAD {
 
         struct inheriter : public App::Property {
 
-            Base::Type getClassTypeId(void) { return classTypeId; }; 
-	    Base::Type getTypeId(void) const { return classTypeId; }; 
-	    Base::Type classTypeId;  
-	    void * create(void){
-	      return new Sys ();
-	    }	    
-	    void init(void){
-	      initSubclass(classTypeId, "Solver", "App::Property", &(Sys::create) ); 
-	    }
-	    //just needs a set value method for the macros, but we actually wont set values as we use the 
-	    //dcm interface
-	    void setValue(int) {};
-	    void initChange() { aboutToSetValue(); };
-	    void finishChange() { hasSetValue(); };
-	    
-	    
-	    inheriter() {
-	      m_this = (Sys*)this;
-	      classTypeId = Base::Type::badType();
-	    };
+            Base::Type getClassTypeId(void) {
+                return classTypeId;
+            };
+            Base::Type getTypeId(void) const {
+                return classTypeId;
+            };
+            Base::Type classTypeId;
+            void* create(void) {
+                return new Sys();
+            }
+            void init(void) {
+                initSubclass(classTypeId, "Solver", "App::Property", &(Sys::create));
+            }
+            //just needs a set value method for the macros, but we actually wont set values as we use the
+            //dcm interface
+            void setValue(int) {};
+            void initChange() {
+                aboutToSetValue();
+            };
+            void finishChange() {
+                hasSetValue();
+            };
+
+
+            inheriter() {
+                m_this = (Sys*)this;
+                classTypeId = Base::Type::badType();
+            };
 
             // from base class
             virtual PyObject* getPyObject(void) {};
@@ -95,24 +157,26 @@ struct ModuleFreeCAD {
             virtual void Restore(Base::XMLReader& reader) {};
 
             virtual Property* Copy(void) const {
-		return m_this->clone();
-	    };
+                return m_this->clone();
+            };
             virtual void Paste(const App::Property& from) {
-	      
-		const Sys& s = dynamic_cast<const Sys&>(from);
-		m_this->clear();
-		s.copyInto(*m_this);
-	    };
 
-            virtual unsigned int getMemSize(void) const {return 1;};
-	    
-	protected:
-	    Sys* m_this;
+                const Sys& s = dynamic_cast<const Sys&>(from);
+                m_this->clear();
+                s.copyInto(*m_this);
+            };
+
+            virtual unsigned int getMemSize(void) const {
+                return 1;
+            };
+
+        protected:
+            Sys* m_this;
         };
 
         typedef mpl::vector0<> objects;
         typedef mpl::vector0<> properties;
-	typedef mpl::vector0<> geometries;
+        typedef mpl::vector0<> geometries;
         typedef dcm::Unspecified_Identifier Identifier;
 
         static void system_init(Sys& sys) {};
@@ -123,12 +187,15 @@ struct ModuleFreeCAD {
 namespace Sketcher3D {
 
 typedef dcm::Kernel<double> Kernel;
-typedef dcm::Module3D< mpl::vector<Part::GeomPoint*>, int > Module3D;
-typedef dcm::System<Kernel, Module3D, ModuleFreeCAD> Solver;
+typedef dcm::Module3D< mpl::vector<Part::GeomPoint*>, SketchIdentifier > Module3D;
+typedef dcm::ModuleShape3D< mpl::vector<Part::GeomLineSegment*>, SketchIdentifier > ModuleShape3D;
+typedef dcm::System<Kernel, Module3D, ModuleShape3D, ModuleFreeCAD> Solver;
 
 
 typedef typename Module3D::type<Solver>::Geometry3D Geometry3D;
 typedef boost::shared_ptr<Geometry3D> Geom3D_Ptr;
+typedef typename ModuleShape3D::type<Solver>::Shape3D Shape3D;
+typedef boost::shared_ptr<Shape3D> Shape3D_Ptr;
 //typedef typename dcm::system_traits<Solver>::getModule<dcm::m3d>::type::Constraint3D Constraint3D;
 
 } //sketcher
