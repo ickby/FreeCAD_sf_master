@@ -33,6 +33,10 @@ SET(Sketcher3DGui_SRCS
     PreCompiled.h
     Workbench.cpp
     Workbench.h
+    StateMachine.cpp
+    StateMachine.h
+    Misc.cpp
+    Misc.h
     ViewProviderSketch3D.cpp
     ViewProviderSketch3D.h
 )

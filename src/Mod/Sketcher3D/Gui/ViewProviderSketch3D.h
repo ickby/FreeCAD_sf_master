@@ -24,6 +24,7 @@
 #define SKETCHER3DGUI_VIEWPROVIDERSKETCH3D_H
 
 #include "PreCompiled.h"
+#include "StateMachine.h"
 #include <Mod/Sketcher3D/App/Sketch3DObject.h>
 #include <Gui/Selection.h>
 #include <Gui/ViewProviderPythonFeature.h>
@@ -43,50 +44,7 @@
 
 namespace Sketcher3DGui {
 
-struct EditData {
-    EditData():
-        EditRoot(0),
-        PreselectPoint(-1),
-        PreselectCurve(-1),
-        PreselectCross(-1),
-        PointsMaterials(0),
-        CurvesMaterials(0),
-        PointsCoordinate(0),
-        CurvesCoordinate(0),
-        CurveSet(0), EditCurveSet(0), RootCrossSet(0),
-        PointSet(0)
-    {}
 
-    // container to track our own selected parts
-    std::set<int> SelPointSet;
-    std::set<int> SelCurvSet; // also holds cross axes at -1 and -2
-    std::set<int> SelConstraintSet;
-    std::vector<int> CurvIdToGeoId; // conversion of SoLineSet index to GeoId
-
-    int PreselectPoint;
-    int PreselectCurve;
-    int PreselectCross;
-    
-    // nodes for the visuals
-    SoSeparator*   EditRoot;
-    SoMaterial*    PointsMaterials;
-    SoMaterial*    CurvesMaterials;
-    SoMaterial*    RootCrossMaterials;
-    SoMaterial*    EditCurvesMaterials;
-    SoCoordinate3* PointsCoordinate;
-    SoCoordinate3* CurvesCoordinate;
-    SoCoordinate3* RootCrossCoordinate;
-    SoCoordinate3* EditCurvesCoordinate;
-    SoIndexedLineSet*     CurveSet;
-    SoLineSet*     RootCrossSet;
-    SoLineSet*     EditCurveSet;
-    SoIndexedMarkerSet*   PointSet;
-
-    SoText2*       textX;
-    SoTranslation* textPos;
-
-    SoGroup*       constrGroup;
-};
 
 class Sketcher3DGuiExport ViewProviderSketch3D : public PartGui::ViewProviderPart, public Gui::SelectionObserver {
 
@@ -117,21 +75,10 @@ public:
     virtual void unsetEditViewer(Gui::View3DInventorViewer*);
 
 private:
-    EditData* edit;
-
-    // colors
-    static SbColor VertexColor;
-    static SbColor CurveColor;
-    static SbColor CurveDraftColor;
-    static SbColor CurveExternalColor;
-    static SbColor CrossColorV;
-    static SbColor CrossColorH;
-    static SbColor CrossColorZ;
-    static SbColor FullyConstrainedColor;
-    static SbColor ConstrDimColor;
-    static SbColor ConstrIcoColor;
-    static SbColor PreselectColor;
-    static SbColor SelectColor;
+    boost::shared_ptr<SketchMachine> m_machine;
+   
+    //state handling
+    
 
     void draw();
     void createEditInventorNodes(void);
@@ -141,12 +88,7 @@ private:
     
     // give projecting line of position
     void getProjectingLine(const SbVec2s&, const Gui::View3DInventorViewer *viewer, SbLine&) const;
-
-    
-    // helper to detect preselection
-    bool detectPreselection(const SoPickedPoint *Point);
-
-   
+  
 };
 
 typedef Gui::ViewProviderPythonFeatureT<ViewProviderSketch3D> ViewProviderPython;

@@ -37,7 +37,8 @@ enum Sketch3DGeomTypes {
     None,
     Point,
     Curve,
-    Surface
+    Surface,
+    Constraint
 };
 
 typedef std::pair<Sketch3DGeomTypes, int> SketchIdentifier;
@@ -194,6 +195,8 @@ typedef dcm::System<Kernel, Module3D, ModuleShape3D, ModuleFreeCAD> Solver;
 
 typedef typename Module3D::type<Solver>::Geometry3D Geometry3D;
 typedef boost::shared_ptr<Geometry3D> Geom3D_Ptr;
+typedef typename Module3D::type<Solver>::Constraint3D Constraint3D;
+typedef boost::shared_ptr<Constraint3D> Cons3D_Ptr;
 typedef typename ModuleShape3D::type<Solver>::Shape3D Shape3D;
 typedef boost::shared_ptr<Shape3D> Shape3D_Ptr;
 //typedef typename dcm::system_traits<Solver>::getModule<dcm::m3d>::type::Constraint3D Constraint3D;
