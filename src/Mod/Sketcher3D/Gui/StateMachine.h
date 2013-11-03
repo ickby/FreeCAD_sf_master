@@ -32,12 +32,11 @@
 #include <boost/statechart/state.hpp>
 #include <boost/statechart/custom_reaction.hpp>
 
-#include <Inventor/nodes/SoIndexedLineSet.h>
 #include <Inventor/nodes/SoSeparator.h>
 #include <Inventor/nodes/SoMaterial.h>
 #include <Inventor/nodes/SoCoordinate3.h>
 #include <Inventor/nodes/SoLineSet.h>
-#include <Inventor/nodes/SoIndexedMarkerSet.h>
+#include <Inventor/nodes/SoMarkerSet.h>
 #include <Inventor/SoPickedPoint.h>
 #include <Inventor/events/SoKeyboardEvent.h>
 #include <Sketcher3D/App/Solver.hpp>
@@ -71,6 +70,9 @@ struct EvMouseMove : sc::event< EvMouseMove > {
     SoPickedPoint* pickedPoint;
 };
 
+//general events
+struct EvRedraw : sc::event<EvRedraw> {};
+
 //and some tool events
 struct EvPointTool : sc::event< EvPointTool > {};
 struct EvLineTool : sc::event< EvLineTool > {};
@@ -84,6 +86,7 @@ struct SketchMachine : sc::state_machine< SketchMachine, EditMode > {
     std::set<Sketcher3D::SketchIdentifier> SelCurvSet;
     std::set<Sketcher3D::SketchIdentifier> SelConstraintSet;
     std::vector<Sketcher3D::SketchIdentifier> CurveIdMap;
+    std::vector<Sketcher3D::SketchIdentifier> PointIdMap;
 
     Sketcher3D::SketchIdentifier Preselect;
     std::vector<Sketcher3D::SketchIdentifier> Selection;
@@ -99,10 +102,10 @@ struct SketchMachine : sc::state_machine< SketchMachine, EditMode > {
     SoCoordinate3* CurvesCoordinate;
     SoCoordinate3* RootCrossCoordinate;
     SoCoordinate3* EditCurvesCoordinate;
-    SoIndexedLineSet*     CurveSet;
-    SoLineSet*     	  RootCrossSet;
-    SoIndexedLineSet*     EditCurveSet;
-    SoIndexedMarkerSet*   PointSet;
+    SoLineSet*     CurveSet;
+    SoLineSet*     RootCrossSet;
+    SoLineSet*     EditCurveSet;
+    SoMarkerSet*   PointSet;
     SoGroup*       constrGroup;
     
     // colors
@@ -131,7 +134,11 @@ struct SketchMachine : sc::state_machine< SketchMachine, EditMode > {
 //the basic edit mode state in which we are in when no tool is used. The initial inner state is
 //Unselected and needs to be declared first
 struct Unselected;
-struct EditMode : sc::simple_state<EditMode, SketchMachine, Unselected > {};
+struct EditMode : sc::simple_state<EditMode, SketchMachine, Unselected > {
+    typedef sc::custom_reaction< EvRedraw > reactions;
+    
+    sc::result react(const EvRedraw&);
+};
 
 //now all other inner states for EditMode can be defined
 struct Unselected : sc::state<Unselected, EditMode> {

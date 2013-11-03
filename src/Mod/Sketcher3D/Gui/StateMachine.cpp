@@ -55,12 +55,43 @@ SbColor SketchMachine::SelectColor(0.11f,0.68f,0.11f);             // #1CAD1C ->
 
 SketchMachine::SketchMachine(SoSeparator* root, Sketcher3D::Sketch3DObject* object) : Root(root), Object(object) {
 
+  
+    ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
+    float transparency = 0.;
+    
+    // set the point color
+    unsigned long color = (unsigned long)(VertexColor.getPackedValue());
+    color = hGrp->GetUnsigned("EditedVertexColor", color);
+    VertexColor.setPackedValue((uint32_t)color, transparency);
+    // set the curve color
+    color = (unsigned long)(CurveColor.getPackedValue());
+    color = hGrp->GetUnsigned("EditedEdgeColor", color);
+    CurveColor.setPackedValue((uint32_t)color, transparency);
+    // set the construction curve color
+    color = (unsigned long)(CurveDraftColor.getPackedValue());
+    color = hGrp->GetUnsigned("ConstructionColor", color);
+    CurveDraftColor.setPackedValue((uint32_t)color, transparency);
+    // set the fully constrained color
+    color = (unsigned long)(FullyConstrainedColor.getPackedValue());
+    color = hGrp->GetUnsigned("FullyConstrainedColor", color);
+    FullyConstrainedColor.setPackedValue((uint32_t)color, transparency);
+
+    // set the highlight color
+    unsigned long highlight = (unsigned long)(PreselectColor.getPackedValue());
+    highlight = hGrp->GetUnsigned("HighlightColor", highlight);
+    PreselectColor.setPackedValue((uint32_t)highlight, transparency);
+    // set the selection color
+    highlight = (unsigned long)(SelectColor.getPackedValue());
+    highlight = hGrp->GetUnsigned("SelectionColor", highlight);
+    SelectColor.setPackedValue((uint32_t)highlight, transparency);
+    
+    
     EditRoot = new SoSeparator;
     root->addChild(EditRoot);
     EditRoot->renderCaching = SoSeparator::OFF ;
 
     // stuff for the points ++++++++++++++++++++++++++++++++++++++
-    PointsMaterials = new SoMaterial;
+    PointsMaterials = new SoMaterial;  
     EditRoot->addChild(PointsMaterials);
 
     SoMaterialBinding* MtlBind = new SoMaterialBinding;
@@ -73,7 +104,7 @@ SketchMachine::SketchMachine(SoSeparator* root, Sketcher3D::Sketch3DObject* obje
     SoDrawStyle* DrawStyle = new SoDrawStyle;
     DrawStyle->pointSize = 8;
     EditRoot->addChild(DrawStyle);
-    PointSet = new SoIndexedMarkerSet;
+    PointSet = new SoMarkerSet;
     PointSet->markerIndex = SoMarkerSet::CIRCLE_FILLED_7_7;
     EditRoot->addChild(PointSet);
 
@@ -92,7 +123,7 @@ SketchMachine::SketchMachine(SoSeparator* root, Sketcher3D::Sketch3DObject* obje
     DrawStyle->lineWidth = 3;
     EditRoot->addChild(DrawStyle);
 
-    CurveSet = new SoIndexedLineSet;
+    CurveSet = new SoLineSet;
 
     EditRoot->addChild(CurveSet);
 
@@ -131,11 +162,9 @@ SketchMachine::SketchMachine(SoSeparator* root, Sketcher3D::Sketch3DObject* obje
     DrawStyle->lineWidth = 3;
     EditRoot->addChild(DrawStyle);
 
-    EditCurveSet = new SoIndexedLineSet;
+    EditCurveSet = new SoLineSet;
     EditRoot->addChild(EditCurveSet);
 
-    ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
-    float transparency;
     SbColor cursorTextColor(0,0,1);
     cursorTextColor.setPackedValue((uint32_t)hGrp->GetUnsigned("CursorTextColor", cursorTextColor.getPackedValue()), transparency);
 
@@ -161,34 +190,6 @@ SketchMachine::SketchMachine(SoSeparator* root, Sketcher3D::Sketch3DObject* obje
     // add the group where all the constraints has its SoSeparator
     constrGroup = new SoGroup();
     EditRoot->addChild(constrGroup);
-
-    hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
-
-    // set the point color
-    unsigned long color = (unsigned long)(VertexColor.getPackedValue());
-    color = hGrp->GetUnsigned("EditedVertexColor", color);
-    VertexColor.setPackedValue((uint32_t)color, transparency);
-    // set the curve color
-    color = (unsigned long)(CurveColor.getPackedValue());
-    color = hGrp->GetUnsigned("EditedEdgeColor", color);
-    CurveColor.setPackedValue((uint32_t)color, transparency);
-    // set the construction curve color
-    color = (unsigned long)(CurveDraftColor.getPackedValue());
-    color = hGrp->GetUnsigned("ConstructionColor", color);
-    CurveDraftColor.setPackedValue((uint32_t)color, transparency);
-    // set the fully constrained color
-    color = (unsigned long)(FullyConstrainedColor.getPackedValue());
-    color = hGrp->GetUnsigned("FullyConstrainedColor", color);
-    FullyConstrainedColor.setPackedValue((uint32_t)color, transparency);
-
-    // set the highlight color
-    unsigned long highlight = (unsigned long)(PreselectColor.getPackedValue());
-    highlight = hGrp->GetUnsigned("HighlightColor", highlight);
-    PreselectColor.setPackedValue((uint32_t)highlight, transparency);
-    // set the selection color
-    highlight = (unsigned long)(SelectColor.getPackedValue());
-    highlight = hGrp->GetUnsigned("SelectionColor", highlight);
-    SelectColor.setPackedValue((uint32_t)highlight, transparency);
 };
 
 SketchMachine::~SketchMachine() {
@@ -210,7 +211,7 @@ Sketcher3D::SketchIdentifier SketchMachine::hit(const SoPickedPoint* Point) {
             if(point_detail && point_detail->getTypeId() == SoPointDetail::getClassTypeId()) {
                 // get the index
                 int Index = static_cast<const SoPointDetail*>(point_detail)->getCoordinateIndex();
-                return std::make_pair(Sketcher3D::Point, Index);
+                return PointIdMap[Index];
             }
         }
         else if(tail == CurveSet) {
@@ -228,6 +229,7 @@ Sketcher3D::SketchIdentifier SketchMachine::hit(const SoPickedPoint* Point) {
 Unselected::Unselected(my_context ctx) : my_base( ctx ) {
     outermost_context().Selection.clear();
     outermost_context().Preselect = std::make_pair(Sketcher3D::None, 0);
+    post_event(EvRedraw());
 };
 
 
@@ -266,6 +268,7 @@ sc::result Preselect::react(const EvMouseButtonReleased& event) {
     }
     else {
         outermost_context().Selection.push_back(id);
+	post_event(EvRedraw());
         return transit<Select>();
     }
 };
@@ -299,7 +302,7 @@ sc::result Select::react(const EvKeyReleased& event) {
 sc::result Select::react(const EvMouseButtonPressed& event) {
 
     Sketcher3D::SketchIdentifier id = outermost_context().hit(event.pickedPoint);
-
+    
     if(id.first == Sketcher3D::None)
         return transit<Unselected>();
     else {

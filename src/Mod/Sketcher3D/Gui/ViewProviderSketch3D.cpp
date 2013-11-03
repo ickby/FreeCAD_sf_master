@@ -44,54 +44,6 @@ using namespace Sketcher3DGui;
 PROPERTY_SOURCE(Sketcher3DGui::ViewProviderSketch3D, PartGui::ViewProviderPart)
 
 
-//draw functor
-struct drawer : boost::static_visitor<void> {
-
-    boost::shared_ptr<SketchMachine> data;
-    int index;
-    Sketcher3D::Shape3D_Ptr shape;
-    drawer(boost::shared_ptr<SketchMachine> d) : data(d) {};
-
-    void setID(int i) {
-        index = i;
-        data->CurveIdMap.clear();
-    };
-
-    void operator()(Part::GeomPoint* const& p) {
-
-        const Base::Vector3d point = p->getPoint();
-        data->PointsCoordinate->point.set1Value(index, point[0], point[1], point[2]);
-        data->PointSet->coordIndex.set1Value(index, index);
-    };
-
-    void operator()(Part::GeomLineSegment* const& p) {
-
-        const Base::Vector3d point1 = p->getStartPoint();
-        const Base::Vector3d point2 = p->getEndPoint();
-        index = shape->geometry(dcm::startpoint)->getIdentifier().second;
-        data->PointsCoordinate->point.set1Value(index, point1[0], point1[1], point1[2]);
-        data->CurvesCoordinate->point.set1Value(index, point1[0], point1[1], point1[2]);
-        data->PointSet->coordIndex.set1Value(index, index);
-
-        int index2 = shape->geometry(dcm::endpoint)->getIdentifier().second;
-        data->PointsCoordinate->point.set1Value(index2, point2[0], point2[1], point2[2]);
-        data->CurvesCoordinate->point.set1Value(index2, point2[0], point2[1], point2[2]);
-        data->PointSet->coordIndex.set1Value(index2, index2);
-
-        //store the real id for the incremental indexed lines
-        data->CurveIdMap.push_back(shape->geometry(dcm::line)->getIdentifier());
-
-        int lidx = data->CurveSet->coordIndex.getNum();
-        data->CurveSet->coordIndex.set1Value(lidx+1, index);
-        data->CurveSet->coordIndex.set1Value(lidx+2, index2);
-        data->CurveSet->coordIndex.set1Value(lidx+3, -1);
-    };
-
-    //default implementation
-    template<typename T>
-    void operator()(const T& p) {};
-};
-
 ViewProviderSketch3D::ViewProviderSketch3D() {
 
     LineColor.setValue(1,1,1);
@@ -253,51 +205,7 @@ void ViewProviderSketch3D::unsetEditViewer(Gui::View3DInventorViewer* viewer) {
 
 void ViewProviderSketch3D::draw() {
 
-    Gui::MDIView* mdi = Gui::Application::Instance->activeDocument()->getActiveView();
-
-    // set cross coordinates
-    m_machine->RootCrossSet->numVertices.set1Value(0,2);
-    m_machine->RootCrossSet->numVertices.set1Value(1,2);
-    m_machine->RootCrossSet->numVertices.set1Value(2,2);
-    m_machine->RootCrossCoordinate->point.set1Value(0,SbVec3f(-10, 0.0f, 0.0f));
-    m_machine->RootCrossCoordinate->point.set1Value(1,SbVec3f(10, 0.0f, 0.0f));
-    m_machine->RootCrossCoordinate->point.set1Value(2,SbVec3f(0.0f, -10, 0.0f));
-    m_machine->RootCrossCoordinate->point.set1Value(3,SbVec3f(0.0f, 10, 0.0f));
-    m_machine->RootCrossCoordinate->point.set1Value(4,SbVec3f(0.0f, 0.0f, -10));
-    m_machine->RootCrossCoordinate->point.set1Value(5,SbVec3f(0.0f, 0.0f, 10));
-
-    //clear stuff in case something was deleted
-    m_machine->CurveSet->coordIndex.setValue(0);
-    m_machine->PointSet->coordIndex.setValue(0);
-
-    //draw geometry
-    m_machine->CurveIdMap.clear();
-    drawer draw(m_machine);
-    Sketcher3D::Solver& solver = getSketch3DObject()->m_solver;
-    typedef typename std::vector< Sketcher3D::Geom3D_Ptr >::iterator iter;
-    for(iter it = solver.begin<Sketcher3D::Geometry3D>(); it != solver.end<Sketcher3D::Geometry3D>(); it++) {
-
-        Sketcher3D::Geom3D_Ptr ptr = *it;
-        if(ptr->holdsType()) {
-            draw.setID(ptr->getIdentifier().second);
-            ptr->apply(draw);
-        };
-    };
-    //draw shapes
-    typedef typename std::vector< Sketcher3D::Shape3D_Ptr >::iterator siter;
-    for(siter it = solver.begin<Sketcher3D::Shape3D>(); it != solver.end<Sketcher3D::Shape3D>(); it++) {
-
-        Sketcher3D::Shape3D_Ptr ptr = *it;
-        if(ptr->holdsType()) {
-            draw.shape = *it;
-            ptr->apply(draw);
-        };
-    };
-
-    updateColor();
-    if(mdi && mdi->isDerivedFrom(Gui::View3DInventor::getClassTypeId())) {
-        static_cast<Gui::View3DInventor*>(mdi)->getViewer()->render();
-    }
+    m_machine->process_event(EvRedraw());
 }
 
 void ViewProviderSketch3D::createEditInventorNodes(void) {
@@ -305,75 +213,6 @@ void ViewProviderSketch3D::createEditInventorNodes(void) {
 }
 
 void ViewProviderSketch3D::updateColor(void) {
-    assert(m_machine);
-    //Base::Console().Log("Draw preseletion\n");
-
-    int PtNum = m_machine->PointsMaterials->diffuseColor.getNum();
-    SbColor* pcolor = m_machine->PointsMaterials->diffuseColor.startEditing();
-    int CurvNum = m_machine->CurvesMaterials->diffuseColor.getNum();
-    SbColor* color = m_machine->CurvesMaterials->diffuseColor.startEditing();
-    SbColor* crosscolor = m_machine->RootCrossMaterials->diffuseColor.startEditing();
-
-    // colors of the point set
-    /*   if (m_machine->FullyConstrained)
-           for (int  i=0; i < PtNum; i++)
-               pcolor[i] = FullyConstrainedColor;
-       else*/
-    for(int  i=0; i < PtNum; i++)
-        pcolor[i] = m_machine->VertexColor;
-    /*
-        if(m_machine->PreselectCross == 0)
-            pcolor[0] = m_machine->PreselectColor;
-        else if(m_machine->PreselectPoint != -1)
-            pcolor[m_machine->PreselectPoint + 1] = m_machine->PreselectColor;
-    */
-    for(std::set<Sketcher3D::SketchIdentifier>::iterator it=m_machine->SelPointSet.begin();
-            it != m_machine->SelPointSet.end(); it++)
-        pcolor[it->second] = m_machine->SelectColor;
-
-    // colors of the curves
-    for(int  i=0; i < CurvNum; i++) {
-        //int GeoId = m_machine->CurvIdToGeoId[i];
-        /*if (m_machine->SelCurvSet.find(GeoId) != m_machine->SelCurvSet.end())
-            color[i] = SelectColor;
-        else if (m_machine->PreselectCurve == GeoId)
-            color[i] = PreselectColor;
-        else if (GeoId < -2)  // external Geometry
-            color[i] = CurveExternalColor;
-        else if (getSketchObject()->getGeometry(GeoId)->Construction)
-            color[i] = CurveDraftColor;
-        else if (m_machine->FullyConstrained)
-            color[i] = FullyConstrainedColor;
-        else*/
-        color[i] = m_machine->CurveColor;
-    }
-    /*
-        // colors of the cross
-        if(m_machine->SelCurvSet.find(-1) != m_machine->SelCurvSet.end())
-            crosscolor[0] = SelectColor;
-        else if(m_machine->PreselectCross == 1)
-            crosscolor[0] = PreselectColor;
-        else
-            crosscolor[0] = CrossColorH;
-
-        if(m_machine->SelCurvSet.find(-2) != m_machine->SelCurvSet.end())
-            crosscolor[1] = m_machine->SelectColor;
-        else if(m_machine->PreselectCross == 2)
-            crosscolor[1] = m_machine->PreselectColor;
-        else
-            crosscolor[1] = CrossColorV;
-
-        if(m_machine->SelCurvSet.find(-2) != m_machine->SelCurvSet.end())
-            crosscolor[2] = SelectColor;
-        else if(m_machine->PreselectCross == 3)
-            crosscolor[2] = PreselectColor;
-        else
-            crosscolor[2] = CrossColorZ;
-    */
-    // end m_machineing
-    m_machine->CurvesMaterials->diffuseColor.finishEditing();
-    m_machine->PointsMaterials->diffuseColor.finishEditing();
-    m_machine->RootCrossMaterials->diffuseColor.finishEditing();
 }
 
 void ViewProviderSketch3D::getProjectingLine(const SbVec2s& pnt, const Gui::View3DInventorViewer* viewer, SbLine& line) const
