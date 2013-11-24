@@ -107,7 +107,7 @@ struct SketchMachine : sc::state_machine< SketchMachine, EditMode > {
     SoLineSet*     EditCurveSet;
     SoMarkerSet*   PointSet;
     SoGroup*       constrGroup;
-    
+
     // colors
     static SbColor VertexColor;
     static SbColor CurveColor;
@@ -121,7 +121,7 @@ struct SketchMachine : sc::state_machine< SketchMachine, EditMode > {
     static SbColor ConstrIcoColor;
     static SbColor PreselectColor;
     static SbColor SelectColor;
-    
+
     Sketcher3D::Sketch3DObject* Object;
 
 
@@ -136,14 +136,14 @@ struct SketchMachine : sc::state_machine< SketchMachine, EditMode > {
 struct Unselected;
 struct EditMode : sc::simple_state<EditMode, SketchMachine, Unselected > {
     typedef sc::custom_reaction< EvRedraw > reactions;
-    
+
     sc::result react(const EvRedraw&);
 };
 
 //now all other inner states for EditMode can be defined
 struct Unselected : sc::state<Unselected, EditMode> {
     typedef sc::custom_reaction< EvMouseButtonPressed > reactions;
-    
+
     Unselected(my_context ctx);
     sc::result react(const EvMouseButtonPressed&);
 };
@@ -155,7 +155,7 @@ struct Preselect : sc::simple_state< Preselect, EditMode > {
     Preselect();
     sc::result react(const EvMouseMove&);
     sc::result react(const EvMouseButtonReleased&);
-    
+
     bool initalized;
     SbVec2s startPoint;
 };
@@ -175,6 +175,16 @@ struct Drag : sc::simple_state< Drag, EditMode> {
     sc::result react(const EvKeyReleased&);
     sc::result react(const EvMouseButtonPressed&);
 };
+
+struct ToolMode : sc::simple_state<ToolMode, SketchMachine> {
+    typedef mpl::list<
+    sc::custom_reaction< EvPointTool >,
+       sc::custom_reaction< EvLineTool > > reactions;
+
+    sc::result react(const EvPointTool&);
+    sc::result react(const EvLineTool&);
+};
+
 }; //Sketcher3dGui
 
 #endif //SKETCHER3DGUI_STATEMACHINE_H
