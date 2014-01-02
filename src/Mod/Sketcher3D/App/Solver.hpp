@@ -178,6 +178,7 @@ struct ModuleFreeCAD {
         typedef mpl::vector0<> objects;
         typedef mpl::vector0<> properties;
         typedef mpl::vector0<> geometries;
+	typedef mpl::map0<> signals;
         typedef dcm::Unspecified_Identifier Identifier;
 
         static void system_init(Sys& sys) {};
