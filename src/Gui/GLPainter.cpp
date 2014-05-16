@@ -28,6 +28,7 @@
 
 #include "GLPainter.h"
 #include "View3DInventorViewer.h"
+#include <QGLWidget>
 
 using namespace Gui;
 
@@ -195,4 +196,53 @@ void GLPainter::drawPoint(int x, int y)
     glBegin(GL_POINTS);
         glVertex3i(x, this->height-y, 0);
     glEnd();
+}
+
+
+NGLPainter::NGLPainter() : viewer(0)
+{
+}
+
+NGLPainter::~NGLPainter()
+{
+    end();
+}
+
+bool NGLPainter::begin(View3DInventorViewer* v)
+{
+    if (viewer)
+        return false;
+    viewer = v;
+
+    // Make current context
+    SbVec2s view = viewer->getGLSize();
+    viewSize = QSize(view[0], view[1]);
+
+    glPushAttrib(GL_ALL_ATTRIB_BITS);
+    glPushAttrib(GL_MULTISAMPLE_BIT_EXT);
+    
+    QGLWidget* gl = static_cast<QGLWidget*>(viewer->getGLWidget());
+    gl->setAutoFillBackground(false);
+    QPainter::begin(gl);
+    
+    return true;
+}
+
+bool NGLPainter::end()
+{
+    if (!viewer)
+        return false;
+
+    QPainter::end();
+    
+    glPopAttrib();
+    glPopAttrib();
+
+    viewer = 0;
+    return true;
+}
+
+bool NGLPainter::isActive() const
+{
+    return viewer != 0;
 }

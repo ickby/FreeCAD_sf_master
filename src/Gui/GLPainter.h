@@ -31,6 +31,7 @@
 #include <OpenGL/gl.h>
 #else
 #include <GL/gl.h>
+#include <QPainter>
 #endif
 
 #include <Base/BaseClass.h>
@@ -73,6 +74,22 @@ private:
     GLint width, height;
     bool logicOp;
     bool lineStipple;
+};
+
+class GuiExport NGLPainter : public QPainter
+{
+public:
+    NGLPainter();
+    virtual ~NGLPainter();
+
+    bool  begin(View3DInventorViewer*);
+    bool  end();
+    bool  isActive() const;
+    QSize getViewSize();
+
+private:
+    View3DInventorViewer* viewer;
+    QSize viewSize;
 };
 
 class GuiExport GLGraphicsItem : public Base::BaseClass
