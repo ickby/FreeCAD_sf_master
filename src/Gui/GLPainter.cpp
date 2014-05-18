@@ -214,10 +214,6 @@ bool NGLPainter::begin(View3DInventorViewer* v)
         return false;
     viewer = v;
 
-    // Make current context
-    SbVec2s view = viewer->getGLSize();
-    viewSize = QSize(view[0], view[1]);
-
     glPushAttrib(GL_ALL_ATTRIB_BITS);
     glPushAttrib(GL_MULTISAMPLE_BIT_EXT);
     

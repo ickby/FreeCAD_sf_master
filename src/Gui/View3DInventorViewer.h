@@ -60,6 +60,7 @@ class Document;
 class SoFCUnifiedSelection;
 class GLGraphicsItem;
 class SoShapeScale;
+class View3DInventorWidgetManager;
 
 /** The Inventor viewer
  *
@@ -330,6 +331,10 @@ public:
     NavigationStyle* navigationStyle() const;
 
     void setDocument(Gui::Document *pcDocument);
+    
+    /**Overlay widget handling
+     */
+    void addOverlayWidget(QWidget* w, int pos);
 
 protected:
     void renderScene();
@@ -392,6 +397,8 @@ private:
     SbBool allowredir;
 
     std::string overrideMode;
+    
+    View3DInventorWidgetManager* overlay;
 
     // friends
     friend class NavigationStyle;

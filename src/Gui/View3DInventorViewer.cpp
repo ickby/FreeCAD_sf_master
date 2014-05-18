@@ -114,6 +114,7 @@
 #include "ViewProvider.h"
 #include "SpaceballEvent.h"
 #include "GLPainter.h"
+#include "View3DInventorWidgets.h"
 
 #include <Inventor/draggers/SoCenterballDragger.h>
 
@@ -286,6 +287,9 @@ View3DInventorViewer::View3DInventorViewer (QWidget *parent, const char *name,
     // set some callback functions for user interaction
     addStartCallback(interactionStartCB);
     addFinishCallback(interactionFinishCB);
+    
+    //setup the ql widgets overlay
+    overlay = new View3DInventorWidgetManager(parent, this);
 }
 
 View3DInventorViewer::~View3DInventorViewer()
@@ -1107,6 +1111,12 @@ void View3DInventorViewer::renderScene(void)
     navigation->redraw();
     for (std::list<GLGraphicsItem*>::iterator it = this->graphicsItems.begin(); it != this->graphicsItems.end(); ++it)
         (*it)->paintGL();
+    
+    //draw overlay widgets
+    NGLPainter nglp;
+    nglp.begin(this);
+    overlay->render(&nglp);
+    nglp.end();
 
 #if 0 // this breaks highlighting of edges
     glEnable(GL_LIGHTING);
@@ -1203,6 +1213,10 @@ void View3DInventorViewer::selectAll()
  */
 void View3DInventorViewer::processEvent(QEvent * event)
 {
+    //check if the overlay widgets want the events
+    if(overlay->processEvent(event))
+      return;
+    
     // Bug #0000607: Some mices also support horizontal scrolling which however might
     // lead to some unwanted zooming when pressing the MMB for panning.
     // Thus, we filter out horizontal scrolling.
@@ -2379,3 +2393,12 @@ View3DInventorViewer::AntiAliasing View3DInventorViewer::getAntiAliasingMode() c
       return None;
 #endif
 }
+
+void View3DInventorViewer::addOverlayWidget(QWidget* w, int pos)
+{
+    if(!overlay)
+      return;
+    
+    overlay->addWidget(w, (View3DInventorWidgetManager::Position)pos);
+}
+

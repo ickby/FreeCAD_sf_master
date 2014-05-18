@@ -60,7 +60,7 @@ const int TreeWidget::ObjectType = 1001;
 
 
 /* TRANSLATOR Gui::TreeWidget */
-TreeWidget::TreeWidget(QWidget* parent)
+TreeWidget::TreeWidget(QWidget* parent, bool singleDocument)
     : QTreeWidget(parent), fromOutside(false)
 {
     this->setDragEnabled(true);
@@ -86,10 +86,12 @@ TreeWidget::TreeWidget(QWidget* parent)
             this, SLOT(onFinishEditing()));
 
     // Setup connections
-    Application::Instance->signalNewDocument.connect(boost::bind(&TreeWidget::slotNewDocument, this, _1));
-    Application::Instance->signalDeleteDocument.connect(boost::bind(&TreeWidget::slotDeleteDocument, this, _1));
+    if(!singleDocument) {
+      Application::Instance->signalNewDocument.connect(boost::bind(&TreeWidget::slotNewDocument, this, _1));
+      Application::Instance->signalDeleteDocument.connect(boost::bind(&TreeWidget::slotDeleteDocument, this, _1));
+      Application::Instance->signalActiveDocument.connect(boost::bind(&TreeWidget::slotActiveDocument, this, _1));
+    }
     Application::Instance->signalRenameDocument.connect(boost::bind(&TreeWidget::slotRenameDocument, this, _1));
-    Application::Instance->signalActiveDocument.connect(boost::bind(&TreeWidget::slotActiveDocument, this, _1));
     Application::Instance->signalRelabelDocument.connect(boost::bind(&TreeWidget::slotRelabelDocument, this, _1));
 
     QStringList labels;

@@ -199,6 +199,7 @@ set(Gui_MOC_HDRS
     TreeView.h
     ProjectView.h
     View3DInventor.h
+    View3DInventorWidgets.h
     WidgetFactory.h
     Widgets.h
     Language/Translator.h
@@ -643,6 +644,7 @@ SET(View3D_CPP_SRCS
     View3DInventor.cpp
     View3DInventorExamples.cpp
     View3DInventorViewer.cpp
+    View3DInventorWidgets.cpp
     View3DPy.cpp
 )
 SET(View3D_SRCS
@@ -656,6 +658,7 @@ SET(View3D_SRCS
     View3DInventor.h
     View3DInventorExamples.h
     View3DInventorViewer.h
+    View3DInventorWidgets.h
     View3DPy.h
 )
 SOURCE_GROUP("View3D" FILES ${View3D_SRCS})
@@ -848,7 +851,7 @@ SET(FreeCADGui_CPP_SRCS
     WaitCursor.cpp
     ManualAlignment.cpp
 )
-SET(FreeCADGui_SRCS
+SET(FreeCADGui_SRCS 
     Application.h
     BitmapFactory.h
     Document.h

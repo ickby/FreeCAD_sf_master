@@ -31,10 +31,10 @@
 #include <OpenGL/gl.h>
 #else
 #include <GL/gl.h>
-#include <QPainter>
 #endif
 
 #include <Base/BaseClass.h>
+#include <QPainter>
 
 namespace Gui {
 class View3DInventorViewer;

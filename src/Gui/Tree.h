@@ -62,7 +62,7 @@ class TreeWidget : public QTreeWidget, public SelectionObserver
     Q_OBJECT
 
 public:
-    TreeWidget(QWidget* parent=0);
+    TreeWidget(QWidget* parent=0, bool singleDocument = false);
     ~TreeWidget();
 
     void scrollItemToTop(Gui::Document*);
@@ -108,7 +108,7 @@ private Q_SLOTS:
     void onItemExpanded(QTreeWidgetItem * item);
     void onTestStatus(void);
 
-private:
+protected:
     void slotNewDocument(const Gui::Document&);
     void slotDeleteDocument(const Gui::Document&);
     void slotRenameDocument(const Gui::Document&);

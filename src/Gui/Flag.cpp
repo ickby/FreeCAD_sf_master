@@ -25,45 +25,50 @@
 #ifndef _PreComp_
 # include <QMenu>
 # include <QMouseEvent>
+#include <QApplication>
+#include <QMainWindow>
 # include <Inventor/nodes/SoCamera.h>
 #endif
 #include <Inventor/SbVec2s.h>
 #include "View3DInventorViewer.h"
 
 #include "Flag.h"
+#include <Base/Console.h>
 
 using namespace Gui;
 
 #if 0 // Test functions with transparency
 
 #if 1
-    QDialog* dlg = Gui::getMainWindow()->findChild<QDialog*>();
-    QImage image;
-    if (dlg) {
-        QPixmap p = QPixmap::grabWidget(dlg);
-        image = p.toImage();
-    }
-    else {
-        QImage img(128,128, QImage::Format_ARGB32);
-        img.fill(qRgba(255, 255, 255, 127));
-        QPainter painter;
-        painter.begin(&img);
-        painter.setPen(Qt::black);
-        painter.drawText(25, 50, QLatin1String("Hello, World!"));
-        painter.end();
-        image = img;
-    }
+QDialog* dlg = Gui::getMainWindow()->findChild<QDialog*>();
+QImage image;
+
+if(dlg) {
+    QPixmap p = QPixmap::grabWidget(dlg);
+    image = p.toImage();
+}
+else {
+    QImage img(128,128, QImage::Format_ARGB32);
+    img.fill(qRgba(255, 255, 255, 127));
+    QPainter painter;
+    painter.begin(&img);
+    painter.setPen(Qt::black);
+    painter.drawText(25, 50, QLatin1String("Hello, World!"));
+    painter.end();
+    image = img;
+}
+
 #else
-    QPixmap pm (128,128);
-    QBitmap mask (128,128);
-    mask.fill(Qt::color0);
+QPixmap pm(128,128);
+QBitmap mask(128,128);
+mask.fill(Qt::color0);
 
-    QPainter painter(&mask);
-    painter.drawText(QPoint(0, 0), QLatin1String("Hello, World!"));
-    pm.setMask(mask);
+QPainter painter(&mask);
+painter.drawText(QPoint(0, 0), QLatin1String("Hello, World!"));
+pm.setMask(mask);
 
-    QImage img = pm.toImage();
-    img.load(QLatin1String("C:/Temp/tux.png"),"PNG");
+QImage img = pm.toImage();
+img.load(QLatin1String("C:/Temp/tux.png"),"PNG");
 #endif
 
 #include "MainWindow.h"
@@ -73,44 +78,56 @@ void drawImage(QGLWidget* w,double x1, double y1, double x2, double y2, QImage p
 #if 0
     glPushAttrib(GL_ALL_ATTRIB_BITS);
     glEnable(GL_BLEND);
-    glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glColor4d(0.0,0.0,1.0,0.2f);
     glBegin(GL_QUADS);
-    glTexCoord2d(0,0); glVertex2f(x1,y1);
-    glTexCoord2d(1,0); glVertex2f(x2,y1);
-    glTexCoord2d(1,1); glVertex2f(x2,y2);
-    glTexCoord2d(0,1); glVertex2f(x1,y2);
+    glTexCoord2d(0,0);
+    glVertex2f(x1,y1);
+    glTexCoord2d(1,0);
+    glVertex2f(x2,y1);
+    glTexCoord2d(1,1);
+    glVertex2f(x2,y2);
+    glTexCoord2d(0,1);
+    glVertex2f(x1,y2);
     glEnd();
     glPopAttrib();
 #elif 0
     pic = QGLWidget::convertToGLFormat(pic);
     int texid = w->bindTexture(pic);
     glColor3f(1,1,1);
-    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glDisable(GL_LIGHTING);
     glBegin(GL_QUADS);
-    glTexCoord2d(0,0); glVertex2f(x1,y1);
-    glTexCoord2d(1,0); glVertex2f(x2,y1);
-    glTexCoord2d(1,1); glVertex2f(x2,y2);
-    glTexCoord2d(0,1); glVertex2f(x1,y2);
+    glTexCoord2d(0,0);
+    glVertex2f(x1,y1);
+    glTexCoord2d(1,0);
+    glVertex2f(x2,y1);
+    glTexCoord2d(1,1);
+    glVertex2f(x2,y2);
+    glTexCoord2d(0,1);
+    glVertex2f(x1,y2);
     glEnd();
     //    glEnable(GL_LIGHTING);
     w->deleteTexture(texid);
 #elif 0
     glPushAttrib(GL_ALL_ATTRIB_BITS);
     glEnable(GL_BLEND);
-    glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glColor4d(0.0,0.0,1.0,0.2f);
     int texid = w->bindTexture(pic);
-    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glDisable(GL_LIGHTING);
     glBegin(GL_QUADS);
-    glTexCoord2d(0,0); glVertex2f(x1,y1);
-    glTexCoord2d(1,0); glVertex2f(x2,y1);
-    glTexCoord2d(1,1); glVertex2f(x2,y2);
-    glTexCoord2d(0,1); glVertex2f(x1,y2);
+    glTexCoord2d(0,0);
+    glVertex2f(x1,y1);
+    glTexCoord2d(1,0);
+    glVertex2f(x2,y1);
+    glTexCoord2d(1,1);
+    glVertex2f(x2,y2);
+    glTexCoord2d(0,1);
+    glVertex2f(x1,y2);
     glEnd();
     //    glEnable(GL_LIGHTING);
     w->deleteTexture(texid);
@@ -118,7 +135,7 @@ void drawImage(QGLWidget* w,double x1, double y1, double x2, double y2, QImage p
 #elif 1
     glPushAttrib(GL_ALL_ATTRIB_BITS);
     glEnable(GL_BLEND);
-    glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glColor4d(0.0,0.0,1.0,0.2f);
     pic = QGLWidget::convertToGLFormat(pic);
     glRasterPos2d(x1,y1);
@@ -138,7 +155,7 @@ void drawImage(QGLWidget* w,double x1, double y1, double x2, double y2, QImage p
 //       Embed complete widgets
 
 Flag::Flag(QWidget* parent)
-  : QGLWidget(parent), coord(0.0f, 0.0f, 0.0f)
+    : QGLWidget(parent), coord(0.0f, 0.0f, 0.0f)
 {
     this->setFixedHeight(20);
 }
@@ -174,7 +191,7 @@ void Flag::resizeGL(int width, int height)
 #else
 
 Flag::Flag(QWidget* parent)
-  : QWidget(parent), coord(0.0f, 0.0f, 0.0f)
+    : QWidget(parent), coord(0.0f, 0.0f, 0.0f)
 {
     this->setFixedHeight(20);
 }
@@ -194,9 +211,9 @@ const SbVec3f& Flag::getOrigin() const
     return this->coord;
 }
 
-void Flag::drawLine (View3DInventorViewer* v, int tox, int toy)
+void Flag::drawLine(View3DInventorViewer* v, int tox, int toy)
 {
-    if (!isVisible())
+    if(!isVisible())
         return;
 
     // Get position of line
@@ -204,7 +221,8 @@ void Flag::drawLine (View3DInventorViewer* v, int tox, int toy)
     SbVec2s view(s.width(), s.height());
     int fromx = pos().x();
     int fromy = pos().y() + height()/2;
-    if (false) fromx += width();
+
+    if(false) fromx += width();
 
     GLPainter p;
     p.begin(v);
@@ -224,7 +242,7 @@ void Flag::setText(const QString& t)
     this->text = t;
 }
 
-void Flag::resizeEvent(QResizeEvent * e)
+void Flag::resizeEvent(QResizeEvent* e)
 {
 #if 0
     image = QImage(this->size(), QImage::Format_ARGB32);
@@ -262,23 +280,23 @@ void Flag::paintEvent(QPaintEvent* e)
 #endif
 }
 
-void Flag::mouseMoveEvent(QMouseEvent *e)
+void Flag::mouseMoveEvent(QMouseEvent* e)
 {
-    if (e->buttons() & Qt::LeftButton) {
+    if(e->buttons() & Qt::LeftButton) {
         move(e->globalPos() - dragPosition);
         e->accept();
     }
 }
 
-void Flag::mousePressEvent(QMouseEvent *e)
+void Flag::mousePressEvent(QMouseEvent* e)
 {
-    if (e->button() == Qt::LeftButton) {
+    if(e->button() == Qt::LeftButton) {
         dragPosition = e->globalPos() - frameGeometry().topLeft();
         e->accept();
     }
 }
 
-void Flag::contextMenuEvent(QContextMenuEvent * e)
+void Flag::contextMenuEvent(QContextMenuEvent* e)
 {
     QMenu menu(this);
 
@@ -293,7 +311,8 @@ void Flag::contextMenuEvent(QContextMenuEvent * e)
     menu.addSeparator();
     QAction* remove = menu.addAction(tr("Remove"));
     QAction* select = menu.exec(e->globalPos());
-    if (remove == select)
+
+    if(remove == select)
         this->deleteLater();
 }
 
@@ -310,7 +329,7 @@ QSize Flag::sizeHint() const
 
 // ------------------------------------------------------------------------
 
-FlagLayout::FlagLayout(QWidget *parent, int margin, int spacing)
+FlagLayout::FlagLayout(QWidget* parent, int margin, int spacing)
     : QLayout(parent)
 {
     setMargin(margin);
@@ -324,17 +343,18 @@ FlagLayout::FlagLayout(int spacing)
 
 FlagLayout::~FlagLayout()
 {
-    QLayoutItem *l;
-    while ((l = takeAt(0)))
+    QLayoutItem* l;
+
+    while((l = takeAt(0)))
         delete l;
 }
 
-void FlagLayout::addItem(QLayoutItem *item)
+void FlagLayout::addItem(QLayoutItem* item)
 {
     add(item, TopLeft);
 }
 
-void FlagLayout::addWidget(QWidget *widget, Position position)
+void FlagLayout::addWidget(QWidget* widget, Position position)
 {
     add(new QWidgetItem(widget), position);
 }
@@ -354,10 +374,11 @@ int FlagLayout::count() const
     return list.size();
 }
 
-QLayoutItem *FlagLayout::itemAt(int index) const
+QLayoutItem* FlagLayout::itemAt(int index) const
 {
-    ItemWrapper *wrapper = list.value(index);
-    if (wrapper)
+    ItemWrapper* wrapper = list.value(index);
+
+    if(wrapper)
         return wrapper->item;
     else
         return 0;
@@ -368,7 +389,7 @@ QSize FlagLayout::minimumSize() const
     return calculateSize(MinimumSize);
 }
 
-void FlagLayout::setGeometry(const QRect &rect)
+void FlagLayout::setGeometry(const QRect& rect)
 {
     int topHeight = 0;
     int bottomHeight = 0;
@@ -376,20 +397,21 @@ void FlagLayout::setGeometry(const QRect &rect)
     QLayout::setGeometry(rect);
 
     // left side
-    for (int i = 0; i < list.size(); ++i) {
-        ItemWrapper *wrapper = list.at(i);
-        QLayoutItem *item = wrapper->item;
+    for(int i = 0; i < list.size(); ++i) {
+        ItemWrapper* wrapper = list.at(i);
+        QLayoutItem* item = wrapper->item;
         Position position = wrapper->position;
 
-        if (position == TopLeft) {
+        if(position == TopLeft) {
             topHeight += spacing();
-            item->setGeometry(QRect(rect.x() + spacing(), topHeight, 
+            item->setGeometry(QRect(rect.x() + spacing(), topHeight,
                                     item->sizeHint().width(), item->sizeHint().height()));
 
             topHeight += item->geometry().height();
-        } else if (position == BottomLeft) {
+        }
+        else if(position == BottomLeft) {
             bottomHeight += item->geometry().height() + spacing();
-            item->setGeometry(QRect(rect.x() + spacing(), rect.height() - bottomHeight, 
+            item->setGeometry(QRect(rect.x() + spacing(), rect.height() - bottomHeight,
                                     item->sizeHint().width(), item->sizeHint().height()));
         }
     }
@@ -397,21 +419,24 @@ void FlagLayout::setGeometry(const QRect &rect)
     // right side
     topHeight = 0;
     bottomHeight = 0;
-    for (int i = 0; i < list.size(); ++i) {
-        ItemWrapper *wrapper = list.at(i);
-        QLayoutItem *item = wrapper->item;
+
+    for(int i = 0; i < list.size(); ++i) {
+        ItemWrapper* wrapper = list.at(i);
+        QLayoutItem* item = wrapper->item;
         Position position = wrapper->position;
 
         int rightpos = item->sizeHint().width() + spacing();
-        if (position == TopRight) {
+
+        if(position == TopRight) {
             topHeight += spacing();
-            item->setGeometry(QRect(rect.x() + rect.width() - rightpos, topHeight, 
+            item->setGeometry(QRect(rect.x() + rect.width() - rightpos, topHeight,
                                     item->sizeHint().width(), item->sizeHint().height()));
 
             topHeight += item->geometry().height();
-        } else if (position == BottomRight) {
+        }
+        else if(position == BottomRight) {
             bottomHeight += item->geometry().height() + spacing();
-            item->setGeometry(QRect(rect.x() + rect.width() - rightpos, rect.height() - bottomHeight, 
+            item->setGeometry(QRect(rect.x() + rect.width() - rightpos, rect.height() - bottomHeight,
                                     item->sizeHint().width(), item->sizeHint().height()));
         }
     }
@@ -422,16 +447,17 @@ QSize FlagLayout::sizeHint() const
     return calculateSize(SizeHint);
 }
 
-QLayoutItem *FlagLayout::takeAt(int index)
+QLayoutItem* FlagLayout::takeAt(int index)
 {
-    if (index >= 0 && index < list.size()) {
-        ItemWrapper *layoutStruct = list.takeAt(index);
+    if(index >= 0 && index < list.size()) {
+        ItemWrapper* layoutStruct = list.takeAt(index);
         return layoutStruct->item;
     }
+
     return 0;
 }
 
-void FlagLayout::add(QLayoutItem *item, Position position)
+void FlagLayout::add(QLayoutItem* item, Position position)
 {
     list.append(new ItemWrapper(item, position));
 }
@@ -440,11 +466,11 @@ QSize FlagLayout::calculateSize(SizeType sizeType) const
 {
     QSize totalSize;
 
-    for (int i = 0; i < list.size(); ++i) {
-        ItemWrapper *wrapper = list.at(i);
+    for(int i = 0; i < list.size(); ++i) {
+        ItemWrapper* wrapper = list.at(i);
         QSize itemSize;
 
-        if (sizeType == MinimumSize)
+        if(sizeType == MinimumSize)
             itemSize = wrapper->item->minimumSize();
         else // (sizeType == SizeHint)
             itemSize = wrapper->item->sizeHint();
@@ -452,6 +478,7 @@ QSize FlagLayout::calculateSize(SizeType sizeType) const
         totalSize.rheight() += itemSize.height();
         totalSize.rwidth() = qMax<int>(totalSize.width(),itemSize.width());
     }
+
     return totalSize;
 }
 
@@ -465,17 +492,20 @@ GLFlagWindow::GLFlagWindow(View3DInventorViewer* view) : _viewer(view), _flagLay
 GLFlagWindow::~GLFlagWindow()
 {
     deleteFlags();
-    if (_flagLayout)
+
+    if(_flagLayout)
         _flagLayout->deleteLater();
 }
 
 void GLFlagWindow::deleteFlags()
 {
-    if (_flagLayout) {
+    if(_flagLayout) {
         int ct = _flagLayout->count();
-        for (int i=0; i<ct;i++) {
+
+        for(int i=0; i<ct; i++) {
             QWidget* flag = _flagLayout->itemAt(0)->widget();
-            if (flag) {
+
+            if(flag) {
                 _flagLayout->removeWidget(flag);
                 flag->deleteLater();
             }
@@ -485,7 +515,7 @@ void GLFlagWindow::deleteFlags()
 
 void GLFlagWindow::addFlag(Flag* item, FlagLayout::Position pos)
 {
-    if (!_flagLayout) {
+    if(!_flagLayout) {
         _flagLayout = new FlagLayout(3);
         _viewer->getGLWidget()->setLayout(_flagLayout);
     }
@@ -498,23 +528,24 @@ void GLFlagWindow::addFlag(Flag* item, FlagLayout::Position pos)
 
 void GLFlagWindow::removeFlag(Flag* item)
 {
-    if (_flagLayout) {
+    if(_flagLayout) {
         _flagLayout->removeWidget(item);
     }
 }
 
 Flag* GLFlagWindow::getFlag(int index) const
 {
-    if (_flagLayout) {
+    if(_flagLayout) {
         QWidget* flag = _flagLayout->itemAt(index)->widget();
         return qobject_cast<Flag*>(flag);
     }
+
     return 0;
 }
 
 int GLFlagWindow::countFlags() const
 {
-    if (_flagLayout) {
+    if(_flagLayout) {
         return _flagLayout->count();
     }
 
@@ -524,7 +555,7 @@ int GLFlagWindow::countFlags() const
 void GLFlagWindow::paintGL()
 {
     // draw lines for the flags
-    if (_flagLayout) {
+    if(_flagLayout) {
         // it can happen that the GL widget gets replaced internally by SoQt which
         // causes to destroy the FlagLayout instance
         int ct = _flagLayout->count();
@@ -532,9 +563,11 @@ void GLFlagWindow::paintGL()
         SbVec2s size = vp.getViewportSizePixels();
         float aspectratio = float(size[0])/float(size[1]);
         SbViewVolume vv = _viewer->getCamera()->getViewVolume(aspectratio);
-        for (int i=0; i<ct;i++) {
+
+        for(int i=0; i<ct; i++) {
             Flag* flag = qobject_cast<Flag*>(_flagLayout->itemAt(i)->widget());
-            if (flag) {
+
+            if(flag) {
                 SbVec3f pt = flag->getOrigin();
                 vv.projectToScreen(pt, pt);
                 int tox = (int)(pt[0] * size[0]);
@@ -544,5 +577,6 @@ void GLFlagWindow::paintGL()
         }
     }
 }
+
 
 #include "moc_Flag.cpp"
