@@ -123,6 +123,7 @@ View3DInventor::View3DInventor(Gui::Document* pcDocument, QWidget* parent, Qt::W
     _viewer = new View3DInventorViewer(0);
 #endif
     _viewer->addOverlayWidget(new View3DInventorTreeWidget(this->_pcDocument), View3DInventorWidgetManager::TopLeft);
+    _viewer->addOverlayWidget(new View3DInventorCommandWidget(), View3DInventorWidgetManager::TopRight);
     _viewer->setDocument(this->_pcDocument);
     stack->addWidget(_viewer->getWidget());
     // http://forum.freecadweb.org/viewtopic.php?f=3&t=6055&sid=150ed90cbefba50f1e2ad4b4e6684eba

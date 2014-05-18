@@ -23,6 +23,7 @@
 
 #include <QWidget>
 #include <QHBoxLayout>
+#include <QToolBar>
 #include "Tree.h"
 #include "View.h"
 #include "Document.h"
@@ -53,6 +54,8 @@ public:
     void addWidget(QWidget* w, Position p);
     void removeWidget(QWidget* w);
     bool processEvent(QEvent* event);
+    
+    virtual void paintEvent(QPaintEvent*);
 
 private:
     QHBoxLayout* m_topLeft;
@@ -92,6 +95,12 @@ public:
   /// overwrite when checking on close state
   virtual bool canClose(void){return true;}
   //@}
+};
+
+class GuiExport View3DInventorCommandWidget : public QToolBar {
+
+public:
+    View3DInventorCommandWidget(QWidget* parent = 0);
 };
 
 }

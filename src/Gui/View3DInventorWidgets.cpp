@@ -22,6 +22,7 @@
 #include "View3DInventorWidgets.h"
 #include "Application.h"
 #include "View3DInventorViewer.h"
+#include "Command.h"
 #include <Base/Console.h>
 #include <QEvent>
 #include <QResizeEvent>
@@ -63,6 +64,12 @@ Gui::View3DInventorWidgetManager::~View3DInventorWidgetManager()
 {
 
 }
+
+void Gui::View3DInventorWidgetManager::paintEvent(QPaintEvent*)
+{
+    m_viewer->scheduleRedraw();
+}
+
 
 void Gui::View3DInventorWidgetManager::addWidget(QWidget* w, Gui::View3DInventorWidgetManager::Position p)
 {
@@ -133,7 +140,7 @@ bool Gui::View3DInventorWidgetManager::processEvent(QEvent* event)
             if(qApp->sendEvent(child, &me)) {
                 //we need to rerender the scene as the widget may have changed but it will only be
                 //redrawn on full rerender
-		m_viewer->scheduleRedraw();
+		//m_viewer->scheduleRedraw();
 		return true;
             };
         }
@@ -165,4 +172,24 @@ Gui::View3DInventorTreeWidget::View3DInventorTreeWidget(Gui::Document* doc) : Tr
     slotNewDocument(*doc);
 }
 
+Gui::View3DInventorCommandWidget::View3DInventorCommandWidget(QWidget* parent): QToolBar(parent)
+{
+    CommandManager& mgr = Application::Instance->commandManager();
+    mgr.addTo("Std_ViewFitAll", this);
+    mgr.addTo("Std_DrawStyle", this);
+    this->addSeparator();
+    mgr.addTo("Std_ViewAxo", this);
+    this->addSeparator();
+    mgr.addTo("Std_ViewFront", this);
+    mgr.addTo("Std_ViewTop", this);
+    mgr.addTo("Std_ViewRight", this);
+    this->addSeparator();
+    mgr.addTo("Std_ViewRear", this);
+    mgr.addTo("Std_ViewBottom", this);
+    mgr.addTo("Std_ViewLeft", this);
+       
+};
+
+
 #include "moc_View3DInventorWidgets.cpp"
+
