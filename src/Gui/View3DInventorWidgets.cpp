@@ -27,9 +27,11 @@
 #include <QEvent>
 #include <QResizeEvent>
 #include <qapplication.h>
+#include <QScrollArea>
+#include <QPainter>
 
 Gui::View3DInventorWidgetManager::View3DInventorWidgetManager(QWidget* parent, View3DInventorViewer* viewer)
-    : QWidget(), m_parent(parent), m_viewer(viewer)
+    : QWidget(), m_parent(parent), m_viewer(viewer), m_child(NULL)
 {
     //setup the base layout
     QHBoxLayout* mainLayout = new QHBoxLayout(this);
@@ -58,18 +60,15 @@ Gui::View3DInventorWidgetManager::View3DInventorWidgetManager(QWidget* parent, V
 
     //we need to be fully transparent, nobody wants to see the helper widget
     setAttribute(Qt::WA_TranslucentBackground, true);
+
+    //set the correct position to ease the mouse position handling
+    move(parent->mapToGlobal(QPoint(0,0)));
 }
 
 Gui::View3DInventorWidgetManager::~View3DInventorWidgetManager()
 {
 
 }
-
-void Gui::View3DInventorWidgetManager::paintEvent(QPaintEvent*)
-{
-    m_viewer->scheduleRedraw();
-}
-
 
 void Gui::View3DInventorWidgetManager::addWidget(QWidget* w, Gui::View3DInventorWidgetManager::Position p)
 {
@@ -120,8 +119,12 @@ bool Gui::View3DInventorWidgetManager::processEvent(QEvent* event)
         return false;
     }
 
+    QMouseEvent* ev = static_cast<QMouseEvent*>(event);
+    QWidget* child = this->childAt(ev->pos());
+
     if(event->type() == QEvent::Move)  {
-        move(static_cast<QMoveEvent*>(event)->pos());
+        Base::Console().Message("Move\n");
+        move(m_parent->mapToGlobal(static_cast<QMoveEvent*>(event)->pos()));
         return false;
     }
     else if(event->type() == QEvent::MouseButtonPress ||
@@ -129,20 +132,41 @@ bool Gui::View3DInventorWidgetManager::processEvent(QEvent* event)
             event->type() == QEvent::MouseButtonDblClick ||
             event->type() == QEvent::MouseMove) {
 
-        QMouseEvent* ev = static_cast<QMouseEvent*>(event);
-        QWidget* child = this->childAt(ev->pos());
-
         if(child) {
+            //emulate the correct enter/leave events
+            if(child != m_child) {
+                if(m_child) {
+                    QEvent e(QEvent::Leave);
+                    qApp->sendEvent(m_child, &e);
+                }
+
+                QEvent e(QEvent::Enter);
+                qApp->sendEvent(child, &e);
+                m_child = child;
+                m_viewer->scheduleRedraw();
+            };
+
             //get the widget position
             QPoint cp = child->mapFrom(this, static_cast<QMouseEvent*>(event)->pos());
-            QMouseEvent me(ev->type(), cp, ev->button(), ev->buttons(), ev->modifiers());
 
-            if(qApp->sendEvent(child, &me)) {
+            QMouseEvent me(ev->type(), cp, cp+pos(), ev->button(), ev->buttons(), ev->modifiers());
+
+            if(qApp->sendEvent(child, &me) && me.isAccepted()) {
                 //we need to rerender the scene as the widget may have changed but it will only be
                 //redrawn on full rerender
-		//m_viewer->scheduleRedraw();
-		return true;
+                m_viewer->scheduleRedraw();
+                return true;
             };
+        }
+        else {
+            //did we leave a child with the mouse?
+            if(m_child) {
+                QEvent e(QEvent::Leave);
+                qApp->sendEvent(m_child, &e);
+                m_child = NULL;
+                m_viewer->scheduleRedraw();
+                return true;
+            }
         }
     };
 
@@ -162,15 +186,34 @@ Gui::View3DInventorTreeWidget::View3DInventorTreeWidget(Gui::Document* doc) : Tr
     //tweak the tree a bit
     this->setHeaderHidden(true);
     this->setFrameShape(QFrame::NoFrame);
-    
+    this->setMinimumWidth(300);
+
     //ensure we get maximal possible vertical space
-    QSizePolicy p(QSizePolicy::Preferred, QSizePolicy::Expanding);
+    QSizePolicy p(QSizePolicy::MinimumExpanding, QSizePolicy::Minimum);
     p.setVerticalStretch(10);
     this->setSizePolicy(p);
 
     //ensure the active document is shown
     slotNewDocument(*doc);
 }
+
+bool Gui::View3DInventorTreeWidget::viewportEvent(QEvent* event)
+{
+    //check if we hit the background and therefore don't want the event
+    if(event->type() == QEvent::MouseButtonPress ||
+            event->type() == QEvent::MouseButtonRelease ||
+            event->type() == QEvent::MouseMove) {
+
+        QModelIndex index = indexAt(static_cast<QMouseEvent*>(event)->pos());
+        if(!index.isValid()) {
+            event->ignore();
+            return false;
+        }
+    };
+
+    return Gui::TreeWidget::viewportEvent(event);
+}
+
 
 Gui::View3DInventorCommandWidget::View3DInventorCommandWidget(QWidget* parent): QToolBar(parent)
 {
@@ -187,8 +230,43 @@ Gui::View3DInventorCommandWidget::View3DInventorCommandWidget(QWidget* parent): 
     mgr.addTo("Std_ViewRear", this);
     mgr.addTo("Std_ViewBottom", this);
     mgr.addTo("Std_ViewLeft", this);
-       
+
 };
+
+Gui::View3DInventorPropertyWidget::View3DInventorPropertyWidget(QWidget* parent): PropertyView(parent)
+{
+    setMinimumWidth(200);
+    //ensure we get maximal possible horizontal space
+    QSizePolicy p(QSizePolicy::MinimumExpanding, QSizePolicy::Minimum);
+    this->setSizePolicy(p);
+    
+    //draw nice and transperant
+    setAttribute(Qt::WA_TranslucentBackground, true);
+    QPalette palette = this->palette();
+    palette.setColor(QPalette::Active, QPalette::Base, QColor(255,255,255,0));
+    palette.setColor(QPalette::Inactive, QPalette::Base, QColor(255,255,255,0));
+    palette.setColor(QPalette::Disabled, QPalette::Base, QColor(255,255,255,0));
+    setPalette(palette);
+}
+
+Gui::View3dInventorPythonWidget::View3dInventorPythonWidget(QWidget* parent)
+{
+    setMinimumHeight(300);
+    setMinimumWidth(500);
+    //ensure we get maximal possible horizontal space
+    QSizePolicy p(QSizePolicy::Minimum, QSizePolicy::Minimum);
+    p.setHorizontalStretch(10);
+    setSizePolicy(p);
+    
+    //draw nice and transperant
+    setAttribute(Qt::WA_TranslucentBackground, true);
+    QPalette palette = this->palette();
+    palette.setColor(QPalette::Active, QPalette::Base, QColor(255,255,255,0));
+    palette.setColor(QPalette::Inactive, QPalette::Base, QColor(255,255,255,0));
+    palette.setColor(QPalette::Disabled, QPalette::Base, QColor(255,255,255,0));
+    setPalette(palette);
+}
+
 
 
 #include "moc_View3DInventorWidgets.cpp"

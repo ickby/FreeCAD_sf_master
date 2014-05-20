@@ -27,6 +27,8 @@
 #include "Tree.h"
 #include "View.h"
 #include "Document.h"
+#include "PropertyView.h"
+#include "PythonConsole.h"
 
 namespace Gui {
 
@@ -55,15 +57,14 @@ public:
     void removeWidget(QWidget* w);
     bool processEvent(QEvent* event);
     
-    virtual void paintEvent(QPaintEvent*);
-
 private:
     QHBoxLayout* m_topLeft;
     QHBoxLayout* m_topRight;
     QHBoxLayout* m_bottomLeft;
     QHBoxLayout* m_bottomRight;
     QWidget*     m_parent;
-    View3DInventorViewer* m_viewer;
+    QWidget* 	 m_child;
+    View3DInventorViewer* m_viewer;    
 };
 
 
@@ -81,7 +82,11 @@ class GuiExport View3DInventorTreeWidget : public Gui::TreeWidget, public BaseVi
 public:
     View3DInventorTreeWidget(Gui::Document* doc);
     
-   /** @name methods to overrride 
+protected:
+    virtual bool viewportEvent(QEvent* event);
+    //virtual void drawRow(QPainter* painter, const QStyleOptionViewItem & option, const QModelIndex& index) const;
+    
+   /** @name methods to overrride from BaseView
    */
   //@{
   /// get called when the document is updated
@@ -103,6 +108,16 @@ public:
     View3DInventorCommandWidget(QWidget* parent = 0);
 };
 
-}
+class GuiExport View3DInventorPropertyWidget : public Gui::PropertyView {
 
+public:
+    View3DInventorPropertyWidget(QWidget* parent = 0);
+};
+
+class GuiExport View3dInventorPythonWidget : public Gui::PythonConsole {
+public:
+    View3dInventorPythonWidget(QWidget* parent = 0);
+};
+
+}
 #endif // OVERLAYWIDGETMANAGER_H
