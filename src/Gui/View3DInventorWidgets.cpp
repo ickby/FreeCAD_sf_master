@@ -62,7 +62,7 @@ Gui::View3DInventorWidgetManager::View3DInventorWidgetManager(QWidget* parent, V
     setAttribute(Qt::WA_TranslucentBackground, true);
 
     //set the correct position to ease the mouse position handling
-    move(parent->mapToGlobal(QPoint(0,0)));
+    //move(parent->mapToGlobal(QPoint(0,0)));
 }
 
 Gui::View3DInventorWidgetManager::~View3DInventorWidgetManager()
@@ -122,15 +122,14 @@ bool Gui::View3DInventorWidgetManager::processEvent(QEvent* event)
     QMouseEvent* ev = static_cast<QMouseEvent*>(event);
     QWidget* child = this->childAt(ev->pos());
 
-    if(event->type() == QEvent::Move)  {
-        Base::Console().Message("Move\n");
-        move(m_parent->mapToGlobal(static_cast<QMoveEvent*>(event)->pos()));
-        return false;
-    }
-    else if(event->type() == QEvent::MouseButtonPress ||
+    //Base::Console().Message("Event: %i\n", (int)event->type());
+
+    if(event->type() == QEvent::MouseButtonPress ||
             event->type() == QEvent::MouseButtonRelease ||
             event->type() == QEvent::MouseButtonDblClick ||
-            event->type() == QEvent::MouseMove) {
+            event->type() == QEvent::MouseMove ||
+            event->type() == QEvent::Wheel ||
+            event->type() == QEvent::ContextMenu) {
 
         if(child) {
             //emulate the correct enter/leave events
@@ -146,10 +145,12 @@ bool Gui::View3DInventorWidgetManager::processEvent(QEvent* event)
                 m_viewer->scheduleRedraw();
             };
 
-            //get the widget position
+            //get the widget positions right and create the new event
+            move(m_parent->mapToGlobal(QPoint(0,0)));
+
             QPoint cp = child->mapFrom(this, static_cast<QMouseEvent*>(event)->pos());
 
-            QMouseEvent me(ev->type(), cp, cp+pos(), ev->button(), ev->buttons(), ev->modifiers());
+            QMouseEvent me(ev->type(), cp, ev->globalPos(), ev->button(), ev->buttons(), ev->modifiers());
 
             if(qApp->sendEvent(child, &me) && me.isAccepted()) {
                 //we need to rerender the scene as the widget may have changed but it will only be
@@ -165,6 +166,7 @@ bool Gui::View3DInventorWidgetManager::processEvent(QEvent* event)
                 qApp->sendEvent(m_child, &e);
                 m_child = NULL;
                 m_viewer->scheduleRedraw();
+
                 return true;
             }
         }
@@ -202,9 +204,13 @@ bool Gui::View3DInventorTreeWidget::viewportEvent(QEvent* event)
     //check if we hit the background and therefore don't want the event
     if(event->type() == QEvent::MouseButtonPress ||
             event->type() == QEvent::MouseButtonRelease ||
-            event->type() == QEvent::MouseMove) {
+            event->type() == QEvent::QEvent::MouseButtonDblClick ||
+            event->type() == QEvent::Wheel ||
+            event->type() == QEvent::MouseMove ||
+	    event->type() == QEvent::ContextMenu) {
 
         QModelIndex index = indexAt(static_cast<QMouseEvent*>(event)->pos());
+
         if(!index.isValid()) {
             event->ignore();
             return false;
@@ -239,7 +245,7 @@ Gui::View3DInventorPropertyWidget::View3DInventorPropertyWidget(QWidget* parent)
     //ensure we get maximal possible horizontal space
     QSizePolicy p(QSizePolicy::MinimumExpanding, QSizePolicy::Minimum);
     this->setSizePolicy(p);
-    
+
     //draw nice and transperant
     setAttribute(Qt::WA_TranslucentBackground, true);
     QPalette palette = this->palette();
@@ -257,7 +263,7 @@ Gui::View3dInventorPythonWidget::View3dInventorPythonWidget(QWidget* parent)
     QSizePolicy p(QSizePolicy::Minimum, QSizePolicy::Minimum);
     p.setHorizontalStretch(10);
     setSizePolicy(p);
-    
+
     //draw nice and transperant
     setAttribute(Qt::WA_TranslucentBackground, true);
     QPalette palette = this->palette();
