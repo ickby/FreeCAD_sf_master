@@ -31,7 +31,7 @@
 #include <QPainter>
 
 Gui::View3DInventorWidgetManager::View3DInventorWidgetManager(QWidget* parent, View3DInventorViewer* viewer)
-    : QWidget(), m_parent(parent), m_viewer(viewer), m_child(NULL)
+    : QWidget(parent), m_parent(parent), m_viewer(viewer), m_child(NULL)
 {
     //setup the base layout
     QHBoxLayout* mainLayout = new QHBoxLayout(this);
@@ -61,8 +61,8 @@ Gui::View3DInventorWidgetManager::View3DInventorWidgetManager(QWidget* parent, V
     //we need to be fully transparent, nobody wants to see the helper widget
     setAttribute(Qt::WA_TranslucentBackground, true);
 
-    //set the correct position to ease the mouse position handling
-    //move(parent->mapToGlobal(QPoint(0,0)));
+    //hide this widget to avoid overpainting by qt
+    hide();
 }
 
 Gui::View3DInventorWidgetManager::~View3DInventorWidgetManager()
@@ -122,7 +122,7 @@ bool Gui::View3DInventorWidgetManager::processEvent(QEvent* event)
     QMouseEvent* ev = static_cast<QMouseEvent*>(event);
     QWidget* child = this->childAt(ev->pos());
 
-    //Base::Console().Message("Event: %i\n", (int)event->type());
+    Base::Console().Message("Event: %i\n", (int)event->type());
 
     if(event->type() == QEvent::MouseButtonPress ||
             event->type() == QEvent::MouseButtonRelease ||
