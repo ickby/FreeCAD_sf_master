@@ -83,6 +83,7 @@
 #include "View3DPy.h"
 #include "SoFCDB.h"
 #include "NavigationStyle.h"
+#include "View3DInventorWidgets.h"
 
 #include <locale>
 
