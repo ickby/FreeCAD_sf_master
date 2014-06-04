@@ -1042,8 +1042,6 @@ void View3DInventorViewer::renderScene(void)
     }
 #endif
 
-    Base::Console().Message("render scene\n");
-
     // Must set up the OpenGL viewport manually, as upon resize
     // operations, Coin won't set it up until the SoGLRenderAction is
     // applied again. And since we need to do glClear() before applying

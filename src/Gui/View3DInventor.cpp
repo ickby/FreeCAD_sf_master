@@ -56,6 +56,9 @@
 # include <Inventor/Qt/SoQtBasic.h>
 #endif
 # include <QStackedWidget>
+#include <QGraphicsView>
+#include <qgraphicsproxywidget.h>
+#include <qgraphicsgridlayout.h>
 
 #include <Base/Exception.h>
 #include <Base/Console.h>
@@ -123,6 +126,12 @@ View3DInventor::View3DInventor(Gui::Document* pcDocument, QWidget* parent, Qt::W
     _viewer = new View3DInventorViewer(0);
 #endif
     _viewer->setDocument(this->_pcDocument);
+    QGraphicsScene* scene = static_cast<QGraphicsView*>(_viewer->getWidget())->scene();
+    QGraphicsWidget* w1 = scene->addWidget(new View3DInventorTreeWidget(pcDocument));
+    QGraphicsWidget *w3 = scene->addWidget(new View3DInventorPropertyWidget);
+    w1->setPos(QPoint(-100,10));
+    w3->setPos(QPoint(-100,150));
+   
     stack->addWidget(_viewer->getWidget());
     // http://forum.freecadweb.org/viewtopic.php?f=3&t=6055&sid=150ed90cbefba50f1e2ad4b4e6684eba
     // describes a minor error but trying to fix it leads to a major issue

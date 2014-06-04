@@ -43,10 +43,10 @@ Gui::View3DInventorTreeWidget::View3DInventorTreeWidget(Gui::Document* doc) : Tr
     //tweak the tree a bit
     this->setHeaderHidden(true);
     this->setFrameShape(QFrame::NoFrame);
-    this->setMinimumWidth(300);
+    //this->setMinimumWidth(300);
 
     //ensure we get maximal possible vertical space
-    QSizePolicy p(QSizePolicy::MinimumExpanding, QSizePolicy::Minimum);
+    QSizePolicy p(QSizePolicy::Preferred, QSizePolicy::Preferred);
     p.setVerticalStretch(10);
     this->setSizePolicy(p);
 
@@ -92,6 +92,7 @@ Gui::View3DInventorCommandWidget::View3DInventorCommandWidget(QWidget* parent): 
     mgr.addTo("Std_ViewBottom", this);
     mgr.addTo("Std_ViewLeft", this);
 
+    setAttribute(Qt::WA_TranslucentBackground, true);
 };
 
 Gui::View3DInventorPropertyWidget::View3DInventorPropertyWidget(QWidget* parent): PropertyView(parent)
