@@ -130,7 +130,7 @@ View3DInventor::View3DInventor(Gui::Document* pcDocument, QWidget* parent, Qt::W
     QGraphicsWidget* w1 = scene->addWidget(new View3DInventorTreeWidget(pcDocument));
     QGraphicsWidget *w3 = scene->addWidget(new View3DInventorPropertyWidget);
     w1->setPos(QPoint(-100,10));
-    w3->setPos(QPoint(-100,150));
+    w3->setPos(QPoint(-100,200));
    
     stack->addWidget(_viewer->getWidget());
     // http://forum.freecadweb.org/viewtopic.php?f=3&t=6055&sid=150ed90cbefba50f1e2ad4b4e6684eba
