@@ -73,12 +73,8 @@ def insert(filename,docname,skip=None):
 def getConfig():
     "Gets Arch IFC import preferences"
     global SKIP, CREATE_IFC_GROUPS, ASMESH, PREFIX_NUMBERS, FORCE_PYTHON_PARSER, SEPARATE_OPENINGS, SEPARATE_PLACEMENTS, JOINSOLIDS, AGGREGATE_WINDOWS
-    CREATE_IFC_GROUPS = False
     IMPORT_IFC_FURNITURE = False
     ASMESH = ["IfcFurnishingElement"]
-    PREFIX_NUMBERS = False
-    FORCE_PYTHON_PARSER = False
-    SEPARATE_OPENINGS = False
     p = FreeCAD.ParamGet("User parameter:BaseApp/Preferences/Mod/Arch")
     CREATE_IFC_GROUPS = p.GetBool("createIfcGroups",False)
     FORCE_PYTHON_PARSER = p.GetBool("forceIfcPythonParser",False) 
@@ -719,7 +715,10 @@ def getShape(obj,objid):
     # if DEBUG: print "getting Shape from ",obj 
     #print "getting shape: ",sh,sh.Solids,sh.Volume,sh.isValid(),sh.isNull()
     #for v in sh.Vertexes: print v.Point
-    return sh
+    if sh:
+        if not sh.isNull():
+            return sh
+    return None
     
 def getPlacement(entity):
     "returns a placement from the given entity"
@@ -969,6 +968,9 @@ def export(exportList,filename):
             others.append(obj)
     objectslist = buildings + floors + others
     if DEBUG: print "adding ", len(objectslist), " objects"
+    
+    global unprocessed
+    unprocessed = []
 
     # process objects
     for obj in objectslist:
@@ -995,12 +997,6 @@ def export(exportList,filename):
             ifctype = "ReinforcingBar"
 
         if DEBUG: print "adding " + obj.Label + " as Ifc" + ifctype
-
-        # writing text log
-        spacer = ""
-        for i in range(36-len(obj.Label)):
-            spacer += " "
-        txt.append(obj.Label + spacer + ifctype)
                  
         # writing IFC data 
         if obj.isDerivedFrom("App::DocumentObjectGroup"):
@@ -1009,7 +1005,9 @@ def export(exportList,filename):
             if parent:
                 parent = ifc.findByName("IfcBuilding",str(parent.Label))
 
-            if otype == "Building":
+            if otype == "Site":
+                pass # TODO manage sites
+            elif otype == "Building":
                 ifc.addBuilding( name=name )
             elif otype == "Floor":
                 ifc.addStorey( building=parent, name=name )
@@ -1028,10 +1026,10 @@ def export(exportList,filename):
 
             # get representation
             if not forcebrep:
-                gdata = Arch.getExtrusionData(obj,scaling)
+                gdata = Arch.getIfcExtrusionData(obj,scaling,SEPARATE_OPENINGS)
                 #if DEBUG: print "   extrusion data for ",obj.Label," : ",gdata
             if not gdata:
-                fdata = Arch.getBrepFacesData(obj,scaling)
+                fdata = Arch.getIfcBrepFacesData(obj,scaling)
                 #if DEBUG: print "   brep data for ",obj.Label," : ",fdata
                 if not fdata:
                     if obj.isDerivedFrom("Part::Feature"):
@@ -1044,18 +1042,20 @@ def export(exportList,filename):
             else:
                 if DEBUG: print "   Extrusion"
             if gdata:
+                # gdata = [ type, profile data, extrusion data, placement data ]
                 placement = ifc.addPlacement(origin=gdata[3][0],xaxis=gdata[3][1],zaxis=gdata[3][2])
                 if gdata[0] == "polyline":
                     representation = ifc.addExtrudedPolyline(gdata[1], gdata[2], color=color)
                 elif gdata[0] == "circle":
-                    representation = ifc.addExtrudedCircle(gdata[1][0], gdata[1][1], gdata[2], color=color)
+                    representation = ifc.addExtrudedCircle(gdata[1], gdata[2], color=color)
+                elif gdata[0] == "ellipse":
+                    representation = ifc.addExtrudedEllipse(gdata[1], gdata[2], color=color)
+                elif gdata[0] == "composite":
+                    representation = ifc.addExtrudedCompositeCurve(gdata[1], gdata[2], color=color)
                 else:
                     print "debug: unknow extrusion type"
             elif fdata:
-                if JOINSOLIDS:
-                    representation = ifc.join([ifc.addFacetedBrep(f, color=color) for f in fdata])
-                else:
-                    representation = [ifc.addFacetedBrep(f, color=color) for f in fdata]
+                representation = [ifc.addFacetedBrep(f, color=color) for f in fdata]
 
             # create ifc object
             ifctype = "Ifc" + ifctype
@@ -1074,7 +1074,25 @@ def export(exportList,filename):
                 if DEBUG: print "   Type ",ifctype," is not supported by the current version of IfcOpenShell. Exporting as IfcBuildingElementProxy instead"
                 ifctype = "IfcBuildingElementProxy"
                 extra = ["ELEMENT"]
-            ifc.addProduct( ifctype, representation, storey=parent, placement=placement, name=name, description=descr, extra=extra )
+            p = ifc.addProduct( ifctype, representation, storey=parent, placement=placement, name=name, description=descr, extra=extra )
+
+            if p:
+
+                # removing openings
+                if SEPARATE_OPENINGS and gdata:
+                    for o in obj.Subtractions:
+                        print "Subtracting ",o.Label
+                        fdata = Arch.getIfcBrepFacesData(o,scaling,sub=True)
+                        representation = [ifc.addFacetedBrep(f, color=color) for f in fdata]
+                        p2 = ifc.addProduct( "IfcOpeningElement", representation, storey=p, placement=None, name=str(o.Label), description=None)
+
+                # writing text log
+                spacer = ""
+                for i in range(36-len(obj.Label)):
+                    spacer += " "
+                txt.append(obj.Label + spacer + ifctype)
+            else:
+                unprocessed.append(obj)
         else:
             if DEBUG: print "IFC export: object type ", otype, " is not supported yet."
 
@@ -1103,6 +1121,9 @@ def export(exportList,filename):
         f.close()
 
     FreeCAD.ActiveDocument.recompute()
+    
+    if unprocessed:
+        print "Some objects were not exported. See importIFC.unprocessed"
 
 
 def explore(filename=None):

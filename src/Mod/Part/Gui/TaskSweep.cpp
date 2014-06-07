@@ -28,7 +28,12 @@
 # include <QMessageBox>
 # include <QTextStream>
 # include <BRepBuilderAPI_MakeWire.hxx>
+# include <Precision.hxx>
+# include <ShapeAnalysis_FreeBounds.hxx>
+# include <TopExp_Explorer.hxx>
 # include <TopoDS.hxx>
+# include <TopoDS_Iterator.hxx>
+# include <TopTools_HSequenceOfShape.hxx>
 #endif
 
 #include "ui_TaskSweep.h"
@@ -40,6 +45,7 @@
 #include <Gui/Selection.h>
 #include <Gui/SelectionFilter.h>
 #include <Gui/ViewProvider.h>
+#include <Gui/WaitCursor.h>
 
 #include <Base/Console.h>
 #include <Base/Interpreter.h>
@@ -74,10 +80,42 @@ public:
         }
         bool allow(App::Document*pDoc, App::DocumentObject*pObj, const char*sSubName)
         {
-            if (!sSubName || sSubName[0] == '\0')
-                return false;
-            std::string element(sSubName);
-            return element.substr(0,4) == "Edge";
+            if (pObj->getTypeId().isDerivedFrom(Part::Feature::getClassTypeId())) {
+                if (!sSubName) {
+                    // If selecting again the same edge the passed sub-element is empty. If the whole
+                    // shape is an edge or wire we can use it completely.
+                    const TopoDS_Shape& shape = static_cast<Part::Feature*>(pObj)->Shape.getValue();
+                    if (!shape.IsNull()) {
+                        // a single edge
+                        if (shape.ShapeType() == TopAbs_EDGE) {
+                            return true;
+                        }
+                        // a single wire
+                        if (shape.ShapeType() == TopAbs_WIRE) {
+                            return true;
+                        }
+                        // a compound of only edges or wires
+                        if (shape.ShapeType() == TopAbs_COMPOUND) {
+                            TopoDS_Iterator it(shape);
+                            for (; it.More(); it.Next()) {
+                                if (it.Value().IsNull())
+                                    return false;
+                                if ((it.Value().ShapeType() != TopAbs_EDGE) &&
+                                    (it.Value().ShapeType() != TopAbs_WIRE))
+                                    return false;
+                            }
+
+                            return true;
+                        }
+                    }
+                }
+                else {
+                    std::string element(sSubName);
+                    return element.substr(0,4) == "Edge";
+                }
+            }
+
+            return false;
         }
     };
 };
@@ -118,8 +156,22 @@ void SweepWidget::findShapes()
     std::vector<Part::Feature*> objs = activeDoc->getObjectsOfType<Part::Feature>();
 
     for (std::vector<Part::Feature*>::iterator it = objs.begin(); it!=objs.end(); ++it) {
-        const TopoDS_Shape& shape = (*it)->Shape.getValue();
+        TopoDS_Shape shape = (*it)->Shape.getValue();
         if (shape.IsNull()) continue;
+
+        // also allow compounds with a single face, wire, edge or vertex
+        if (shape.ShapeType() == TopAbs_COMPOUND) {
+            TopoDS_Iterator it(shape);
+            int numChilds=0;
+            TopoDS_Shape child;
+            for (; it.More(); it.Next(), numChilds++) {
+                if (!it.Value().IsNull())
+                    child = it.Value();
+            }
+
+            if (numChilds == 1)
+                shape = child;
+        }
 
         if (shape.ShapeType() == TopAbs_FACE ||
             shape.ShapeType() == TopAbs_WIRE ||
@@ -168,6 +220,30 @@ bool SweepWidget::isPathValid(const Gui::SelectionObject& sel) const
     else if (shape._Shape.ShapeType() == TopAbs_WIRE) {
         BRepBuilderAPI_MakeWire mkWire(TopoDS::Wire(shape._Shape));
         pathShape = mkWire.Wire();
+    }
+    else if (shape._Shape.ShapeType() == TopAbs_COMPOUND) {
+        try {
+            TopoDS_Iterator it(shape._Shape);
+            for (; it.More(); it.Next()) {
+                if ((it.Value().ShapeType() != TopAbs_EDGE) &&
+                    (it.Value().ShapeType() != TopAbs_WIRE)) {
+                    return false;
+                }
+            }
+            Handle(TopTools_HSequenceOfShape) hEdges = new TopTools_HSequenceOfShape();
+            Handle(TopTools_HSequenceOfShape) hWires = new TopTools_HSequenceOfShape();
+            for (TopExp_Explorer xp(shape._Shape, TopAbs_EDGE); xp.More(); xp.Next())
+                hEdges->Append(xp.Current());
+
+            ShapeAnalysis_FreeBounds::ConnectEdgesToWires(hEdges, Precision::Confusion(), Standard_True, hWires);
+            int len = hWires->Length();
+            if (len != 1)
+                return false;
+            pathShape = hWires->Value(1);
+        }
+        catch (...) {
+            return false;
+        }
     }
 
     return (!pathShape.IsNull());
@@ -225,6 +301,7 @@ bool SweepWidget::accept()
     }
 
     try {
+        Gui::WaitCursor wc;
         QString cmd;
         cmd = QString::fromAscii(
             "App.getDocument('%5').addObject('Part::Sweep','Sweep')\n"

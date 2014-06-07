@@ -2055,9 +2055,9 @@ class Move(Modifier):
     def Activated(self):
         self.name = translate("draft","Move")
         Modifier.Activated(self,self.name)
+        self.ghost = None
         if self.ui:
             if not FreeCADGui.Selection.getSelection():
-                self.ghost = None
                 self.ui.selectUi()
                 msg(translate("draft", "Select an object to move\n"))
                 self.call = self.view.addEventCallback("SoEvent",selectObject)
@@ -2215,10 +2215,10 @@ class Rotate(Modifier):
 
     def Activated(self):
         Modifier.Activated(self,"Rotate")
+        self.ghost = None
+        self.arctrack = None
         if self.ui:
             if not FreeCADGui.Selection.getSelection():
-                self.ghost = None
-                self.arctrack = None
                 self.ui.selectUi()
                 msg(translate("draft", "Select an object to rotate\n"))
                 self.call = self.view.addEventCallback("SoEvent",selectObject)
@@ -2400,11 +2400,11 @@ class Offset(Modifier):
     def Activated(self):
         self.running = False
         Modifier.Activated(self,"Offset")
+        self.ghost = None
+        self.linetrack = None
+        self.arctrack = None
         if self.ui:
             if not FreeCADGui.Selection.getSelection():
-                self.ghost = None
-                self.linetrack = None
-                self.arctrack = None
                 self.ui.selectUi()
                 msg(translate("draft", "Select an object to offset\n"))
                 self.call = self.view.addEventCallback("SoEvent",selectObject)
@@ -2948,9 +2948,9 @@ class Scale(Modifier):
     def Activated(self):
         self.name = translate("draft","Scale")
         Modifier.Activated(self,self.name)
+        self.ghost = None
         if self.ui:
             if not FreeCADGui.Selection.getSelection():
-                self.ghost = None
                 self.ui.selectUi()
                 msg(translate("draft", "Select an object to scale\n"))
                 self.call = self.view.addEventCallback("SoEvent",selectObject)
@@ -4152,7 +4152,7 @@ class ToggleGrid():
         return {'Pixmap'  : 'Snap_Grid',
                 'Accel' : "G,R",
                 'MenuText': QtCore.QT_TRANSLATE_NOOP("Draft_ToggleGrid", "Toggle Grid"),
-                'ToolTip' : QtCore.QT_TRANSLATE_NOOP("Draft_ToggleGrid", "Toggles the Draft gid on/off")}
+                'ToolTip' : QtCore.QT_TRANSLATE_NOOP("Draft_ToggleGrid", "Toggles the Draft grid on/off")}
 
     def Activated(self):
         if hasattr(FreeCADGui,"Snapper"):
@@ -4172,7 +4172,7 @@ class Heal():
     def GetResources(self):
         return {'Pixmap'  : 'Draft_Heal',
                 'MenuText': QtCore.QT_TRANSLATE_NOOP("Draft_Heal", "Heal"),
-                'ToolTip' : QtCore.QT_TRANSLATE_NOOP("Draft_Heal", "Heal faultly Draft objects saved from an earlier FreeCAD version")}
+                'ToolTip' : QtCore.QT_TRANSLATE_NOOP("Draft_Heal", "Heal faulty Draft objects saved from an earlier FreeCAD version")}
 
     def Activated(self):
         s = FreeCADGui.Selection.getSelection()

@@ -2174,8 +2174,12 @@ def clone(obj,delta=None):
     original position.'''
     if not isinstance(obj,list):
         obj = [obj]
-    cl = FreeCAD.ActiveDocument.addObject("Part::FeaturePython","Clone")
-    cl.Label = "Clone of " + obj[0].Label
+    if (len(obj) == 1) and obj[0].isDerivedFrom("Part::Part2DObject"):
+        cl = FreeCAD.ActiveDocument.addObject("Part::Part2DObjectPython","Clone2D")
+        cl.Label = "Clone of " + obj[0].Label + " (2D)"
+    else:
+        cl = FreeCAD.ActiveDocument.addObject("Part::FeaturePython","Clone")
+        cl.Label = "Clone of " + obj[0].Label
     _Clone(cl)
     if gui:
         _ViewProviderClone(cl.ViewObject)
@@ -2548,12 +2552,12 @@ def upgrade(objects,delete=False,force=None):
             # we have many separate faces: we try to make a shell        
             elif (len(objects) > 2) and (len(faces) > 1) and (not loneedges):
                 result = makeShell(objects)
-                if result: msg(translate("draft", "Found several objects: making a shell\n"))
+                if result: msg(translate("draft", "Found several objects: creating a shell\n"))
                 
             # we have faces: we try to join them if they are coplanar
             elif len(faces) > 1:
                 result = joinFaces(objects)
-                if result: msg(translate("draft", "Found several coplanar objects or faces: making one face\n"))
+                if result: msg(translate("draft", "Found several coplanar objects or faces: creating one face\n"))
             
             # only one object: if not parametric, we "draftify" it
             elif len(objects) == 1 and (not objects[0].isDerivedFrom("Part::Part2DObjectPython")):
@@ -2566,12 +2570,12 @@ def upgrade(objects,delete=False,force=None):
             # we have a sketch: Extract a face
             if (len(objects) == 1) and objects[0].isDerivedFrom("Sketcher::SketchObject"):
                 result = makeSketchFace(objects[0])
-                if result: msg(translate("draft", "Found 1 closed sketch object: making a face from it\n"))
+                if result: msg(translate("draft", "Found 1 closed sketch object: creating a face from it\n"))
 
             # only closed wires
             else:
                 result = makeFaces(objects)
-                if result: msg(translate("draft", "Found closed wires: making faces\n"))
+                if result: msg(translate("draft", "Found closed wires: creating faces\n"))
 
         # special case, we have only one open wire. We close it, unless it has only 1 edge!"
         elif (len(openwires) == 1) and (not faces) and (not loneedges):
@@ -2591,7 +2595,7 @@ def upgrade(objects,delete=False,force=None):
         # all other cases, if more than 1 object, make a compound
         elif (len(objects) > 1):
             result = makeCompound(objects)
-            if result: msg(translate("draft", "Found several non-treatable objects: making compound\n"))
+            if result: msg(translate("draft", "Found several non-treatable objects: creating compound\n"))
             
         # no result has been obtained
         if not result:
@@ -3217,9 +3221,9 @@ class _ViewProviderDimension(_ViewProviderDraft):
                         if coin.COIN_MAJOR_VERSION >= 4:
                             self.string = obj.ViewObject.Override.encode("utf8").replace("$dim",self.string)
                         else:
-                            self.string = obj.ViewObject.Override.encode("utf8").replace("$dim",self.string).decode("latin1")
+                            self.string = obj.ViewObject.Override.encode("utf8").replace("$dim",self.string).decode("latin1","replace")
                     except:
-                        self.string = obj.ViewObject.Override.encode("utf8").replace("$dim",self.string).decode("latin1")
+                        self.string = obj.ViewObject.Override.encode("utf8").replace("$dim",self.string).decode("latin1","replace")
             self.text.string = self.text3d.string = self.string
 
             # set the distance property
@@ -3497,7 +3501,14 @@ class _ViewProviderAngularDimension(_ViewProviderDraft):
             else:
                 self.string = DraftGui.displayExternal(a,getParam("dimPrecision",2),'Angle',su)
             if obj.ViewObject.Override:
-                self.string = obj.ViewObject.Override.decode("utf8").encode("latin1").replace("$dim",self.string)
+                try:
+                    from pivy import coin
+                    if coin.COIN_MAJOR_VERSION >= 4:
+                        self.string = obj.ViewObject.Override.encode("utf8").replace("$dim",self.string)
+                    else:
+                        self.string = obj.ViewObject.Override.encode("utf8").replace("$dim",self.string).decode("latin1","replace")
+                except:
+                    self.string = obj.ViewObject.Override.encode("utf8").replace("$dim",self.string).decode("latin1","replace")
             self.text.string = self.text3d.string = self.string
             
             # check display mode
@@ -4665,6 +4676,12 @@ class _Clone(_DraftObject):
         import Part, DraftGeomUtils
         pl = obj.Placement
         shapes = []
+        if obj.isDerivedFrom("Part::Part2DObject"):
+            # if our clone is 2D, make sure all its linked geometry is 2D too
+            for o in obj.Objects:
+                if not o.isDerivedFrom("Part::Part2DObject"):
+                    FreeCAD.Console.PrintWarning("Warning 2D Clone "+obj.Name+" contains 3D geometry")
+                    return
         for o in obj.Objects:
             if o.isDerivedFrom("Part::Feature"):
                 if o.Shape.isNull():

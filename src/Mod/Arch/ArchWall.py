@@ -149,6 +149,9 @@ class _CommandWall:
                 'MenuText': QtCore.QT_TRANSLATE_NOOP("Arch_Wall","Wall"),
                 'Accel': "W, A",
                 'ToolTip': QtCore.QT_TRANSLATE_NOOP("Arch_Wall","Creates a wall object from scratch or from a selected object (wire, face or solid)")}
+
+    def IsActive(self):
+        return not FreeCAD.ActiveDocument is None
         
     def Activated(self):
         self.Align = "Center"
@@ -345,11 +348,8 @@ class _CommandMergeWalls:
                 'ToolTip': QtCore.QT_TRANSLATE_NOOP("Arch_MergeWalls","Merges the selected walls, if possible")}
 
     def IsActive(self):
-        if FreeCADGui.Selection.getSelection():
-            return True
-        else:
-            return False
-        
+        return bool(FreeCADGui.Selection.getSelection())
+
     def Activated(self):
         walls = FreeCADGui.Selection.getSelection()
         if len(walls) == 1: 
@@ -413,7 +413,9 @@ class _Wall(ArchComponent.Component):
                 if obj.Base.Shape.isNull():
                     return
                 if not obj.Base.Shape.isValid():
-                    return
+                    if not obj.Base.Shape.Solids:
+                        # let pass invalid objects if they have solids...
+                        return
                     
                 if hasattr(obj,"Face"):
                     if obj.Face > 0:
@@ -438,14 +440,17 @@ class _Wall(ArchComponent.Component):
                 elif obj.Base.Shape.Edges:
                     # case 3: the base is flat, we need to extrude it
                     profiles = self.getProfiles(obj)
-                    normal.multiply(height)
-                    base = profiles.pop()
-                    base.fix(0.1,0,1)
-                    base = base.extrude(normal)
-                    for p in profiles:
-                        p.fix(0.1,0,1)
-                        p = p.extrude(normal)
-                        base = base.fuse(p)
+                    if profiles:
+                        normal.multiply(height)
+                        base = profiles.pop()
+                        base.fix(0.1,0,1)
+                        base = base.extrude(normal)
+                        for p in profiles:
+                            p.fix(0.1,0,1)
+                            p = p.extrude(normal)
+                            base = base.fuse(p)
+                    else:
+                        base = None
                 else:
                     base = None
                     FreeCAD.Console.PrintError(str(translate("Arch","Error: Invalid base object")))

@@ -325,7 +325,7 @@ class Component:
             if obj.Base.isDerivedFrom("Part::Feature"):
                 if obj.Base.Shape:
                     if (len(obj.Base.Shape.Wires) == 1) and not(obj.Base.Shape.Faces):
-                        if not obj.Base.Shape.Wires.isClosed():
+                        if not obj.Base.Shape.Wires[0].isClosed():
                             return obj.Base.Shape.copy()
                     elif not(obj.Base.Shape.Solids):
                         p1 = obj.Base.Shape.CenterOfMass
@@ -356,10 +356,21 @@ class Component:
                     if not base.Solids:
                         if base.Faces: 
                             return [base]
-                        elif base.Wires:
+                        basewires = []
+                        if not base.Wires:
+                            if len(base.Edges) == 1:
+                                import Part
+                                basewires = [Part.Wire(base.Edges)]
+                        else:
+                            basewires = base.Wires
+                        if basewires:
                             import DraftGeomUtils,DraftVecUtils,Part
-                            for wire in base.Wires:
-                                dvec = DraftGeomUtils.vec(wire.Edges[0]).cross(n)
+                            for wire in basewires:
+                                e = wire.Edges[0]
+                                if isinstance(e.Curve,Part.Circle):
+                                    dvec = e.Vertexes[0].Point.sub(e.Curve.Center)
+                                else:
+                                    dvec = DraftGeomUtils.vec(wire.Edges[0]).cross(n)
                                 if not DraftVecUtils.isNull(dvec):
                                     dvec.normalize()
                                 sh = None
@@ -391,6 +402,8 @@ class Component:
                                         sh = DraftGeomUtils.bind(w1,w2)
                                     if sh:
                                         wires.append(sh)
+                                else:
+                                    wires.append(wire)
         else:
             if (Draft.getType(obj) == "Structure") and (l > h):
                 if noplacement:
@@ -584,16 +597,23 @@ class Component:
         "checks and cleans the given shape, and apply it to the object"
         if shape:
             if not shape.isNull():
-                if shape.isValid() and shape.Solids:
-                    if shape.Volume < 0:
-                        shape.reverse()
-                    if shape.Volume < 0:
-                        FreeCAD.Console.PrintError(translate("Arch","Error computing the shape of this object"))
-                        return
-                    shape = shape.removeSplitter()
-                    obj.Shape = shape
-                    if not placement.isNull():
-                        obj.Placement = placement        
+                if shape.isValid():
+                    if shape.Solids:
+                        if shape.Volume < 0:
+                            shape.reverse()
+                        if shape.Volume < 0:
+                            FreeCAD.Console.PrintError(translate("Arch","Error computing the shape of this object")+"\n")
+                            return
+                        shape = shape.removeSplitter()
+                        obj.Shape = shape
+                        if not placement.isNull():
+                            obj.Placement = placement
+                    else:
+                        FreeCAD.Console.PrintWarning(obj.Label + " " + translate("Arch","has no solid")+"\n")
+                else:
+                    FreeCAD.Console.PrintWarning(obj.Label + " " + translate("Arch","has an invalid shape")+"\n")
+            else:
+                FreeCAD.Console.PrintWarning(obj.Label + " " + translate("Arch","has a null shape")+"\n")
 
 
 class ViewProviderComponent:

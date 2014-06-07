@@ -31,6 +31,7 @@
 # include <BRepAlgoAPI_Common.hxx>
 # include <TopTools_ListIteratorOfListOfShape.hxx>
 # include <TopExp.hxx>
+# include <TopExp_Explorer.hxx>
 # include <TopTools_IndexedMapOfShape.hxx>
 # include <Standard_Failure.hxx>
 # include <TopoDS_Face.hxx>
@@ -90,6 +91,7 @@ App::DocumentObjectExecReturn *Feature::recompute(void)
 
 App::DocumentObjectExecReturn *Feature::execute(void)
 {
+    this->Shape.touch();
     return App::DocumentObject::StdReturn;
 }
 

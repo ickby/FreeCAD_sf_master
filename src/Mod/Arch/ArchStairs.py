@@ -36,18 +36,31 @@ else:
         return txt
 
 
-def makeStairs(base=None,length=4.5,width=1,height=3,steps=17,name=translate("Arch","Stairs")):
+def makeStairs(base=None,length=None,width=None,height=None,steps=None,name=translate("Arch","Stairs")):
     """makeStairs([base,length,width,height,steps]): creates a Stairs
     objects with given attributes."""
+    p = FreeCAD.ParamGet("User parameter:BaseApp/Preferences/Mod/Arch")
     obj = FreeCAD.ActiveDocument.addObject("Part::FeaturePython",name)
     _Stairs(obj)
     _ViewProviderStairs(obj.ViewObject)
     if base:
         obj.Base = base
-    obj.Length = length
-    obj.Width = width
-    obj.Height = height
-    obj.NumberOfSteps = steps
+    if length:
+        obj.Length = length
+    else:
+        obj.Length = p.GetFloat("StairsLength",4500.0)
+    if width:
+        obj.Width = width
+    else:
+        obj.Width = p.GetFloat("StairsWidth",1000.0)
+    if height:
+        obj.Height = height
+    else:
+        obj.Height = p.GetFloat("StairsHeight",3000.0)
+    if steps:
+        obj.NumberOfSteps = steps
+    else:
+        obj.NumberOfSteps = p.GetInt("StairsSteps",17)
     return obj
 
 
@@ -58,6 +71,9 @@ class _CommandStairs:
                 'MenuText': QtCore.QT_TRANSLATE_NOOP("Arch_Stairs","Stairs"),
                 'Accel': "S, R",
                 'ToolTip': QtCore.QT_TRANSLATE_NOOP("Arch_Space","Creates a stairs object")}
+
+    def IsActive(self):
+        return not FreeCAD.ActiveDocument is None
 
     def Activated(self):
         FreeCAD.ActiveDocument.openTransaction(translate("Arch","Create Stairs"))

@@ -46,6 +46,7 @@ if not hasattr(IfcImport,"IfcFile"):
     sys.exit()
     
 PRECISION = 4 # rounding value, in number of digits
+APPLYFIX = True # if true, the ifcopenshell bug-fixing function is applied when saving files
 
 # Basic functions #################################################################
 
@@ -88,14 +89,18 @@ def getPropertyNames(entity):
 def getTuple(vec):
     """getTuple(vec): returns a tuple from other coordinate
     structures: tuple, list, 3d vector, or occ vertex"""
+    def fmt(t):
+        t = float(t)
+        t = round(t,PRECISION)
+        return t
     if isinstance(vec,tuple):
-        return tuple([float(v) for v in vec])
+        return tuple([fmt(v) for v in vec])
     elif isinstance(vec,list):
-        return tuple([float(v) for v in vec])
+        return tuple([fmt(v) for v in vec])
     elif hasattr(vec,"x") and hasattr(vec,"y") and hasattr(vec,"z"):
-        return (float(vec.x),float(vec.y),float(vec.z))
+        return (fmt(vec.x),fmt(vec.y),fmt(vec.z))
     elif hasattr(vec,"X") and hasattr(vec,"Y") and hasattr(vec,"Z"):
-        return (float(vec.X),float(vec.Y),float(vec.Z))
+        return (fmt(vec.X),fmt(vec.Y),fmt(vec.Z))
         
 def getValueAndDirection(vec):
     """getValueAndDirection(vec): returns a length and a tuple
@@ -320,12 +325,11 @@ class IfcDocument(object):
     def __setattr__(self,key,value):
         if value:
             if key == "Owner":
-                print value
-                self._person.set_argument(2,value)
+                self._person.set_argument(2,str(value))
             elif key == "Organization":
-                self._org.set_argument(1,value)
+                self._org.set_argument(1,str(value))
             elif key == "Name":
-                self.Project.set_argument(2,value)
+                self.Project.set_argument(2,str(value))
         self.__dict__.__setitem__(key,value)
         
     def findByName(self,ifctype,name):
@@ -347,7 +351,9 @@ class IfcDocument(object):
         if path:
             try:
                 self._fileobject.write(path)
-                self._fix(path)
+                if APPLYFIX:
+                    print ("IfcWriter: Applying fix...")
+                    self._fix(path)
             except:
                 print ("IfcWriter: Error writing to "+path)
             else:
@@ -362,19 +368,19 @@ class IfcDocument(object):
             f = open(path,"rb")
             lines = []
             for l in f.readlines():
-                if "IFCPLANEANGLEMEASURE" in l:
-                    # bug 1: adding ifcPlaneAngleMeasure in a ifcMeasureWithUnit adds an unwanted = sign
-                    l = l.replace("=IFCPLANEANGLEMEASURE","IFCPLANEANGLEMEASURE")
-                elif ("FACEBOUND" in l) or ("FACEOUTERBOUND" in l):
+                if "(=IFC" in l:
+                    # bug 1: adding an ifc entity without ID adds an unwanted = sign
+                    l = l.replace("(=IFC","(IFC")
+                #elif ("FACEBOUND" in l) or ("FACEOUTERBOUND" in l): # FIXED
                     # bug 2: booleans are exported as ints
-                    l = l.replace(",1);",",.T.);")
-                    l = l.replace(",0);",",.F.);")
-                elif "FILE_DESCRIPTION" in l:
+                    #l = l.replace(",1);",",.T.);")
+                    #l = l.replace(",0);",",.F.);")
+                #elif "FILE_DESCRIPTION" in l: # FIXED
                     # bug 3: incomplete file description header
-                    l = l.replace("ViewDefinition []","ViewDefinition [CoordinationView_V2.0]")
-                elif "FILE_NAME" in l:
+                    #l = l.replace("ViewDefinition []","ViewDefinition [CoordinationView_V2.0]")
+                #elif "FILE_NAME" in l: # FIXED
                     # bug 4: incomplete file name entry
-                    l = l.replace("FILE_NAME('','',(''),('',''),'IfcOpenShell','IfcOpenShell','');","FILE_NAME('"+path+"','"+now(string=True)+"',('"+self.Owner+"'),('',''),'IfcOpenShell','IfcOpenShell','');")
+                    #l = l.replace("FILE_NAME('','',(''),('',''),'IfcOpenShell','IfcOpenShell','');","FILE_NAME('"+path+"','"+now(string=True)+"',('"+self.Owner+"'),('',''),'IfcOpenShell','IfcOpenShell','');")
                 elif "IFCSIUNIT" in l:
                     # bug 5: no way to insert * character
                     l = l.replace("IFCSIUNIT(#13,","IFCSIUNIT(*,")
@@ -453,7 +459,10 @@ class IfcDocument(object):
                 rel = create(self._fileobject,"IfcRelContainedInSpatialStructure",[uid(),self._owner,'StoreyLink','',entities,container])
                 self._storeyRelations[sid] = rel
         else:
-            create(self._fileobject,"IfcRelAggregates",[uid(),self._owner,'Relationship','',container,entities])
+            if entities[0].is_a("IfcOpeningElement"):
+                create(self._fileobject,"IfcRelVoidsElement",[uid(),self._owner,'Opening','',container,entities[0]])
+            else:
+                create(self._fileobject,"IfcRelAggregates",[uid(),self._owner,'Relationship','',container,entities])
 
     def addProduct(self,elttype,shapes,storey=None,placement=None,name="Unnamed element",description=None,extra=None):
         """addProduct(elttype,representations,[storey,placement,name,description,extra]): creates an element of the given type
@@ -470,10 +479,14 @@ class IfcDocument(object):
             elt = create(self._fileobject,elttype,[uid(),self._owner,name,description,None,placement,prd,None]+extra)
         except:
             print "unable to create an ",elttype, " with attributes: ",[uid(),self._owner,name,description,None,placement,prd,None]+extra
-            print "supported attributes are: "
-            o = IfcImport.Entity(elttype)
-            print getPropertyNames(o)
-            raise
+            try:
+                o = IfcImport.Entity(elttype)
+                print "supported attributes are: "
+                print getPropertyNames(o)
+            except:
+                print "unable to create an element of type '"+elttype+"'"
+            print "WARNING: skipping object '"+name+"' of type "+elttype
+            return None
         self.BuildingProducts.append(elt)
         if not storey:
             if self.Storeys:
@@ -501,20 +514,53 @@ class IfcDocument(object):
         psa = create(self._fileobject,"IfcPresentationStyleAssignment",[[iss]])
         isi = create(self._fileobject,"IfcStyledItem",[rep,[psa],None])
         return isi
-            
-    def addPolyline(self,points):
-        """addPolyline(points): creates a polyline from the given points"""
-        pts = [create(self._fileobject,"IfcCartesianPoint",getTuple(p)) for p in points]
-        pol = create(self._fileobject,"IfcPolyline",[pts])
-        area = create(self._fileobject,"IfcArbitraryClosedProfileDef",["AREA",None,pol])
-        return area
+        
+    def addProfile(self,ifctype,data,curvetype="AREA"):
+        """addProfile(ifctype,data): creates a 2D profile of the given type, with the given
+        data as arguments, which must be formatted correctly according to the type."""
+        
+        # Expected ifctype and corresponding data formatting:
+        # IfcPolyLine: [ (0,0,0), (2,1,0), (3,3,0) ] # list of points
+        # IfcCompositeCurve: [ ["line",[ (0,0,0), (2,1,0) ] ], # list of points
+        #                      ["arc", (0,0,0), 15, [0.76, 3.1416], True, "PARAMETER"] # center, radius, [trim1, trim2], SameSense, trimtype
+        #                      ... ]
+        # IfcCircleProfileDef: [ (0,0,0), 15 ] # center, radius
+        # IfcEllipseProfileDef: [ (0,0,0), 15, 7 ] # center, radiusX, radiusY
+        
+        if ifctype == "IfcPolyline":
+            pts = [create(self._fileobject,"IfcCartesianPoint",getTuple(p)[:2]) for p in data]
+            pol = create(self._fileobject,"IfcPolyline",[pts])
+            profile = create(self._fileobject,"IfcArbitraryClosedProfileDef",[curvetype,None,pol])
+        elif ifctype == "IfcCompositeCurve":
+            curves = []
+            for curve in data:
+                cur = None
+                if curve[0] == "line":
+                    pts = [create(self._fileobject,"IfcCartesianPoint",getTuple(p)[:2]) for p in curve[1]]
+                    cur = create(self._fileobject,"IfcPolyline",[pts])
+                elif curve[0] == "arc":
+                    pla = self.addPlacement(origin=curve[1],local=False,flat=True)
+                    cir = create(self._fileobject,"IfcCircle",[pla,curve[2]])
+                    if curve[5] == "CARTESIAN":
+                        # BUGGY! Impossible to add cartesian points as "embedded" entity
+                        trim1 = create(None,"IfcCartesianPoint",getTuple(curve[3][0])[:2])
+                        trim2 = create(None,"IfcCartesianPoint",getTuple(curve[3][1])[:2])
+                    else:
+                        trim1 = create(None,"IfcParameterValue",[curve[3][0]])
+                        trim2 = create(None,"IfcParameterValue",[curve[3][1]])
+                    cur = create(self._fileobject,"IfcTrimmedCurve",[cir,[trim1],[trim2],curve[4],curve[5]])
+                if cur:
+                    seg = create(self._fileobject,"IfcCompositeCurveSegment",["CONTINUOUS",True,cur])
+                    curves.append(seg)
+            ccu = create(self._fileobject,"IfcCompositeCurve",[curves,False])
+            profile = create(self._fileobject,"IfcArbitraryClosedProfileDef",[curvetype,None,ccu])
+        else:
+            if not isinstance(data,list):
+                data = [data]
+            p = self.addPlacement(local=False,flat=True)
+            profile = create(self._fileobject,ifctype,[curvetype,None,p]+data)
+        return profile
 
-    def addCircle(self,radius):
-        """addCircle(radius): creates a polyline from the given points"""
-        lpl = self.addPlacement(local=False,flat=True)
-        cir = create(self._fileobject,"IfcCircleProfileDef",["AREA",None,lpl,float(radius)])
-        return cir
-    
     def addExtrusion(self,profile,extrusion,placement=None):
         """addExtrusion(profile,extrusion,[placement]): makes an
         extrusion of the given polyline with the given extrusion vector"""
@@ -528,7 +574,7 @@ class IfcDocument(object):
     def addExtrudedPolyline(self,points,extrusion,placement=None,color=None):
         """addExtrudedPolyline(points,extrusion,[placement,color]): makes an extruded polyline
         from the given points and the given extrusion vector"""
-        pol = self.addPolyline(points)
+        pol = self.addProfile("IfcPolyline",points)
         if not placement:
             placement = self.addPlacement(local=False)
         exp = self.addExtrusion(pol,extrusion,placement)
@@ -536,13 +582,35 @@ class IfcDocument(object):
             self.addColor(color,exp)
         return exp
 
-    def addExtrudedCircle(self,center,radius,extrusion,placement=None,color=None):
-        """addExtrudedCircle(radius,extrusion,[placement,color]): makes an extruded circle
-        from the given radius and the given extrusion vector"""
-        cir = self.addCircle(radius)
+    def addExtrudedCircle(self,data,extrusion,placement=None,color=None):
+        """addExtrudedCircle(data,extrusion,[placement,color]): makes an extruded circle
+        from the given data (center,radius) and the given extrusion vector"""
+        cir = self.addProfile("IfcCircleProfileDef",data[1])
         if not placement:
-            placement = self.addPlacement(origin=center,local=False)
+            placement = self.addPlacement(origin=data[0],local=False)
         exp = self.addExtrusion(cir,extrusion,placement)
+        if color:
+            self.addColor(color,exp)
+        return exp
+        
+    def addExtrudedEllipse(self,data,extrusion,placement=None,color=None):
+        """addExtrudedEllipse(data,extrusion,[placement,color]): makes an extruded ellipse
+        from the given data (center,radiusx,radiusy) and the given extrusion vector"""
+        cir = self.addProfile("IfcEllipseProfileDef",[data[1],data[2]])
+        if not placement:
+            placement = self.addPlacement(origin=data[0],local=False)
+        exp = self.addExtrusion(cir,extrusion,placement)
+        if color:
+            self.addColor(color,exp)
+        return exp
+        
+    def addExtrudedCompositeCurve(self,curves,extrusion,placement=None,color=None):
+        """addExtrudedCompositeCurve(curves,extrusion,[placement,color]): makes an extruded polyline
+        from the given curves and the given extrusion vector"""
+        if not placement:
+            placement = self.addPlacement(local=False)
+        ccu = self.addProfile("IfcCompositeCurve",curves)
+        exp = self.addExtrusion(ccu,extrusion,placement)
         if color:
             self.addColor(color,exp)
         return exp

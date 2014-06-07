@@ -23,7 +23,9 @@
 
 #include "PreCompiled.h"
 #ifndef _PreComp_
+# include <cfloat>
 # include <QMessageBox>
+# include <Precision.hxx>
 #endif
 
 #include <App/Application.h>
@@ -903,8 +905,8 @@ void CmdSketcherConstrainDistanceX::activated(int iMsg)
 
         if (GeoId1 < 0) {
             QMessageBox::warning(Gui::getMainWindow(), QObject::tr("Wrong selection"),
-                GeoId1 < -2 ? QObject::tr("Cannot add a fixed x-cootdinate constraint on an external geometry!")
-                            : QObject::tr("Cannot add a fixed x-cootdinate constraint on the root point!"));
+                GeoId1 < -2 ? QObject::tr("Cannot add a fixed x-coordinate constraint on an external geometry!")
+                            : QObject::tr("Cannot add a fixed x-coordinate constraint on the root point!"));
             return;
         }
 
@@ -1035,8 +1037,8 @@ void CmdSketcherConstrainDistanceY::activated(int iMsg)
 
         if (GeoId1 < 0) {
             QMessageBox::warning(Gui::getMainWindow(), QObject::tr("Wrong selection"),
-                GeoId1 < -2 ? QObject::tr("Cannot add a fixed y-cootdinate constraint on an external geometry!")
-                            : QObject::tr("Cannot add a fixed y-cootdinate constraint on the root point!"));
+                GeoId1 < -2 ? QObject::tr("Cannot add a fixed y-coordinate constraint on an external geometry!")
+                            : QObject::tr("Cannot add a fixed y-coordinate constraint on the root point!"));
             return;
         }
 
@@ -1562,8 +1564,8 @@ void CmdSketcherConstrainAngle::activated(int iMsg)
             Base::Vector3d p1b = lineSeg1->getEndPoint();
             Base::Vector3d p2a = lineSeg2->getStartPoint();
             Base::Vector3d p2b = lineSeg2->getEndPoint();
-            double length = 1e10;
-            for (int i=0; i <= 1; i++)
+            double length = DBL_MAX;
+            for (int i=0; i <= 1; i++) {
                 for (int j=0; j <= 1; j++) {
                     double tmp = ((j?p2a:p2b)-(i?p1a:p1b)).Length();
                     if (tmp < length) {
@@ -1572,11 +1574,23 @@ void CmdSketcherConstrainAngle::activated(int iMsg)
                         PosId2 = j ? Sketcher::start : Sketcher::end;
                     }
                 }
+            }
 
             Base::Vector3d dir1 = ((PosId1 == Sketcher::start) ? 1. : -1.) *
                                   (lineSeg1->getEndPoint()-lineSeg1->getStartPoint());
             Base::Vector3d dir2 = ((PosId2 == Sketcher::start) ? 1. : -1.) *
                                   (lineSeg2->getEndPoint()-lineSeg2->getStartPoint());
+
+            // check if the two lines are parallel, in this case an angle is not possible
+            Base::Vector3d dir3 = dir1 % dir2;
+            if (dir3.Length() < Precision::Intersection()) {
+                Base::Vector3d dist = (p1a - p2a) % dir1;
+                if (dist.Sqr() > Precision::Intersection()) {
+                    QMessageBox::warning(Gui::getMainWindow(), QObject::tr("Parallel lines"),
+                        QObject::tr("An angle constraint cannot be set for two parallel lines."));
+                    return;
+                }
+            }
 
             double ActAngle = atan2(-dir1.y*dir2.x+dir1.x*dir2.y,
                                     dir1.x*dir2.x+dir1.y*dir2.y);
@@ -1668,7 +1682,7 @@ void CmdSketcherConstrainEqual::activated(int iMsg)
 
     if (SubNames.size() < 2) {
         QMessageBox::warning(Gui::getMainWindow(), QObject::tr("Wrong selection"),
-            QObject::tr("Select atleast two lines from the sketch."));
+            QObject::tr("Select at least two lines from the sketch."));
         return;
     }
 

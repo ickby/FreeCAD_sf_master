@@ -1,3 +1,5 @@
+# -*- coding: utf8 -*-
+
 #***************************************************************************
 #*                                                                         *
 #*   Copyright (c) 2011                                                    *  
@@ -34,6 +36,8 @@ else:
 __title__="FreeCAD Arch Commands"
 __author__ = "Yorik van Havre"
 __url__ = "http://www.freecadweb.org"
+
+CURVEMODE = "PARAMETER" # For trimmed curves. CARTESIAN or PARAMETER
 
 # module functions ###############################################
 
@@ -600,7 +604,7 @@ def getTuples(data,scale=1,placement=None,normal=None,close=True):
     if isinstance(data,FreeCAD.Vector):
         if placement:
             data = placement.multVec(data)
-            data = DraftVecUtils.rounded(data)
+        data = DraftVecUtils.rounded(data)
         return (data.x*scale,data.y*scale,data.z*scale)
     elif isinstance(data,Part.Shape):
         t = []
@@ -622,7 +626,7 @@ def getTuples(data,scale=1,placement=None,normal=None,close=True):
                 if placement:
                     if not placement.isNull():
                         pt = placement.multVec(pt)
-                        pt = DraftVecUtils.rounded(pt)
+                pt = DraftVecUtils.rounded(pt)
                 t.append((pt.x*scale,pt.y*scale,pt.z*scale))
 
             if close: # faceloops must not be closed, but ifc profiles must.
@@ -631,17 +635,16 @@ def getTuples(data,scale=1,placement=None,normal=None,close=True):
             print "Arch.getTuples(): Wrong profile data"
         return t
 
-def getExtrusionData(obj,scale=1):
-    """getExtrusionData(obj,[scale]): returns a closed path (a list of tuples), a tuple expressing an extrusion
+def getIfcExtrusionData(obj,scale=1,nosubs=False):
+    """getIfcExtrusionData(obj,[scale,nosubs]): returns a closed path (a list of tuples), a tuple expressing an extrusion
     vector, and a list of 3 tuples for base position, x axis and z axis. Or returns None, if a base loop and 
     an extrusion direction cannot be extracted. Scale can indicate a scale factor."""
     if hasattr(obj,"Additions"):
         if obj.Additions:
-            # provisorily treat objs with additions as breps
+            # TODO provisorily treat objs with additions as breps
             return None
-    if hasattr(obj,"Subtractions"):
+    if hasattr(obj,"Subtractions") and not nosubs:
         if obj.Subtractions:
-            # provisorily treat objs with subtractions as breps
             return None
     if hasattr(obj,"Proxy"):
         if hasattr(obj.Proxy,"getProfiles"):
@@ -655,36 +658,118 @@ def getExtrusionData(obj,scale=1):
                 #b = obj.Placement.multVec(FreeCAD.Vector())
                 #r.Rotation = DraftVecUtils.getRotation(v,FreeCAD.Vector(0,0,1))
                 d = [r.Base,DraftVecUtils.rounded(r.Rotation.multVec(FreeCAD.Vector(1,0,0))),DraftVecUtils.rounded(r.Rotation.multVec(FreeCAD.Vector(0,0,1)))]
-                r = r.inverse()
+                #r = r.inverse()
                 #print "getExtrusionData: computed placement:",r
                 import Part
                 if len(p.Edges) == 1:
                     if isinstance(p.Edges[0].Curve,Part.Circle):
-                        return "circle", [getTuples(p.Edges[0].Curve.Center,scale), p.Edges[0].Curve.Radius*scale], getTuples(v,scale), d
-                return "polyline", getTuples(p,scale), getTuples(v,scale), d
+                        # Circle profile
+                        r1 = p.Edges[0].Curve.Radius*scale
+                        return "circle", [getTuples(p.Edges[0].Curve.Center,scale), r1], getTuples(v,scale), d
+                    elif isinstance(p.Edges[0].Curve,Part.Ellipse):
+                        # Ellipse profile
+                        r1 = p.Edges[0].Curve.MajorRadius*scale
+                        r2 = p.Edges[0].Curve.MinorRadius*scale
+                        return "ellipse", [getTuples(p.Edges[0].Curve.Center,scale), r1, r2], getTuples(v,scale), d
+                curves = False
+                for e in p.Edges:
+                    if isinstance(e.Curve,Part.Circle):
+                        curves = True
+                    elif not isinstance(e.Curve,Part.Line):
+                        print "Arch.getIfcExtrusionData: Warning: unsupported edge type in profile"
+                if curves:
+                    # Composite profile
+                    ecurves = []
+                    last = None
+                    import DraftGeomUtils
+                    edges = DraftGeomUtils.sortEdges(p.Edges)
+                    for e in edges:
+                        if isinstance(e.Curve,Part.Circle):
+                            import math
+                            follow = True
+                            if last:
+                                if not DraftVecUtils.equals(last,e.Vertexes[0].Point):
+                                    follow = False
+                                    last = e.Vertexes[0].Point
+                                else:
+                                    last = e.Vertexes[-1].Point
+                            else:
+                                last = e.Vertexes[-1].Point
+                            p1 = math.degrees(-DraftVecUtils.angle(e.Vertexes[0].Point.sub(e.Curve.Center)))
+                            p2 = math.degrees(-DraftVecUtils.angle(e.Vertexes[-1].Point.sub(e.Curve.Center)))
+                            da = DraftVecUtils.angle(e.valueAt(e.FirstParameter+0.1).sub(e.Curve.Center),e.Vertexes[0].Point.sub(e.Curve.Center))
+                            if p1 < 0: 
+                                p1 = 360 + p1
+                            if p2 < 0:
+                                p2 = 360 + p2
+                            if da > 0:
+                                follow = not(follow)
+                            if CURVEMODE == "CARTESIAN":
+                                # BUGGY
+                                p1 = getTuples(e.Vertexes[0].Point,scale)
+                                p2 = getTuples(e.Vertexes[-1].Point,scale)
+                            ecurves.append(["arc",getTuples(e.Curve.Center,scale),e.Curve.Radius*scale,[p1,p2],follow,CURVEMODE])
+                        else:
+                            verts = [vertex.Point for vertex in e.Vertexes]
+                            if last:
+                                if not DraftVecUtils.equals(last,verts[0]):
+                                    verts.reverse()
+                                    last = e.Vertexes[0].Point
+                                else:
+                                    last = e.Vertexes[-1].Point
+                            else:
+                                last = e.Vertexes[-1].Point
+                            ecurves.append(["line",[getTuples(vert,scale) for vert in verts]])
+                    return "composite", ecurves, getTuples(v,scale), d
+                else:
+                    # Polyline profile
+                    return "polyline", getTuples(p,scale), getTuples(v,scale), d
     return None   
     
-def getBrepFacesData(obj,scale=1):
-    """getBrepFacesData(obj,[scale]): returns a list(0) of lists(1) of lists(2) of lists(3), 
+def getIfcBrepFacesData(obj,scale=1,sub=False,tessellation=1):
+    """getIfcBrepFacesData(obj,[scale,tesselation]): returns a list(0) of lists(1) of lists(2) of lists(3), 
     list(3) being a list of vertices defining a loop, list(2) describing a face from one or 
     more loops, list(1) being the whole solid made of several faces, list(0) being the list
-    of solids inside the object. Scale can indicate a scaling factor"""
-    if hasattr(obj,"Shape"):
-        if obj.Shape:
-            if not obj.Shape.isNull():
-                if obj.Shape.isValid():
-                    sols = []
-                    for sol in obj.Shape.Solids:
-                        s = []
-                        for face in sol.Faces:
-                            f = []
-                            f.append(getTuples(face.OuterWire,scale,normal=face.normalAt(0,0),close=False))
-                            for wire in face.Wires:
-                                if wire.hashCode() != face.OuterWire.hashCode():
-                                    f.append(getTuples(wire,scale,normal=DraftVecUtils.neg(face.normalAt(0,0)),close=False))
-                            s.append(f)
-                        sols.append(s)
-                    return sols
+    of solids inside the object. Scale can indicate a scaling factor. Tesselation is the tesselation
+    factor to apply on curved faces."""
+    shape = None
+    if sub:
+        if hasattr(obj,"Proxy"):
+            if hasattr(obj.Proxy,"getSubVolume"):
+                shape = obj.Proxy.getSubVolume(obj)
+    if not shape:
+        if hasattr(obj,"Shape"):
+            if obj.Shape:
+                if not obj.Shape.isNull():
+                    if obj.Shape.isValid():
+                        shape = obj.Shape
+    if shape:
+        import Part
+        sols = []
+        for sol in shape.Solids:
+            s = []
+            curves = False
+            for face in sol.Faces:
+                for e in face.Edges:
+                    if not isinstance(e.Curve,Part.Line):
+                        curves = True
+            if curves:
+                tris = sol.tessellate(tessellation)
+                for tri in tris[1]:
+                    f = []
+                    for i in tri:
+                        f.append(getTuples(tris[0][i],scale))
+                    s.append([f])
+            else:
+                for face in sol.Faces:
+                    f = []
+                    f.append(getTuples(face.OuterWire,scale,normal=face.normalAt(0,0),close=False))
+                    for wire in face.Wires:
+                        if wire.hashCode() != face.OuterWire.hashCode():
+                            f.append(getTuples(wire,scale,normal=DraftVecUtils.neg(face.normalAt(0,0)),close=False))
+                    s.append(f)
+            sols.append(s)
+        return sols
     return None
     
 def getHost(obj,strict=True):
@@ -788,19 +873,24 @@ def survey(callback=False):
                             if not o.HasSubObjects:
                                 # entire object
                                 anno = FreeCAD.ActiveDocument.addObject("App::AnnotationLabel","surveyLabel")
-                                anno.BasePosition = o.Object.Shape.CenterOfMass
+                                if hasattr(o.Object.Shape,"CenterOfMass"):
+                                    anno.BasePosition = o.Object.Shape.CenterOfMass
+                                else:
+                                    anno.BasePosition = o.Object.Shape.BoundBox.Center
                                 FreeCAD.SurveyObserver.labels.append(anno.Name)
                                 t = ""
                                 if o.Object.Shape.Solids:
                                     t = FreeCAD.Units.Quantity(o.Object.Shape.Volume,FreeCAD.Units.Volume)
                                     t = t.getUserPreferred()[0]
+                                    t = t.replace("^3","³")
                                     anno.LabelText = "v " + t
-                                    FreeCAD.Console.PrintMessage("Object: " + n + ", Element: Whole, Volume: " + t + "\n")
+                                    FreeCAD.Console.PrintMessage("Object: " + n + ", Element: Whole, Volume: " + t.decode("utf8") + "\n")
                                 elif o.Object.Shape.Faces:
                                     t = FreeCAD.Units.Quantity(o.Object.Shape.Area,FreeCAD.Units.Area)
                                     t = t.getUserPreferred()[0]
+                                    t = t.replace("^2","²")
                                     anno.LabelText = "a " + t
-                                    FreeCAD.Console.PrintMessage("Object: " + n + ", Element: Whole, Area: " + t + "\n")
+                                    FreeCAD.Console.PrintMessage("Object: " + n + ", Element: Whole, Area: " + t.decode("utf8") + "\n")
                                 else:
                                     t = FreeCAD.Units.Quantity(o.Object.Shape.Length,FreeCAD.Units.Length)
                                     t = t.getUserPreferred()[0]
@@ -816,14 +906,18 @@ def survey(callback=False):
                                     if "Vertex" in el:
                                         anno.BasePosition = e.Point
                                     else:
-                                        anno.BasePosition = e.CenterOfMass
+                                        if hasattr(e,"CenterOfMass"):
+                                            anno.BasePosition = e.CenterOfMass
+                                        else:
+                                            anno.BasePosition = e.BoundBox.Center
                                     FreeCAD.SurveyObserver.labels.append(anno.Name)
                                     t = ""
                                     if "Face" in el:
                                         t = FreeCAD.Units.Quantity(e.Area,FreeCAD.Units.Area)
                                         t = t.getUserPreferred()[0]
+                                        t = t.replace("^2","²")
                                         anno.LabelText = "a " + t
-                                        FreeCAD.Console.PrintMessage("Object: " + n + ", Element: " + el + ", Area: "+ t  + "\n")
+                                        FreeCAD.Console.PrintMessage("Object: " + n + ", Element: " + el + ", Area: "+ t.decode("utf8")  + "\n")
                                     elif "Edge" in el:
                                         t = FreeCAD.Units.Quantity(e.Length,FreeCAD.Units.Length)
                                         t = t.getUserPreferred()[0]
@@ -852,10 +946,7 @@ class _CommandAdd:
                 'ToolTip': QtCore.QT_TRANSLATE_NOOP("Arch_Add","Adds the selected components to the active object")}
 
     def IsActive(self):
-        if len(FreeCADGui.Selection.getSelection()) > 1:
-            return True
-        else:
-            return False
+        return len(FreeCADGui.Selection.getSelection()) > 1
         
     def Activated(self):
         sel = FreeCADGui.Selection.getSelection()
@@ -887,10 +978,7 @@ class _CommandRemove:
                 'ToolTip': QtCore.QT_TRANSLATE_NOOP("Arch_Remove","Remove the selected components from their parents, or create a hole in a component")}
 
     def IsActive(self):
-        if FreeCADGui.Selection.getSelection():
-            return True
-        else:
-            return False
+        return bool(FreeCADGui.Selection.getSelection())
         
     def Activated(self):
         sel = FreeCADGui.Selection.getSelection()
@@ -925,10 +1013,7 @@ class _CommandSplitMesh:
                 'ToolTip': QtCore.QT_TRANSLATE_NOOP("Arch_SplitMesh","Splits selected meshes into independent components")}
 
     def IsActive(self):
-        if len(FreeCADGui.Selection.getSelection()):
-            return True
-        else:
-            return False
+        return bool(FreeCADGui.Selection.getSelection())
         
     def Activated(self):
         if FreeCADGui.Selection.getSelection():
@@ -953,10 +1038,7 @@ class _CommandMeshToShape:
                 'ToolTip': QtCore.QT_TRANSLATE_NOOP("Arch_MeshToShape","Turns selected meshes into Part Shape objects")}
 
     def IsActive(self):
-        if FreeCADGui.Selection.getSelection():
-            return True
-        else:
-            return False
+        return bool(FreeCADGui.Selection.getSelection())
         
     def Activated(self):
         if FreeCADGui.Selection.getSelection():
@@ -989,6 +1071,9 @@ class _CommandSelectNonSolidMeshes:
         return {'Pixmap': 'Arch_SelectNonManifold.svg',
                 'MenuText': QtCore.QT_TRANSLATE_NOOP("Arch_SelectNonSolidMeshes","Select non-manifold meshes"),
                 'ToolTip': QtCore.QT_TRANSLATE_NOOP("Arch_SelectNonSolidMeshes","Selects all non-manifold meshes from the document or from the selected groups")}
+
+    def IsActive(self):
+        return not FreeCAD.ActiveDocument is None
         
     def Activated(self):
         msel = []
@@ -1016,10 +1101,7 @@ class _CommandRemoveShape:
                 'ToolTip': QtCore.QT_TRANSLATE_NOOP("Arch_RemoveShape","Removes cubic shapes from Arch components")}
 
     def IsActive(self):
-        if FreeCADGui.Selection.getSelection():
-            return True
-        else:
-            return False
+        return bool(FreeCADGui.Selection.getSelection())
         
     def Activated(self):
         sel = FreeCADGui.Selection.getSelection()
@@ -1033,10 +1115,7 @@ class _CommandCloseHoles:
                 'ToolTip': QtCore.QT_TRANSLATE_NOOP("Arch_CloseHoles","Closes holes in open shapes, turning them solids")}
 
     def IsActive(self):
-        if FreeCADGui.Selection.getSelection():
-            return True
-        else:
-            return False
+        return bool(FreeCADGui.Selection.getSelection())
         
     def Activated(self):
         for o in FreeCADGui.Selection.getSelection():
@@ -1052,10 +1131,7 @@ class _CommandCheck:
                 'ToolTip': QtCore.QT_TRANSLATE_NOOP("Arch_Check","Checks the selected objects for problems")}
 
     def IsActive(self):
-        if FreeCADGui.Selection.getSelection():
-            return True
-        else:
-            return False
+        return bool(FreeCADGui.Selection.getSelection())
         
     def Activated(self):
         result = check(FreeCADGui.Selection.getSelection())
@@ -1088,6 +1164,9 @@ class _CommandSurvey:
         return {'Pixmap'  : 'Arch_Survey',
                 'MenuText': QtCore.QT_TRANSLATE_NOOP("Arch_Survey","Survey"),
                 'ToolTip': QtCore.QT_TRANSLATE_NOOP("Arch_Survey","Starts survey")}
+
+    def IsActive(self):
+        return not FreeCAD.ActiveDocument is None
         
     def Activated(self):
         FreeCADGui.doCommand("import Arch")

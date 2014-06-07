@@ -65,6 +65,7 @@ private Q_SLOTS:
     void on_resetButton_clicked();
 
 private:
+    bool onApply();
     void setPlacementData(const Base::Placement&);
     Base::Placement getPlacementData() const;
     QString getPlacementString() const;
@@ -73,7 +74,7 @@ private:
     void applyPlacement(const QString& p, bool incremental);
     void revertTransformation();
     void slotActiveDocument(const Gui::Document&);
-    bool hasValidInputs();
+    bool hasValidInputs() const;
 
 Q_SIGNALS:
     void placementChanged(const QVariant &, bool, bool);
