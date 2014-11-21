@@ -34,6 +34,8 @@
 namespace App
 {
 
+class DocumentObject;
+
 class PropertyContainer;
 
 /** Base class of all properties
@@ -141,6 +143,70 @@ class AppExport PropertyLists : public Property
 public:
     virtual void setSize(int newSize)=0;   
     virtual int getSize(void) const =0;   
+};
+
+class AppExport LinkableProperty : public Property {
+    
+    TYPESYSTEM_HEADER();
+    
+public:
+        /**
+     * A constructor.
+     * A more elaborate description of the constructor.
+     */
+    LinkableProperty();
+
+    /**
+     * A destructor.
+     * A more elaborate description of the destructor.
+     */
+    virtual ~LinkableProperty();
+
+    /** Sets the property
+     */
+    void setLink(App::DocumentObject*, Property *);
+
+    /** This method returns the linked DocumentObject
+     */
+    App::DocumentObject* getLink(void) const;
+
+    /** Returns the link type checked
+     */
+    App::DocumentObject* getLink(Base::Type t) const;
+
+   /** Returns the link type checked
+     */
+    template <typename _type>
+    inline _type getLink(void) const {
+        return _pcLink ? dynamic_cast<_type>(_pcLink) : 0;
+    }
+    
+    /** This method returns the linked proeprty
+     */
+    Property* getLinkedProperty(void) const;
+
+    /** Returns the linked proeprty type checked
+     */
+    Property* getLinkedProperty(Base::Type t) const;
+
+   /** Returns the linked property type checked
+     */
+    template <typename _type>
+    inline _type getLinkedProperty(void) const {
+        return _pcLinkProperty ? dynamic_cast<_type>(_pcLinkProperty) : 0;
+    }
+
+    virtual PyObject *getPyObject(void);
+    bool setPythonObject(PyObject *);
+
+    virtual void Save (Base::Writer &writer) const;
+    virtual void Restore(Base::XMLReader &reader);
+
+    void CopyLinkInto(LinkableProperty*) const;
+
+protected:
+    App::DocumentObject* _pcLink;
+    Property*            _pcLinkProperty;
 };
 
 } // namespace App

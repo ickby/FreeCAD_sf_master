@@ -55,6 +55,7 @@
 
 #include "SoDatumLabel.h"
 #include <Gui/BitmapFactory.h>
+#include <Base/Console.h>
 
 #define ZCONSTR 0.006f
 
@@ -437,6 +438,9 @@ void SoDatumLabel::GLRender(SoGLRenderAction * action)
     SbVec2s vp_size = action->getViewportRegion().getViewportSizePixels();
     scale /= float(vp_size[0]);
 
+    Base::Console().Message("WindowSize: %i, %i\n", vp_size[0], vp_size[1]);
+    //Base::Console().Message("ActionSize: %i, %i\n", action->getUpdateArea());
+    
     const SbString* s = string.getValues(0);
     bool hasText = (s->getLength() > 0) ? true : false;
 

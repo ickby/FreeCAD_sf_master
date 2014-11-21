@@ -57,7 +57,7 @@ TYPESYSTEM_SOURCE(App::PropertyQuantity, App::PropertyFloat);
 
 Base::Quantity PropertyQuantity::getQuantityValue(void) const
 {
-    return Quantity(_dValue,_Unit);
+    return Quantity(getValue(),_Unit);
 }
 
 const char* PropertyQuantity::getEditorName(void) const
@@ -67,7 +67,8 @@ const char* PropertyQuantity::getEditorName(void) const
 
 PyObject *PropertyQuantity::getPyObject(void)
 {
-    return new QuantityPy (new Quantity(_dValue,_Unit));
+    
+    return new QuantityPy (new Quantity(getValue(),_Unit));
 }
 
 Base::Quantity PropertyQuantity::createQuantityFromPy(PyObject *value)
@@ -103,18 +104,21 @@ Base::Quantity PropertyQuantity::createQuantityFromPy(PyObject *value)
 
 void PropertyQuantity::setPyObject(PyObject *value)
 {
-    Base::Quantity quant= createQuantityFromPy(value);
+    if(!setPythonObject(value)) {
+            
+        Base::Quantity quant= createQuantityFromPy(value);
 
-    Unit unit = quant.getUnit();
-    if (unit.isEmpty()){
+        Unit unit = quant.getUnit();
+        if (unit.isEmpty()){
+            PropertyFloat::setValue(quant.getValue());
+            return;
+        }
+
+        if (unit != _Unit)
+            throw Base::Exception("Not matching Unit!");
+
         PropertyFloat::setValue(quant.getValue());
-        return;
     }
-
-    if (unit != _Unit)
-        throw Base::Exception("Not matching Unit!");
-
-    PropertyFloat::setValue(quant.getValue());
 }
 
 //**************************************************************************

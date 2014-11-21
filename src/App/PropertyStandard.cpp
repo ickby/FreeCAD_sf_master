@@ -35,6 +35,7 @@
 #include <Base/Reader.h>
 #include <Base/Writer.h>
 #include <Base/Stream.h>
+#include <Base/Console.h>
 
 #include "PropertyStandard.h"
 #include "MaterialPy.h"
@@ -934,6 +935,11 @@ PropertyFloat::~PropertyFloat()
 
 void PropertyFloat::setValue(double lValue)
 {
+    if(getLink() && getLinkedProperty()) {
+        Base::Console().Warning("It is not possible to set the value when the property is linked, value is ignored");
+        return;
+    };
+    
     aboutToSetValue();
     _dValue=lValue;
     hasSetValue();
@@ -941,12 +947,20 @@ void PropertyFloat::setValue(double lValue)
 
 double PropertyFloat::getValue(void) const
 {
+    if(getLinkedProperty()) {
+        PropertyFloat* p = getLinkedProperty<PropertyFloat*>();
+        if(!p)
+            Base::Console().Warning("Linked property is not of type \"PropertyFloat\", the link is ignored"); 
+        else
+            return p->getValue();
+    };
+    
     return _dValue;
 }
 
 PyObject *PropertyFloat::getPyObject(void)
 {
-    return Py_BuildValue("d", _dValue);
+    return Py_BuildValue("d", getValue());
 }
 
 void PropertyFloat::setPyObject(PyObject *value)
@@ -961,8 +975,8 @@ void PropertyFloat::setPyObject(PyObject *value)
         _dValue = PyInt_AsLong(value);
         hasSetValue();
     }
-    else {
-        std::string error = std::string("type must be float or int, not ");
+    else if(!setPythonObject(value)){
+        std::string error = std::string("type must be float, int or a link ([DocumentObject, string] or None), not ");
         error += value->ob_type->tp_name;
         throw Base::TypeError(error);
     }
@@ -970,11 +984,14 @@ void PropertyFloat::setPyObject(PyObject *value)
 
 void PropertyFloat::Save (Base::Writer &writer) const
 {
+    LinkableProperty::Save(writer);
     writer.Stream() << writer.ind() << "<Float value=\"" <<  _dValue <<"\"/>" << std::endl;
 }
 
 void PropertyFloat::Restore(Base::XMLReader &reader)
 {
+    //first establish the link
+    LinkableProperty::Restore(reader);
     // read my Element
     reader.readElement("Float");
     // get the value of my Attribute
@@ -985,13 +1002,18 @@ Property *PropertyFloat::Copy(void) const
 {
     PropertyFloat *p= new PropertyFloat();
     p->_dValue = _dValue;
+    CopyLinkInto(p);
     return p;
 }
 
 void PropertyFloat::Paste(const Property &from)
 {
+    const PropertyFloat& f = dynamic_cast<const PropertyFloat&>(from);
     aboutToSetValue();
-    _dValue = dynamic_cast<const PropertyFloat&>(from)._dValue;
+    if(f.getLink() && f.getLinkedProperty())
+       f.CopyLinkInto(this);    
+    else
+       _dValue = f._dValue;
     hasSetValue();
 }
 

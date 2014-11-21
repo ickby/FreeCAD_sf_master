@@ -411,7 +411,7 @@ private:
  * These properties fulfill also the needs of the unit system.
  * See PropertyUnits.h for all properties with units.
  */
-class AppExport PropertyFloat: public Property
+class AppExport PropertyFloat: public LinkableProperty
 {
     TYPESYSTEM_HEADER();
 
