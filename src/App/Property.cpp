@@ -254,35 +254,36 @@ void LinkableProperty::CopyLinkInto(LinkableProperty* p) const
 
 void LinkableProperty::Restore(Base::XMLReader& reader)
 {
-    // read my element
-    reader.readElement("LinkProperty");
+    // read link element if existing
+    reader.readElement();
+    if(strcmp(reader.localName(), "LinkProperty")==0) {
 
-    // get the values of the document name (if there is one)
-    if(reader.hasAttribute("value")) {
-        std::string doc = reader.getAttribute("value");
+        // get the values of the document name (if there is one)
+        if(reader.hasAttribute("value")) {
+            std::string doc = reader.getAttribute("value");
 
-        reader.readElement("Property");
-        std::string prop = reader.getAttribute("value");
+            reader.readElement("Property");
+            std::string prop = reader.getAttribute("value");
 
-        DocumentObject* pcObject;
-        App::Document* document = static_cast<DocumentObject*>(getContainer())->getDocument();
-        pcObject = document ? document->getObject(doc.c_str()) : 0;
-        Property* property = pcObject->getPropertyByName(prop.c_str());
+            DocumentObject* pcObject;
+            App::Document* document = static_cast<DocumentObject*>(getContainer())->getDocument();
+            pcObject = document ? document->getObject(doc.c_str()) : 0;
+            Property* property = pcObject->getPropertyByName(prop.c_str());
 
-        if(!pcObject || !property)
-            Base::Console().Warning("Lost link to '%s' while loading, maybe "
-                                    "an object was not loaded correctly\n", doc.c_str());
+            if(!pcObject || !property)
+                Base::Console().Warning("Lost link to '%s' while loading, maybe "
+                                        "an object was not loaded correctly\n", doc.c_str());
 
-        setLink(pcObject, property);
+            setLink(pcObject, property);
+        }
+        else {
+            setLink(0,0);
+        }
+        reader.readEndElement("LinkProperty");
     }
     else {
         setLink(0,0);
-    }
-
-    // Property not in a DocumentObject!
-    assert(getContainer()->getTypeId().isDerivedFrom(App::DocumentObject::getClassTypeId()));
-
-    reader.readEndElement("LinkProperty");
+    };
 }
 
 void LinkableProperty::Save(Base::Writer& writer) const
@@ -292,13 +293,13 @@ void LinkableProperty::Save(Base::Writer& writer) const
     writer.Stream() << writer.ind() << "<LinkProperty";
 
     if(_pcLink && _pcLinkProperty) {
-        writer.Stream() << "value=\"" <<  _pcLink->getNameInDocument() <<"\">" << std::endl;
+        writer.Stream() << " value=\"" <<  _pcLink->getNameInDocument() <<"\">" << std::endl;
         writer.incInd();
         writer.Stream() << writer.ind() << "<Property value=\"" << _pcLinkProperty->getName()<<"\"/>" << std::endl;
         writer.decInd();
-        writer.Stream() << writer.ind() << "</LinkSub>" << std::endl ;
+        writer.Stream() << writer.ind() << "</LinkProperty>" << std::endl ;
     }
     else {
-        writer.Stream() << "\"></LinkSub>" << std::endl;
+        writer.Stream() << "></LinkProperty>" << std::endl;
     }
 }

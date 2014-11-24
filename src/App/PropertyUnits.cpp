@@ -38,6 +38,7 @@
 
 #include "PropertyUnits.h"
 #include <Base/PyObjectBase.h>
+#include <Base/Console.h>
 #include <Base/QuantityPy.h>
 
 using namespace App;
@@ -92,12 +93,15 @@ Base::Quantity PropertyQuantity::createQuantityFromPy(PyObject *value)
         Base::QuantityPy  *pcObject = static_cast<Base::QuantityPy*>(value);
         quant = *(pcObject->getQuantityPtr());
     }
+    else if(setPythonObject(value)) {
+        quant = getQuantityValue();
+    }
     else {
         std::string error = std::string("wrong type as quantity: ");
         error += value->ob_type->tp_name;
         throw Base::TypeError(error);
     }
-
+ 
     return quant;
 }
 

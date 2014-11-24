@@ -992,10 +992,15 @@ void PropertyFloat::Restore(Base::XMLReader &reader)
 {
     //first establish the link
     LinkableProperty::Restore(reader);
-    // read my Element
-    reader.readElement("Float");
-    // get the value of my Attribute
-    setValue(reader.getAttributeAsFloat("value"));
+    
+    //we read the value only if we do not have a link
+    if(!getLink() || !getLinkedProperty()) {
+        // read my Element if not already there
+        if(strcmp(reader.localName(), "Float")!=0)
+            reader.readElement("Float");
+        // get the value of my Attribute
+        setValue(reader.getAttributeAsFloat("value"));
+    };
 }
 
 Property *PropertyFloat::Copy(void) const
