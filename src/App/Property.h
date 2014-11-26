@@ -89,7 +89,7 @@ public:
     /// Set the property touched
     void touch();
     /// Test if this property is touched 
-    bool isTouched(void) const {return StatusBits.test(0);}
+    virtual bool isTouched(void) const {return StatusBits.test(0);}
     /// Reset this property touched 
     void purgeTouched(void){StatusBits.reset(0);}
 
@@ -203,6 +203,8 @@ public:
     virtual void Restore(Base::XMLReader &reader);
 
     void CopyLinkInto(LinkableProperty*) const;
+    
+    virtual bool isTouched(void) const;
 
 protected:
     App::DocumentObject* _pcLink;

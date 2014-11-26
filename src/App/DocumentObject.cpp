@@ -147,6 +147,11 @@ std::vector<DocumentObject*> DocumentObject::getOutList(void) const
             if (static_cast<PropertyLinkSub*>(*It)->getValue())
                 ret.push_back(static_cast<PropertyLinkSub*>(*It)->getValue());
         }
+        else if ((*It)->isDerivedFrom(LinkableProperty::getClassTypeId())) {
+            LinkableProperty* property = static_cast<LinkableProperty*>(*It);
+            if (property->getLink() && property->getLinkedProperty())
+                ret.push_back(property->getLink());
+        }
     }
     return ret;
 }
@@ -216,6 +221,24 @@ void DocumentObject::touch(void)
 {
     StatusBits.set(0);
 }
+
+bool DocumentObject::isTouched(void) const
+{
+    if( StatusBits.test(0) )
+        return true;
+    
+    //if we hold linked properties we have not been automaticly set to touched when the link was
+    //changed, therefore we need to test each property seperatly
+    std::vector<Property*> List;
+    getPropertyList(List);
+    for(std::vector<Property*>::const_iterator it=List.begin();it!=List.end();++it) {
+        if((*it)->isTouched())
+            return true;
+    }
+    
+    return false;
+}
+
 
 void DocumentObject::Save (Base::Writer &writer) const
 {

@@ -303,3 +303,14 @@ void LinkableProperty::Save(Base::Writer& writer) const
         writer.Stream() << "></LinkProperty>" << std::endl;
     }
 }
+
+bool LinkableProperty::isTouched(void) const
+{
+    if(App::Property::isTouched())
+        return true;
+    
+    if(getLink() && getLinkedProperty())
+        return getLinkedProperty()->isTouched();
+    
+    return false;
+}

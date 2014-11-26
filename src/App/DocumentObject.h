@@ -99,7 +99,7 @@ public:
     /// set this feature touched (cause recomputation on depndend features)
     void touch(void);
     /// test if this feature is touched
-    bool isTouched(void) const {return StatusBits.test(0);}
+    bool isTouched(void) const;
     /// reset this feature touched
     void purgeTouched(void){StatusBits.reset(0);setPropertyStatus(0,false);}
     /// set this feature to error

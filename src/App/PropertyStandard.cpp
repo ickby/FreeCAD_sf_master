@@ -996,8 +996,10 @@ void PropertyFloat::Restore(Base::XMLReader &reader)
     //we read the value only if we do not have a link
     if(!getLink() || !getLinkedProperty()) {
         // read my Element if not already there
-        if(strcmp(reader.localName(), "Float")!=0)
+        if(strcmp(reader.localName(), "Float")!=0) {
+            reader.readEndElement(reader.localName());
             reader.readElement("Float");
+        }
         // get the value of my Attribute
         setValue(reader.getAttributeAsFloat("value"));
     };
