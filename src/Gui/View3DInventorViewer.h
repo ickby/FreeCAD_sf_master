@@ -110,6 +110,7 @@ public:
         Smoothing,
         MSAA2x,
         MSAA4x,
+        MSAA6x,
         MSAA8x
     };
     //@}
@@ -157,6 +158,9 @@ public:
 
     void setRenderType(const RenderType type);
     void renderToFramebuffer(QGLFramebufferObject*);
+    
+    void setAntiAliasing(AntiAliasing mode);
+    AntiAliasing antiAliasing();
 
     virtual void setViewing(SbBool enable);
     virtual void setCursorEnabled(SbBool enable);

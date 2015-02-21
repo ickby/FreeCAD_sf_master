@@ -158,6 +158,11 @@
           </item>
           <item>
            <property name="text">
+            <string>MSAA 6x</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
             <string>MSAA 8x</string>
            </property>
           </item>

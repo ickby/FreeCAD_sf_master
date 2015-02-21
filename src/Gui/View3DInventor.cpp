@@ -113,41 +113,7 @@ View3DInventor::View3DInventor(Gui::Document* pcDocument, QWidget* parent,
     hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
     hGrp->Attach(this);
 
-    //anti-aliasing settings
-    QGLFormat f;
-    bool smoothing = false;
-    bool glformat = false;
-    switch( hGrp->GetInt("AntiAliasing",0) ) {
-      case View3DInventorViewer::MSAA2x:
-          glformat = true;
-          f.setSampleBuffers(true);
-          f.setSamples(2);
-          break;
-      case View3DInventorViewer::MSAA4x:
-          glformat = true;
-          f.setSampleBuffers(true);
-          f.setSamples(4);
-          break;
-      case View3DInventorViewer::MSAA8x:
-          glformat = true;
-          f.setSampleBuffers(true);
-          f.setSamples(8);
-          break;
-      case View3DInventorViewer::Smoothing:
-          smoothing = true;
-          break;
-      case View3DInventorViewer::None:
-      default:
-          break;
-    }
-
-    if (glformat)
-        _viewer = new View3DInventorViewer(f, this, sharewidget);
-    else
-        _viewer = new View3DInventorViewer(this, sharewidget);
-
-    if (smoothing)
-        _viewer->getSoRenderManager()->getGLRenderAction()->setSmoothing(true);
+    _viewer = new View3DInventorViewer(this, sharewidget);
 
     // create the inventor widget and set the defaults
 #if !defined (NO_USE_QT_MDI_AREA)
@@ -190,6 +156,7 @@ View3DInventor::View3DInventor(Gui::Document* pcDocument, QWidget* parent,
     OnChange(*hGrp,"DimensionsVisible");
     OnChange(*hGrp,"Dimensions3dVisible");
     OnChange(*hGrp,"DimensionsDeltaVisible");
+    OnChange(*hGrp,"AntiAliasing");
 
     stopSpinTimer = new QTimer(this);
     connect(stopSpinTimer, SIGNAL(timeout()), this, SLOT(stopAnimating()));
@@ -393,6 +360,10 @@ void View3DInventor::OnChange(ParameterGrp::SubjectType &rCaller,ParameterGrp::M
       else
         _viewer->turnDeltaDimensionsOff();
     } 
+    else if (strcmp(Reason, "AntiAliasing") == 0)
+    {
+        _viewer->setAntiAliasing( View3DInventorViewer::AntiAliasing(hGrp->GetInt("AntiAliasing",0)) );
+    }
     else{
         unsigned long col1 = rGrp.GetUnsigned("BackgroundColor",3940932863UL);
         unsigned long col2 = rGrp.GetUnsigned("BackgroundColor2",859006463UL); // default color (dark blue)

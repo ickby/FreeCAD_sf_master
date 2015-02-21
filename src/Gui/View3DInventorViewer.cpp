@@ -1258,6 +1258,74 @@ void View3DInventorViewer::renderToFramebuffer(QGLFramebufferObject* fbo)
     fbo->release();
 }
 
+View3DInventorViewer::AntiAliasing View3DInventorViewer::antiAliasing()
+{
+
+    QGLFormat f = static_cast<QGLWidget*>(getGLWidget())->format();
+    
+    if(!f.sampleBuffers()) {
+        return getSoRenderManager()->getGLRenderAction()->isSmoothing() ? 
+                View3DInventorViewer::Smoothing : View3DInventorViewer::None;
+    }
+    else {    
+        switch(f.samples()) {
+            case 2:
+                return View3DInventorViewer::MSAA2x;
+            case 4:
+                return View3DInventorViewer::MSAA4x;
+            case 6:
+                return View3DInventorViewer::MSAA6x;
+            case 8:
+                return View3DInventorViewer::MSAA8x;
+            default:
+                return View3DInventorViewer::None;
+        }
+    }
+}
+
+void View3DInventorViewer::setAntiAliasing(View3DInventorViewer::AntiAliasing mode)
+{
+    if( mode == antiAliasing())
+        return;
+    
+    QGLFormat f = static_cast<QGLWidget*>(getGLWidget())->format();
+    f.setSampleBuffers(false);
+    f.setSamples(1);
+    bool smoothing = false;
+    switch( mode ) {
+      case View3DInventorViewer::MSAA2x:
+          f.setSampleBuffers(true);
+          f.setSamples(2);
+          break;
+      case View3DInventorViewer::MSAA4x:
+          f.setSampleBuffers(true);
+          f.setSamples(4);
+          break;
+      case View3DInventorViewer::MSAA6x:
+          f.setSampleBuffers(true);
+          f.setSamples(6);
+          break;
+      case View3DInventorViewer::MSAA8x:
+          f.setSampleBuffers(true);
+          f.setSamples(8);
+          break;
+      case View3DInventorViewer::Smoothing:
+          smoothing = true;
+          break;
+      case View3DInventorViewer::None:
+      default:
+          break;
+    }
+
+    if (smoothing)
+        getSoRenderManager()->getGLRenderAction()->setSmoothing(true);
+    else  {
+        static_cast<QGLWidget*>(getGLWidget())->setFormat(f);
+   }
+    
+}
+
+
 void View3DInventorViewer::actualRedraw()
 {
     switch (renderType) {
