@@ -321,7 +321,7 @@ struct PyMethodDef FreeCADGui_methods[] = {
 
 } // namespace Gui
 
-Application::Application(bool GUIenabled)
+Application::Application(bool GUIenabled) : _pcGuiEnabled(GUIenabled)
 {
     //App::GetApplication().Attach(this);
     if (GUIenabled) {
@@ -433,7 +433,10 @@ Application::Application(bool GUIenabled)
     // instanciate the workbench dictionary
     _pcWorkbenchDictionary = PyDict_New();
 
-    createStandardOperations();
+    //no command needed if we do not have a GUI window
+    if(isGuiEnabled())
+        createStandardOperations();
+    
     MacroCommand::load();
     ObjectLabelObserver::instance();
 }

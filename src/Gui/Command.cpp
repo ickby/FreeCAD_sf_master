@@ -628,6 +628,10 @@ const char* Command::keySequenceToAccel(int sk) const
     if (i != strings.end())
         return i->second.c_str();
 
+    //check if the gui is up before accessing the QKeySequence
+    if(!Gui::Application::Instance->isGuiEnabled())
+        return "";
+    
     QKeySequence::StandardKey type = (QKeySequence::StandardKey)sk;
     QKeySequence ks(type);
     QString qs = ks.toString();
@@ -640,7 +644,10 @@ void Command::adjustCameraPosition()
 {
     Gui::Document* doc = Gui::Application::Instance->activeDocument();
     if (doc) {
-        Gui::View3DInventor* view = static_cast<Gui::View3DInventor*>(doc->getActiveView());
+        Gui::View3DInventor* view = dynamic_cast<Gui::View3DInventor*>(doc->getActiveView());
+        if(!view)
+            return;
+        
         Gui::View3DInventorViewer* viewer = view->getViewer();
         SoCamera* camera = viewer->getSoRenderManager()->getCamera();
         if (!camera || !camera->isOfType(SoOrthographicCamera::getClassTypeId()))

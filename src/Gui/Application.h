@@ -56,6 +56,9 @@ public:
     /// destruction
     ~Application();
 
+    ///inquery if the Application was enabled for use without QApplication 
+    bool isGuiEnabled() {return _pcGuiEnabled;};
+    
     /** @name methods for support of files */
     //@{
     /// open a file
@@ -247,6 +250,8 @@ private:
     struct ApplicationP* d;
     /// workbench python dictionary
     PyObject*             _pcWorkbenchDictionary;
+    /// member to indicate if we loaded the QApplication
+    bool _pcGuiEnabled;
 };
 
 } //namespace Gui
