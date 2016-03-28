@@ -60,6 +60,7 @@
 #include "Selection.h"
 #include "WaitCursor.h"
 #include "Thumbnail.h"
+#include "GUIfreeInventorView.h"
 
 using namespace Gui;
 
@@ -1045,8 +1046,10 @@ void Document::createView(const Base::Type& typeId)
         getMainWindow()->addWindow(view3D);
         view = view3D;
     }
-    else 
-        view = static_cast<InventorView*>(static_cast<BaseView*>(Base::Type(typeId).createInstance()));
+    //we cannot genericly create the view from the type id as we must give the document to the 
+    //constructor to ensure proper initialisation
+    else if(typeId == GUIfreeInventorView::getClassTypeId())
+        view = new GUIfreeInventorView(this);
     
     if(!view)
         return;
@@ -1295,17 +1298,19 @@ BaseView* Document::getActiveView(void) const
     BaseView* active = NULL;
     
     if(getMainWindow())
-        getMainWindow()->activeWindow();
+        active = getMainWindow()->activeWindow();
 
     // get all MDI views of the document
     std::list<BaseView*> views = getViews();
 
     // check whether the active view is part of this document
     bool ok=false;
-    for (std::list<BaseView*>::const_iterator it = views.begin(); it != views.end(); ++it) {
-        if ((*it) == active) {
-            ok = true;
-            break;
+    if(active) {
+        for (std::list<BaseView*>::const_iterator it = views.begin(); it != views.end(); ++it) {
+            if ((*it) == active) {
+                ok = true;
+                break;
+            }
         }
     }
 

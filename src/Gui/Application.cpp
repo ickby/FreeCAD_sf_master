@@ -111,6 +111,7 @@
 #include <Gui/Quarter/Quarter.h>
 #include "View3DViewerPy.h"
 #include "GUIfreeInventorView.h"
+#include "GUIfreeInventorViewPy.h"
 #include "GuiInitScript.h"
 
 
@@ -324,14 +325,34 @@ struct PyMethodDef FreeCADGui_methods[] = {
 
 Application::Application(bool GUIenabled) : _pcGuiEnabled(GUIenabled)
 {
+    App::GetApplication().signalNewDocument.connect(boost::bind(&Gui::Application::slotNewDocument, this, _1));
+    App::GetApplication().signalDeleteDocument.connect(boost::bind(&Gui::Application::slotDeleteDocument, this, _1));
+    App::GetApplication().signalRenameDocument.connect(boost::bind(&Gui::Application::slotRenameDocument, this, _1));
+    App::GetApplication().signalActiveDocument.connect(boost::bind(&Gui::Application::slotActiveDocument, this, _1));
+    App::GetApplication().signalRelabelDocument.connect(boost::bind(&Gui::Application::slotRelabelDocument, this, _1));
+        
+    // setting up Python binding
+    const char *doc =  "The functions in the FreeCADGui module allow working with GUI documents,\n"
+        "view providers, views, workbenches and much more.\n\n"
+        "The FreeCADGui instance provides a list of references of GUI documents which\n"
+        "can be addressed by a string. These documents contain the view providers for\n"
+        "objects in the associated App document. An App and GUI document can be\n"
+        "accessed with the same name.\n\n"
+        "The FreeCADGui module also provides a set of functions to work with so called\n"
+        "workbenches.";
+
+    Base::PyGILStateLocker lock;
+    PyObject* module;
+    if(GUIenabled)
+        module = Py_InitModule3("FreeCADGui", Application::Methods, doc);
+    else 
+        module = Py_InitModule3("FreeCADGui", Application::GUIfreeMethods, doc);
+    
+    Py::Module(module).setAttr(std::string("ActiveDocument"),Py::None());
+
+        
     //App::GetApplication().Attach(this);
     if (GUIenabled) {
-        App::GetApplication().signalNewDocument.connect(boost::bind(&Gui::Application::slotNewDocument, this, _1));
-        App::GetApplication().signalDeleteDocument.connect(boost::bind(&Gui::Application::slotDeleteDocument, this, _1));
-        App::GetApplication().signalRenameDocument.connect(boost::bind(&Gui::Application::slotRenameDocument, this, _1));
-        App::GetApplication().signalActiveDocument.connect(boost::bind(&Gui::Application::slotActiveDocument, this, _1));
-        App::GetApplication().signalRelabelDocument.connect(boost::bind(&Gui::Application::slotRelabelDocument, this, _1));
-
 
         // install the last active language
         ParameterGrp::handle hPGrp = App::GetApplication().GetUserParameter().GetGroup("BaseApp");
@@ -364,19 +385,6 @@ Application::Application(bool GUIenabled) : _pcGuiEnabled(GUIenabled)
         QLocale::setDefault(loc);
 #endif
 
-        // setting up Python binding
-        Base::PyGILStateLocker lock;
-        PyObject* module = Py_InitModule3("FreeCADGui", Application::Methods,
-            "The functions in the FreeCADGui module allow working with GUI documents,\n"
-            "view providers, views, workbenches and much more.\n\n"
-            "The FreeCADGui instance provides a list of references of GUI documents which\n"
-            "can be addressed by a string. These documents contain the view providers for\n"
-            "objects in the associated App document. An App and GUI document can be\n"
-            "accessed with the same name.\n\n"
-            "The FreeCADGui module also provides a set of functions to work with so called\n"
-            "workbenches.");
-        Py::Module(module).setAttr(std::string("ActiveDocument"),Py::None());
-
         UiLoaderPy::init_type();
         Base::Interpreter().addType(UiLoaderPy::type_object(),
             module,"UiLoader");
@@ -402,8 +410,7 @@ Application::Application(bool GUIenabled) : _pcGuiEnabled(GUIenabled)
             Py::Object(Gui::TaskView::ControlPy::getInstance(), true));
     }
 
-    Base::PyGILStateLocker lock;
-    PyObject *module = PyImport_AddModule("FreeCADGui");
+    module = PyImport_AddModule("FreeCADGui");
     PyMethodDef *meth = FreeCADGui_methods;
     PyObject *dict = PyModule_GetDict(module);
     for (; meth->ml_name != NULL; meth++) {
@@ -425,6 +432,7 @@ Application::Application(bool GUIenabled) : _pcGuiEnabled(GUIenabled)
     PythonStdin                 ::init_type();
     View3DInventorPy            ::init_type();
     View3DInventorViewerPy      ::init_type();
+    GUIfreeInventorViewPy       ::init_type();
 
     d = new ApplicationP;
 
@@ -660,8 +668,13 @@ void Application::slotNewDocument(const App::Document& Doc)
 
 
     signalNewDocument(*pDoc);
-    pDoc->createView(View3DInventor::getClassTypeId());
-    qApp->processEvents(); // make sure to show the window stuff on the right place
+    
+    if(isGuiEnabled()) {
+        pDoc->createView(View3DInventor::getClassTypeId());
+        qApp->processEvents(); // make sure to show the window stuff on the right place
+    }
+    else 
+        pDoc->createView(GUIfreeInventorView::getClassTypeId());
 }
 
 void Application::slotDeleteDocument(const App::Document& Doc)

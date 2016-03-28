@@ -147,7 +147,7 @@ PyMethodDef Application::Methods[] = {
    "Activate the specified document"},
   {"getDocument",             (PyCFunction) Application::sGetDocument,      1,
    "getDocument(string) -> object\n\n"
-   "Get a document by its name"},
+   "Get a document by its name or by the cooresponing App document"},
   {"doCommand",               (PyCFunction) Application::sDoCommand,        1,
    "doCommand(string) -> None\n\n"
    "Prints the given string in the python console and runs it"},
@@ -167,6 +167,30 @@ PyMethodDef Application::Methods[] = {
   {NULL, NULL}		/* Sentinel */
 };
 
+PyMethodDef Application::GUIfreeMethods[] = {
+  {"hideObject",              (PyCFunction) Application::sHideObject,       1,
+   "hideObject(object) -> None\n\n"
+   "Hide the view provider to the given object"},
+  {"showObject",              (PyCFunction) Application::sShowObject,       1,
+   "showObject(object) -> None\n\n"
+   "Show the view provider to the given object"},
+  {"open",                    (PyCFunction) Application::sOpen,             1,
+   "Open a macro, Inventor or VRML file"},
+  {"insert",                  (PyCFunction) Application::sInsert,           1,
+   "Open a macro, Inventor or VRML file"},
+  {"export",                  (PyCFunction) Application::sExport,           1,
+   "save scene to Inventor or VRML file"},
+  {"activeDocument",          (PyCFunction) Application::sActiveDocument,   1,
+   "activeDocument() -> object or None\n\n"
+   "Return the active document or None if no one exists"},
+  {"setActiveDocument",       (PyCFunction) Application::sSetActiveDocument,1,
+   "setActiveDocument(string or App.Document) -> None\n\n"
+   "Activate the specified document"},
+  {"getDocument",             (PyCFunction) Application::sGetDocument,      1,
+   "getDocument(string) -> object\n\n"
+   "Get a document by its name or by the cooresponing App document"},
+  {NULL, NULL}          /* Sentinel */
+};
 PyObject* Gui::Application::sActiveDocument(PyObject * /*self*/, PyObject *args,PyObject * /*kwd*/)
 {
     if (!PyArg_ParseTuple(args, ""))     // convert args: Python->C 

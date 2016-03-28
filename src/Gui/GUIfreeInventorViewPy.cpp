@@ -27,7 +27,6 @@
 # include "InventorAll.h"
 #endif
 
-
 #include "GUIfreeInventorViewPy.h"
 #include "GUIfreeInventorView.h"
 #include <Base/Interpreter.h>
@@ -38,7 +37,7 @@ using namespace Gui;
 void GUIfreeInventorViewPy::init_type()
 {
     behaviors().name("GUIfreeInventorViewPy");
-    behaviors().doc("Python binding class for the Inventor viewer class");
+    behaviors().doc("Python binding class for the GUI free Inventor viewer class");
     // you must have overwritten the virtual functions
     behaviors().supportRepr();
     behaviors().supportGetattr();

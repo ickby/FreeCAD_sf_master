@@ -245,6 +245,7 @@ public:
     PYFUNCDEF_S(sShowPreferences);
 
     static PyMethodDef    Methods[]; 
+    static PyMethodDef    GUIfreeMethods[];
 
 private:
     struct ApplicationP* d;
