@@ -117,7 +117,7 @@ class GuiExport InventorView : public BaseView {
 public:    
     InventorView(Document* pcDocument = 0);
     virtual InventorViewer* getInventorViewer(void) {return NULL;};
-    bool _pcIsInventorView() {return _pcIsInventor;};
+    bool isInventorView() {return _pcIsInventor;};
     
 protected:
     bool _pcIsInventor;

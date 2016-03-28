@@ -110,6 +110,7 @@
 #include "TaskView/TaskDialogPython.h"
 #include <Gui/Quarter/Quarter.h>
 #include "View3DViewerPy.h"
+#include "GUIfreeInventorView.h"
 #include "GuiInitScript.h"
 
 
@@ -1516,6 +1517,7 @@ void Application::initTypes(void)
     Gui::View3DInventor                         ::init();
     Gui::AbstractSplitView                      ::init();
     Gui::SplitView3DInventor                    ::init();
+    Gui::GUIfreeInventorView                    ::init();
     // View Provider
     Gui::ViewProvider                           ::init();
     Gui::ViewProviderExtern                     ::init();

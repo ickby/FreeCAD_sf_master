@@ -453,6 +453,32 @@ std::vector<ViewProvider*> InventorViewer::getViewProvidersOfType(const Base::Ty
 }
 
 
+void InventorViewer::setGradientBackground(bool on)
+{
+    if (on && backgroundroot->findChild(pcBackGround) == -1)
+        backgroundroot->addChild(pcBackGround);
+    else if (!on && backgroundroot->findChild(pcBackGround) != -1)
+        backgroundroot->removeChild(pcBackGround);
+}
+
+bool InventorViewer::hasGradientBackground() const
+{
+    return (backgroundroot->findChild(pcBackGround) != -1);
+}
+
+void InventorViewer::setGradientBackgroundColor(const SbColor& fromColor,
+                                                      const SbColor& toColor)
+{
+    pcBackGround->setColorGradient(fromColor, toColor);
+}
+
+void InventorViewer::setGradientBackgroundColor(const SbColor& fromColor,
+                                                      const SbColor& toColor,
+                                                      const SbColor& midColor)
+{
+    pcBackGround->setColorGradient(fromColor, toColor, midColor);
+}
+
 /*!
 As ProgressBar has no chance to control the incoming Qt events of Quarter so we need to stop
 the event handling to prevent the scenegraph from being selected or deselected
@@ -798,32 +824,6 @@ void View3DInventorViewer::handleEventCB(void* ud, SoEventCallback* n)
     SoAction* action = n->getAction();
     SoGLRenderActionElement::set(action->getState(), glra);
     SoGLWidgetElement::set(action->getState(), qobject_cast<QGLWidget*>(that->getGLWidget()));
-}
-
-void View3DInventorViewer::setGradientBackground(bool on)
-{
-    if (on && backgroundroot->findChild(pcBackGround) == -1)
-        backgroundroot->addChild(pcBackGround);
-    else if (!on && backgroundroot->findChild(pcBackGround) != -1)
-        backgroundroot->removeChild(pcBackGround);
-}
-
-bool View3DInventorViewer::hasGradientBackground() const
-{
-    return (backgroundroot->findChild(pcBackGround) != -1);
-}
-
-void View3DInventorViewer::setGradientBackgroundColor(const SbColor& fromColor,
-                                                      const SbColor& toColor)
-{
-    pcBackGround->setColorGradient(fromColor, toColor);
-}
-
-void View3DInventorViewer::setGradientBackgroundColor(const SbColor& fromColor,
-                                                      const SbColor& toColor,
-                                                      const SbColor& midColor)
-{
-    pcBackGround->setColorGradient(fromColor, toColor, midColor);
 }
 
 void View3DInventorViewer::setEnabledFPSCounter(bool on)

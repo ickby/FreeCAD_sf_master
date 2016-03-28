@@ -110,6 +110,14 @@ public:
      */
     void removeEventCallback(SoType eventtype, SoEventCallbackCB * cb, void* userdata = 0);
     
+    void setGradientBackground(bool b);
+    bool hasGradientBackground() const;
+    void setGradientBackgroundColor(const SbColor& fromColor,
+                                    const SbColor& toColor);
+    void setGradientBackgroundColor(const SbColor& fromColor,
+                                    const SbColor& toColor,
+                                    const SbColor& midColor);
+    
 protected:
     std::string overrideMode;
     ViewProvider* editViewProvider;
@@ -349,13 +357,6 @@ public:
      */
     void viewSelection();
 
-    void setGradientBackground(bool b);
-    bool hasGradientBackground() const;
-    void setGradientBackgroundColor(const SbColor& fromColor,
-                                    const SbColor& toColor);
-    void setGradientBackgroundColor(const SbColor& fromColor,
-                                    const SbColor& toColor,
-                                    const SbColor& midColor);
     void setNavigationType(Base::Type);
 
     void setAxisCross(bool b);
