@@ -199,6 +199,259 @@ static unsigned char rotate_mask_bitmap[ROTATE_BYTES] = {
  0xf7,0x0f
 };
 
+InventorViewer::InventorViewer() : overrideMode("As Is"), editViewProvider(0) {
+    
+    SoOrthographicCamera* cam = new SoOrthographicCamera;
+    cam->position = SbVec3f(0, 0, 1);
+    cam->height = 1;
+    cam->nearDistance = 0.5;
+    cam->farDistance = 1.5;
+
+    // Set up background scenegraph with image in it.
+    backgroundroot = new SoSeparator;
+    backgroundroot->ref();
+    this->backgroundroot->addChild(cam);
+
+    // Background stuff
+    pcBackGround = new SoFCBackgroundGradient;
+    pcBackGround->ref();
+
+    // Set up foreground, overlayed scenegraph.
+    this->foregroundroot = new SoSeparator;
+    this->foregroundroot->ref();
+
+    SoLightModel* lm = new SoLightModel;
+    lm->model = SoLightModel::BASE_COLOR;
+
+    SoBaseColor* bc = new SoBaseColor;
+    bc->rgb = SbColor(1, 1, 0);
+
+    cam = new SoOrthographicCamera;
+    cam->position = SbVec3f(0, 0, 5);
+    cam->height = 10;
+    cam->nearDistance = 0;
+    cam->farDistance = 10;
+
+    // dragger
+    //SoSeparator * dragSep = new SoSeparator();
+    //SoScale *scale = new SoScale();
+    //scale->scaleFactor = SbVec3f  (0.2,0.2,0.2);
+    //dragSep->addChild(scale);
+    //SoCenterballDragger *dragger = new SoCenterballDragger();
+    //dragger->center = SbVec3f  (0.8,0.8,0);
+    ////dragger->rotation = SbRotation(rrot[0],rrot[1],rrot[2],rrot[3]);
+    //dragSep->addChild(dragger);
+
+    this->foregroundroot->addChild(cam);
+    this->foregroundroot->addChild(lm);
+    this->foregroundroot->addChild(bc);
+    //this->foregroundroot->addChild(dragSep);
+
+#if 0
+    // NOTE: For every mouse click event the SoSelection searches for the picked
+    // point which causes a certain slow-down because for all objects the primitives
+    // must be created. Using an SoSeparator avoids this drawback.
+    SoSelection* selectionRoot = new SoSelection();
+    selectionRoot->addSelectionCallback(View3DInventorViewer::selectCB, this);
+    selectionRoot->addDeselectionCallback(View3DInventorViewer::deselectCB, this);
+    selectionRoot->setPickFilterCallback(View3DInventorViewer::pickFilterCB, this);
+#else
+    // NOTE: For every mouse click event the SoFCUnifiedSelection searches for the picked
+    // point which causes a certain slow-down because for all objects the primitives
+    // must be created. Using an SoSeparator avoids this drawback.
+    selectionRoot = new Gui::SoFCUnifiedSelection();
+    selectionRoot->applySettings();
+#endif
+    // set the ViewProvider root node
+    pcViewProviderRoot = selectionRoot;
+
+    // increase refcount before passing it to setScenegraph(), to avoid
+    // premature destruction
+    pcViewProviderRoot->ref();
+    // is not really working with Coin3D.
+    //redrawOverlayOnSelectionChange(pcSelection);
+
+    // Event callback node
+    pEventCallback = new SoEventCallback();
+    pEventCallback->setUserData(this);
+    pEventCallback->ref();
+    pcViewProviderRoot->addChild(pEventCallback);
+
+    dimensionRoot = new SoSwitch(SO_SWITCH_NONE);
+    pcViewProviderRoot->addChild(dimensionRoot);
+    dimensionRoot->addChild(new SoSwitch()); //first one will be for the 3d dimensions.
+    dimensionRoot->addChild(new SoSwitch()); //second one for the delta dimensions.
+
+    // This is a callback node that logs all action that traverse the Inventor tree.
+#if defined (FC_DEBUG) && defined(FC_LOGGING_CB)
+    SoCallback* cb = new SoCallback;
+    cb->setCallback(interactionLoggerCB, this);
+    pcViewProviderRoot->addChild(cb);
+#endif
+}
+
+InventorViewer::~InventorViewer() {
+
+}
+
+SbBool InventorViewer::hasViewProvider(ViewProvider* pcProvider) const
+{
+    return _ViewProviderSet.find(pcProvider) != _ViewProviderSet.end();
+}
+
+/// adds an ViewProvider to the view, e.g. from a feature
+void InventorViewer::addViewProvider(ViewProvider* pcProvider)
+{
+    SoSeparator* root = pcProvider->getRoot();
+
+    if (root) {
+        pcViewProviderRoot->addChild(root);
+        _ViewProviderMap[root] = pcProvider;
+    }
+
+    SoSeparator* fore = pcProvider->getFrontRoot();
+    if (fore)
+        foregroundroot->addChild(fore);
+
+    SoSeparator* back = pcProvider->getBackRoot();
+    if (back)
+        backgroundroot->addChild(back);
+
+    pcProvider->setOverrideMode(this->getOverrideMode());
+    _ViewProviderSet.insert(pcProvider);
+}
+
+void InventorViewer::removeViewProvider(ViewProvider* pcProvider)
+{
+    if (this->editViewProvider == pcProvider)
+        resetEditingViewProvider();
+
+    SoSeparator* root = pcProvider->getRoot();
+
+    if (root) {
+        pcViewProviderRoot->removeChild(root);
+        _ViewProviderMap.erase(root);
+    }
+
+    SoSeparator* fore = pcProvider->getFrontRoot();
+    if (fore)
+        foregroundroot->removeChild(fore);
+
+    SoSeparator* back = pcProvider->getBackRoot();
+    if (back)
+        backgroundroot->removeChild(back);
+
+    _ViewProviderSet.erase(pcProvider);
+}
+
+SbBool InventorViewer::setEditingViewProvider(Gui::ViewProvider* p, int ModNum)
+{
+    if (this->editViewProvider)
+        return false; // only one view provider is editable at a time
+
+    bool ok = p->startEditing(ModNum);
+
+    if (ok) {
+        this->editViewProvider = p;
+        this->editViewProvider->setEditViewer(this, ModNum);
+        addEventCallback(SoEvent::getClassTypeId(), Gui::ViewProvider::eventCallback,this->editViewProvider);
+    }
+
+    return ok;
+}
+
+/// reset from edit mode
+void InventorViewer::resetEditingViewProvider()
+{
+    if (this->editViewProvider) {
+        this->editViewProvider->unsetEditViewer(this);
+        removeEventCallback(SoEvent::getClassTypeId(), Gui::ViewProvider::eventCallback,this->editViewProvider);
+        this->editViewProvider = 0;
+    }
+}
+
+/// reset from edit mode
+SbBool InventorViewer::isEditingViewProvider() const
+{
+    return this->editViewProvider ? true : false;
+}
+
+/// display override mode
+void InventorViewer::setOverrideMode(const std::string& mode)
+{
+    if (mode == overrideMode)
+        return;
+
+    overrideMode = mode;
+
+    for (std::set<ViewProvider*>::iterator it = _ViewProviderSet.begin(); it != _ViewProviderSet.end(); ++it)
+        (*it)->setOverrideMode(mode);
+}
+
+/// update override mode. doesn't affect providers
+void InventorViewer::updateOverrideMode(const std::string& mode)
+{
+    if (mode == overrideMode)
+        return;
+
+    overrideMode = mode;
+}
+
+void InventorViewer::addEventCallback(SoType eventtype, SoEventCallbackCB* cb, void* userdata)
+{
+    pEventCallback->addEventCallback(eventtype, cb, userdata);
+}
+
+void InventorViewer::removeEventCallback(SoType eventtype, SoEventCallbackCB* cb, void* userdata)
+{
+    pEventCallback->removeEventCallback(eventtype, cb, userdata);
+}
+
+
+ViewProvider* InventorViewer::getViewProviderByPath(SoPath* path) const
+{
+    // FIXME Use the viewprovider map introduced for the selection
+    for (std::set<ViewProvider*>::const_iterator it = _ViewProviderSet.begin(); it != _ViewProviderSet.end(); ++it) {
+        for (int i = 0; i<path->getLength(); i++) {
+            SoNode* node = path->getNode(i);
+            if ((*it)->getRoot() == node) {
+                return (*it);
+            }
+        }
+    }
+
+    return 0;
+}
+
+ViewProvider* InventorViewer::getViewProviderByPathFromTail(SoPath* path) const
+{
+    // Make sure I'm the lowest LocHL in the pick path!
+    for (int i = 0; i < path->getLength(); i++) {
+        SoNode* node = path->getNodeFromTail(i);
+
+        if (node->isOfType(SoSeparator::getClassTypeId())) {
+            std::map<SoSeparator*,ViewProvider*>::const_iterator it = _ViewProviderMap.find(static_cast<SoSeparator*>(node));
+            if (it != _ViewProviderMap.end()) {
+                return it->second;
+            }
+        }
+    }
+
+    return 0;
+}
+
+std::vector<ViewProvider*> InventorViewer::getViewProvidersOfType(const Base::Type& typeId) const
+{
+    std::vector<ViewProvider*> views;
+    for (std::set<ViewProvider*>::const_iterator it = _ViewProviderSet.begin(); it != _ViewProviderSet.end(); ++it) {
+        if ((*it)->getTypeId().isDerivedFrom(typeId)) {
+            views.push_back(*it);
+        }
+    }
+
+    return views;
+}
+
 
 /*!
 As ProgressBar has no chance to control the incoming Qt events of Quarter so we need to stop
@@ -331,17 +584,17 @@ public:
 
 // *************************************************************************
 View3DInventorViewer::View3DInventorViewer(QWidget* parent, const QGLWidget* sharewidget)
-    : Quarter::SoQTQuarterAdaptor(parent, sharewidget), editViewProvider(0), navigation(0),
+    : Quarter::SoQTQuarterAdaptor(parent, sharewidget), navigation(0),
       renderType(Native), framebuffer(0), axisCross(0), axisGroup(0), editing(false), redirected(false),
-      allowredir(false), overrideMode("As Is"), _viewerPy(0)
+      allowredir(false), _viewerPy(0)
 {
     init();
 }
 
 View3DInventorViewer::View3DInventorViewer(const QGLFormat& format, QWidget* parent, const QGLWidget* sharewidget)
-    : Quarter::SoQTQuarterAdaptor(format, parent, sharewidget), editViewProvider(0), navigation(0),
+    : Quarter::SoQTQuarterAdaptor(format, parent, sharewidget), navigation(0),
       renderType(Native), framebuffer(0), axisCross(0), axisGroup(0), editing(false), redirected(false),
-      allowredir(false), overrideMode("As Is"), _viewerPy(0)
+      allowredir(false), _viewerPy(0)
 {
     init();
 }
@@ -356,13 +609,7 @@ void View3DInventorViewer::init()
 
     // setting up the defaults for the spin rotation
     initialize();
-
-    SoOrthographicCamera* cam = new SoOrthographicCamera;
-    cam->position = SbVec3f(0, 0, 1);
-    cam->height = 1;
-    cam->nearDistance = 0.5;
-    cam->farDistance = 1.5;
-
+        
     // setup light sources
     SoDirectionalLight* hl = this->getHeadlight();
     backlight = new SoDirectionalLight();
@@ -370,90 +617,12 @@ void View3DInventorViewer::init()
     backlight->setName("backlight");
     backlight->direction.setValue(-hl->direction.getValue());
     backlight->on.setValue(false); // by default off
-
-    // Set up background scenegraph with image in it.
-    backgroundroot = new SoSeparator;
-    backgroundroot->ref();
-    this->backgroundroot->addChild(cam);
-
-    // Background stuff
-    pcBackGround = new SoFCBackgroundGradient;
-    pcBackGround->ref();
-
-    // Set up foreground, overlayed scenegraph.
-    this->foregroundroot = new SoSeparator;
-    this->foregroundroot->ref();
-
-    SoLightModel* lm = new SoLightModel;
-    lm->model = SoLightModel::BASE_COLOR;
-
-    SoBaseColor* bc = new SoBaseColor;
-    bc->rgb = SbColor(1, 1, 0);
-
-    cam = new SoOrthographicCamera;
-    cam->position = SbVec3f(0, 0, 5);
-    cam->height = 10;
-    cam->nearDistance = 0;
-    cam->farDistance = 10;
-
-    // dragger
-    //SoSeparator * dragSep = new SoSeparator();
-    //SoScale *scale = new SoScale();
-    //scale->scaleFactor = SbVec3f  (0.2,0.2,0.2);
-    //dragSep->addChild(scale);
-    //SoCenterballDragger *dragger = new SoCenterballDragger();
-    //dragger->center = SbVec3f  (0.8,0.8,0);
-    ////dragger->rotation = SbRotation(rrot[0],rrot[1],rrot[2],rrot[3]);
-    //dragSep->addChild(dragger);
-
-    this->foregroundroot->addChild(cam);
-    this->foregroundroot->addChild(lm);
-    this->foregroundroot->addChild(bc);
-    //this->foregroundroot->addChild(dragSep);
-
-#if 0
-    // NOTE: For every mouse click event the SoSelection searches for the picked
-    // point which causes a certain slow-down because for all objects the primitives
-    // must be created. Using an SoSeparator avoids this drawback.
-    SoSelection* selectionRoot = new SoSelection();
-    selectionRoot->addSelectionCallback(View3DInventorViewer::selectCB, this);
-    selectionRoot->addDeselectionCallback(View3DInventorViewer::deselectCB, this);
-    selectionRoot->setPickFilterCallback(View3DInventorViewer::pickFilterCB, this);
-#else
-    // NOTE: For every mouse click event the SoFCUnifiedSelection searches for the picked
-    // point which causes a certain slow-down because for all objects the primitives
-    // must be created. Using an SoSeparator avoids this drawback.
-    selectionRoot = new Gui::SoFCUnifiedSelection();
-    selectionRoot->applySettings();
-#endif
-    // set the ViewProvider root node
-    pcViewProviderRoot = selectionRoot;
-
-    // increase refcount before passing it to setScenegraph(), to avoid
-    // premature destruction
-    pcViewProviderRoot->ref();
-    // is not really working with Coin3D.
-    //redrawOverlayOnSelectionChange(pcSelection);
     setSceneGraph(pcViewProviderRoot);
-    // Event callback node
-    pEventCallback = new SoEventCallback();
+    
+    //needed callbacks
     pEventCallback->setUserData(this);
-    pEventCallback->ref();
-    pcViewProviderRoot->addChild(pEventCallback);
     pEventCallback->addEventCallback(SoEvent::getClassTypeId(), handleEventCB, this);
-
-    dimensionRoot = new SoSwitch(SO_SWITCH_NONE);
-    pcViewProviderRoot->addChild(dimensionRoot);
-    dimensionRoot->addChild(new SoSwitch()); //first one will be for the 3d dimensions.
-    dimensionRoot->addChild(new SoSwitch()); //second one for the delta dimensions.
-
-    // This is a callback node that logs all action that traverse the Inventor tree.
-#if defined (FC_DEBUG) && defined(FC_LOGGING_CB)
-    SoCallback* cb = new SoCallback;
-    cb->setCallback(interactionLoggerCB, this);
-    pcViewProviderRoot->addChild(cb);
-#endif
-
+    
     // Set our own render action which show a bounding box if
     // the SoFCSelection::BOX style is set
     //
@@ -591,109 +760,6 @@ void View3DInventorViewer::OnChange(Gui::SelectionSingleton::SubjectType& rCalle
     }
 }
 /// @endcond
-
-SbBool View3DInventorViewer::hasViewProvider(ViewProvider* pcProvider) const
-{
-    return _ViewProviderSet.find(pcProvider) != _ViewProviderSet.end();
-}
-
-/// adds an ViewProvider to the view, e.g. from a feature
-void View3DInventorViewer::addViewProvider(ViewProvider* pcProvider)
-{
-    SoSeparator* root = pcProvider->getRoot();
-
-    if (root) {
-        pcViewProviderRoot->addChild(root);
-        _ViewProviderMap[root] = pcProvider;
-    }
-
-    SoSeparator* fore = pcProvider->getFrontRoot();
-    if (fore)
-        foregroundroot->addChild(fore);
-
-    SoSeparator* back = pcProvider->getBackRoot();
-    if (back)
-        backgroundroot->addChild(back);
-
-    pcProvider->setOverrideMode(this->getOverrideMode());
-    _ViewProviderSet.insert(pcProvider);
-}
-
-void View3DInventorViewer::removeViewProvider(ViewProvider* pcProvider)
-{
-    if (this->editViewProvider == pcProvider)
-        resetEditingViewProvider();
-
-    SoSeparator* root = pcProvider->getRoot();
-
-    if (root) {
-        pcViewProviderRoot->removeChild(root);
-        _ViewProviderMap.erase(root);
-    }
-
-    SoSeparator* fore = pcProvider->getFrontRoot();
-    if (fore)
-        foregroundroot->removeChild(fore);
-
-    SoSeparator* back = pcProvider->getBackRoot();
-    if (back)
-        backgroundroot->removeChild(back);
-
-    _ViewProviderSet.erase(pcProvider);
-}
-
-SbBool View3DInventorViewer::setEditingViewProvider(Gui::ViewProvider* p, int ModNum)
-{
-    if (this->editViewProvider)
-        return false; // only one view provider is editable at a time
-
-    bool ok = p->startEditing(ModNum);
-
-    if (ok) {
-        this->editViewProvider = p;
-        this->editViewProvider->setEditViewer(this, ModNum);
-        addEventCallback(SoEvent::getClassTypeId(), Gui::ViewProvider::eventCallback,this->editViewProvider);
-    }
-
-    return ok;
-}
-
-/// reset from edit mode
-void View3DInventorViewer::resetEditingViewProvider()
-{
-    if (this->editViewProvider) {
-        this->editViewProvider->unsetEditViewer(this);
-        removeEventCallback(SoEvent::getClassTypeId(), Gui::ViewProvider::eventCallback,this->editViewProvider);
-        this->editViewProvider = 0;
-    }
-}
-
-/// reset from edit mode
-SbBool View3DInventorViewer::isEditingViewProvider() const
-{
-    return this->editViewProvider ? true : false;
-}
-
-/// display override mode
-void View3DInventorViewer::setOverrideMode(const std::string& mode)
-{
-    if (mode == overrideMode)
-        return;
-
-    overrideMode = mode;
-
-    for (std::set<ViewProvider*>::iterator it = _ViewProviderSet.begin(); it != _ViewProviderSet.end(); ++it)
-        (*it)->setOverrideMode(mode);
-}
-
-/// update override mode. doesn't affect providers
-void View3DInventorViewer::updateOverrideMode(const std::string& mode)
-{
-    if (mode == overrideMode)
-        return;
-
-    overrideMode = mode;
-}
 
 void View3DInventorViewer::setViewportCB(void* userdata, SoAction* action)
 {
@@ -2623,60 +2689,6 @@ SoPath* View3DInventorViewer::pickFilterCB(void* viewer, const SoPickedPoint* pp
     }
 
     return pp->getPath();
-}
-
-void View3DInventorViewer::addEventCallback(SoType eventtype, SoEventCallbackCB* cb, void* userdata)
-{
-    pEventCallback->addEventCallback(eventtype, cb, userdata);
-}
-
-void View3DInventorViewer::removeEventCallback(SoType eventtype, SoEventCallbackCB* cb, void* userdata)
-{
-    pEventCallback->removeEventCallback(eventtype, cb, userdata);
-}
-
-ViewProvider* View3DInventorViewer::getViewProviderByPath(SoPath* path) const
-{
-    // FIXME Use the viewprovider map introduced for the selection
-    for (std::set<ViewProvider*>::const_iterator it = _ViewProviderSet.begin(); it != _ViewProviderSet.end(); ++it) {
-        for (int i = 0; i<path->getLength(); i++) {
-            SoNode* node = path->getNode(i);
-            if ((*it)->getRoot() == node) {
-                return (*it);
-            }
-        }
-    }
-
-    return 0;
-}
-
-ViewProvider* View3DInventorViewer::getViewProviderByPathFromTail(SoPath* path) const
-{
-    // Make sure I'm the lowest LocHL in the pick path!
-    for (int i = 0; i < path->getLength(); i++) {
-        SoNode* node = path->getNodeFromTail(i);
-
-        if (node->isOfType(SoSeparator::getClassTypeId())) {
-            std::map<SoSeparator*,ViewProvider*>::const_iterator it = _ViewProviderMap.find(static_cast<SoSeparator*>(node));
-            if (it != _ViewProviderMap.end()) {
-                return it->second;
-            }
-        }
-    }
-
-    return 0;
-}
-
-std::vector<ViewProvider*> View3DInventorViewer::getViewProvidersOfType(const Base::Type& typeId) const
-{
-    std::vector<ViewProvider*> views;
-    for (std::set<ViewProvider*>::const_iterator it = _ViewProviderSet.begin(); it != _ViewProviderSet.end(); ++it) {
-        if ((*it)->getTypeId().isDerivedFrom(typeId)) {
-            views.push_back(*it);
-        }
-    }
-
-    return views;
 }
 
 void View3DInventorViewer::turnAllDimensionsOn()

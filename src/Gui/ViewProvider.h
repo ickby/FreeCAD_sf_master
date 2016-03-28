@@ -64,6 +64,7 @@ namespace Gui {
     namespace TaskView {
         class TaskContent;
     }
+class InventorViewer;
 class View3DInventorViewer;
 class ViewProviderPy;
 class ObjectItem;
@@ -249,9 +250,9 @@ public:
     bool isEditing() const;
     void finishEditing();
     /// adjust viewer settings when editing a view provider
-    virtual void setEditViewer(View3DInventorViewer*, int ModNum);
+    virtual void setEditViewer(InventorViewer*, int ModNum);
     /// restores viewer settings when leaving editing mode
-    virtual void unsetEditViewer(View3DInventorViewer*);
+    virtual void unsetEditViewer(InventorViewer*);
     //@}
 
     /** @name Task panel 

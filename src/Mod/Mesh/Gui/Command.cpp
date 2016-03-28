@@ -684,7 +684,7 @@ void CmdMeshPolySegm::activated(int iMsg)
     for (std::vector<App::DocumentObject*>::iterator it = docObj.begin(); it != docObj.end(); ++it) {
         if (it == docObj.begin()) {
             Gui::Document* doc = getActiveGuiDocument();
-            Gui::MDIView* view = doc->getActiveView();
+            Gui::BaseView* view = doc->getActiveView();
             if (view->getTypeId().isDerivedFrom(Gui::View3DInventor::getClassTypeId())) {
                 Gui::View3DInventorViewer* viewer = ((Gui::View3DInventor*)view)->getViewer();
                 viewer->setEditing(true);
@@ -738,7 +738,7 @@ void CmdMeshPolySelect::activated(int iMsg)
     for (std::vector<App::DocumentObject*>::iterator it = docObj.begin(); it != docObj.end(); ++it) {
         if (it == docObj.begin()) {
             Gui::Document* doc = getActiveGuiDocument();
-            Gui::MDIView* view = doc->getActiveView();
+            Gui::BaseView* view = doc->getActiveView();
             if (view->getTypeId().isDerivedFrom(Gui::View3DInventor::getClassTypeId())) {
                 Gui::View3DInventorViewer* viewer = ((Gui::View3DInventor*)view)->getViewer();
                 viewer->setEditing(true);
@@ -790,7 +790,7 @@ void CmdMeshAddFacet::activated(int iMsg)
     std::vector<App::DocumentObject*> docObj = Gui::Selection().getObjectsOfType(Mesh::Feature::getClassTypeId());
     for (std::vector<App::DocumentObject*>::iterator it = docObj.begin(); it != docObj.end(); ++it) {
         Gui::Document* doc = Gui::Application::Instance->getDocument((*it)->getDocument());
-        Gui::MDIView* view = doc->getActiveView();
+        Gui::BaseView* view = doc->getActiveView();
         if (view->getTypeId().isDerivedFrom(Gui::View3DInventor::getClassTypeId())) {
             MeshGui::MeshFaceAddition* edit = new MeshGui::MeshFaceAddition
                 (static_cast<Gui::View3DInventor*>(view));
@@ -838,7 +838,7 @@ void CmdMeshPolyCut::activated(int iMsg)
     for (std::vector<App::DocumentObject*>::iterator it = docObj.begin(); it != docObj.end(); ++it) {
         if (it == docObj.begin()) {
             Gui::Document* doc = getActiveGuiDocument();
-            Gui::MDIView* view = doc->getActiveView();
+            Gui::BaseView* view = doc->getActiveView();
             if (view->getTypeId().isDerivedFrom(Gui::View3DInventor::getClassTypeId())) {
                 Gui::View3DInventorViewer* viewer = ((Gui::View3DInventor*)view)->getViewer();
                 viewer->setEditing(true);
@@ -896,7 +896,7 @@ void CmdMeshPolyTrim::activated(int iMsg)
     for (std::vector<App::DocumentObject*>::iterator it = docObj.begin(); it != docObj.end(); ++it) {
         if (it == docObj.begin()) {
             Gui::Document* doc = getActiveGuiDocument();
-            Gui::MDIView* view = doc->getActiveView();
+            Gui::BaseView* view = doc->getActiveView();
             if (view->getTypeId().isDerivedFrom(Gui::View3DInventor::getClassTypeId())) {
                 Gui::View3DInventorViewer* viewer = ((Gui::View3DInventor*)view)->getViewer();
                 viewer->setEditing(true);
@@ -1033,7 +1033,7 @@ void CmdMeshPolySplit::activated(int iMsg)
     for (std::vector<App::DocumentObject*>::iterator it = docObj.begin(); it != docObj.end(); ++it) {
         if (it == docObj.begin()) {
             Gui::Document* doc = getActiveGuiDocument();
-            Gui::MDIView* view = doc->getActiveView();
+            Gui::BaseView* view = doc->getActiveView();
             if (view->getTypeId().isDerivedFrom(Gui::View3DInventor::getClassTypeId())) {
                 Gui::View3DInventorViewer* viewer = ((Gui::View3DInventor*)view)->getViewer();
                 viewer->setEditing(true);

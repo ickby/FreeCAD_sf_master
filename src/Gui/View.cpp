@@ -35,7 +35,6 @@ using namespace Gui;
 
 TYPESYSTEM_SOURCE_ABSTRACT(Gui::BaseView,Base::BaseClass);
 
-
 BaseView::BaseView( Gui::Document* pcDocument)
   :_pcDocument(pcDocument), bIsDetached(false)
 {
@@ -96,4 +95,11 @@ void BaseView::setDocument(Gui::Document* pcDocument)
 App::Document* BaseView::getAppDocument() const
 {
     return _pcDocument ? _pcDocument->getDocument() : 0;
+}
+
+
+TYPESYSTEM_SOURCE_ABSTRACT(Gui::InventorView,Gui::BaseView);
+
+InventorView::InventorView(Document* pcDocument): BaseView(pcDocument) {
+    _pcIsInventor = false;
 }

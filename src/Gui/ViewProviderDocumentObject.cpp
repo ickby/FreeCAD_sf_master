@@ -157,26 +157,26 @@ void ViewProviderDocumentObject::attach(App::DocumentObject *pcObj)
         DisplayMode.setValue(defmode);
 }
 
-Gui::MDIView* ViewProviderDocumentObject::getActiveView() const
+Gui::BaseView* ViewProviderDocumentObject::getActiveView() const
 {
     App::Document* pAppDoc = pcObject->getDocument();
     Gui::Document* pGuiDoc = Gui::Application::Instance->getDocument(pAppDoc);
     return pGuiDoc->getActiveView();
 }
 
-Gui::MDIView* ViewProviderDocumentObject::getEditingView() const
+Gui::BaseView* ViewProviderDocumentObject::getEditingView() const
 {
     App::Document* pAppDoc = pcObject->getDocument();
     Gui::Document* pGuiDoc = Gui::Application::Instance->getDocument(pAppDoc);
     return pGuiDoc->getEditingViewOfViewProvider(const_cast<ViewProviderDocumentObject*>(this));
 }
 
-Gui::MDIView* ViewProviderDocumentObject::getInventorView() const
+Gui::BaseView* ViewProviderDocumentObject::getInventorView() const
 {
     App::Document* pAppDoc = pcObject->getDocument();
     Gui::Document* pGuiDoc = Gui::Application::Instance->getDocument(pAppDoc);
 
-    Gui::MDIView* mdi = pGuiDoc->getEditingViewOfViewProvider(const_cast<ViewProviderDocumentObject*>(this));
+    Gui::BaseView* mdi = pGuiDoc->getEditingViewOfViewProvider(const_cast<ViewProviderDocumentObject*>(this));
     if (!mdi) {
         mdi = pGuiDoc->getViewOfViewProvider(const_cast<ViewProviderDocumentObject*>(this));
     }

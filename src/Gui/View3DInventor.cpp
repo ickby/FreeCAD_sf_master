@@ -108,6 +108,8 @@ View3DInventor::View3DInventor(Gui::Document* pcDocument, QWidget* parent,
                                const QGLWidget* sharewidget, Qt::WindowFlags wflags)
     : MDIView(pcDocument, parent, wflags), _viewerPy(0)
 {
+    _pcIsInventor = true;
+    
     stack = new QStackedWidget(this);
     // important for highlighting 
     setMouseTracking(true);
@@ -1050,6 +1052,11 @@ void View3DInventor::customEvent(QEvent * e)
             _viewer->setNavigationType(se->style());
     }
 }
+
+InventorViewer* View3DInventor::getInventorViewer(void) {
+    return _viewer;
+}
+
 
 
 #include "moc_View3DInventor.cpp"

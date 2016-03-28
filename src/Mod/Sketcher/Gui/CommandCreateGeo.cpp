@@ -4541,7 +4541,7 @@ public:
     virtual void activated(ViewProviderSketch *sketchgui)
     {
         sketchgui->setAxisPickStyle(false);
-        Gui::MDIView *mdi = Gui::Application::Instance->activeDocument()->getActiveView();
+        Gui::MDIView *mdi = dynamic_cast<Gui::MDIView*>(Gui::Application::Instance->activeDocument()->getActiveView());
         Gui::View3DInventorViewer *viewer;
         viewer = static_cast<Gui::View3DInventor *>(mdi)->getViewer();
 

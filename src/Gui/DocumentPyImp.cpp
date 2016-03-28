@@ -226,7 +226,7 @@ PyObject*  DocumentPy::activeView(PyObject *args)
         return NULL;                             // NULL triggers exception 
 
     PY_TRY {
-        Gui::MDIView  *pcView = getDocumentPtr()->getActiveView();
+        Gui::BaseView  *pcView = getDocumentPtr()->getActiveView();
         if (pcView){
             // already incremented in getPyObject().
             return pcView->getPyObject();
@@ -326,7 +326,7 @@ void  DocumentPy::setActiveObject(Py::Object arg)
 
 Py::Object DocumentPy::getActiveView(void) const
 {
-    Gui::MDIView *view = getDocumentPtr()->getActiveView();
+    Gui::BaseView *view = getDocumentPtr()->getActiveView();
     if (view) {
         // already incremented in getPyObject().
         return Py::Object(view->getPyObject(), true);

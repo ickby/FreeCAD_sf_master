@@ -126,11 +126,11 @@ void ViewProvider::unsetEdit(int ModNum)
 {
 }
 
-void ViewProvider::setEditViewer(View3DInventorViewer*, int ModNum)
+void ViewProvider::setEditViewer(InventorViewer*, int ModNum)
 {
 }
 
-void ViewProvider::unsetEditViewer(View3DInventorViewer*)
+void ViewProvider::unsetEditViewer(InventorViewer*)
 {
 }
 

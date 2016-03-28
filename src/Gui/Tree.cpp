@@ -264,7 +264,7 @@ void TreeWidget::onStartEditing()
             App::DocumentObject* obj = objitem->object()->getObject();
             if (!obj) return;
             Gui::Document* doc = Gui::Application::Instance->getDocument(obj->getDocument());
-            MDIView *view = doc->getActiveView();
+            MDIView *view = dynamic_cast<Gui::MDIView*>(doc->getActiveView());
             if (view) getMainWindow()->setActiveWindow(view);
 
             // Always open a transaction here doesn't make much sense because:
@@ -305,7 +305,7 @@ void TreeWidget::onActivateDocument(QAction* active)
     QByteArray docname = active->data().toByteArray();
     Gui::Document* doc = Application::Instance->getDocument((const char*)docname);
     if (!doc) return;
-    MDIView *view = doc->getActiveView();
+    MDIView *view = dynamic_cast<Gui::MDIView*>(doc->getActiveView());
     if (!view) return;
     getMainWindow()->setActiveWindow(view);
 }
@@ -347,7 +347,7 @@ void TreeWidget::mouseDoubleClickEvent (QMouseEvent * event)
         //QTreeWidget::mouseDoubleClickEvent(event);
         const Gui::Document* doc = static_cast<DocumentItem*>(item)->document();
         if (!doc) return;
-        MDIView *view = doc->getActiveView();
+        MDIView *view = dynamic_cast<Gui::MDIView*>(doc->getActiveView());
         if (!view) return;
         getMainWindow()->setActiveWindow(view);
     }
@@ -355,7 +355,7 @@ void TreeWidget::mouseDoubleClickEvent (QMouseEvent * event)
         DocumentObjectItem* objitem = static_cast<DocumentObjectItem*>(item);
         App::DocumentObject* obj = objitem->object()->getObject();
         Gui::Document* doc = Gui::Application::Instance->getDocument(obj->getDocument());
-        MDIView *view = doc->getActiveView();
+        MDIView *view = dynamic_cast<Gui::MDIView*>(doc->getActiveView());
         if (view) getMainWindow()->setActiveWindow(view);
         if (!objitem->object()->doubleClicked())
             QTreeWidget::mouseDoubleClickEvent(event);

@@ -1280,7 +1280,7 @@ void StdCmdAlignment::activated(int iMsg)
     Base::Vector3d upDir(0,1,0), viewDir(0,0,-1);
     Gui::Document* doc = Application::Instance->activeDocument();
     if (doc) {
-        View3DInventor* mdi = qobject_cast<View3DInventor*>(doc->getActiveView());
+        View3DInventor* mdi = dynamic_cast<View3DInventor*>(doc->getActiveView());
         if (mdi) {
             View3DInventorViewer* viewer = mdi->getViewer();
             SoCamera* camera = viewer->getSoRenderManager()->getCamera();

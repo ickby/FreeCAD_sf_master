@@ -1576,7 +1576,7 @@ StdCmdViewCreate::StdCmdViewCreate()
 void StdCmdViewCreate::activated(int iMsg)
 {
     getActiveGuiDocument()->createView(View3DInventor::getClassTypeId());
-    getActiveGuiDocument()->getActiveView()->viewAll();
+    static_cast<Gui::MDIView*>(getActiveGuiDocument()->getActiveView())->viewAll();
 }
 
 bool StdCmdViewCreate::isActive(void)

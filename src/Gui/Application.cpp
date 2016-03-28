@@ -1511,6 +1511,7 @@ void Application::initTypes(void)
 {
     // views
     Gui::BaseView                               ::init();
+    Gui::InventorView                           ::init();
     Gui::MDIView                                ::init();
     Gui::View3DInventor                         ::init();
     Gui::AbstractSplitView                      ::init();

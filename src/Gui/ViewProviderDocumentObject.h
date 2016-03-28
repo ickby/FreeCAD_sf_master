@@ -43,6 +43,7 @@ namespace App
 namespace Gui {
 
 class MDIView;
+class BaseView;
 
 class GuiExport ViewProviderDocumentObject : public ViewProvider
 {
@@ -90,24 +91,24 @@ public:
     //@}
 
 protected:
-    /*! Get the active mdi view of the document this view provider is part of.
-      @note The returned mdi view doesn't need to be a 3d view but can be e.g.
+    /*! Get the active view of the document this view provider is part of.
+      @note The returned view doesn't need to be a 3d view but can be e.g.
       an image view, an SVG view or something else.
      */
-    Gui::MDIView* getActiveView() const;
-    /*! Get the mdi view of the document this view provider is part of and
+    Gui::BaseView* getActiveView() const;
+    /*! Get the view of the document this view provider is part of and
       that is in editing mode.
-      @note In case there is no mdi view in editing mode 0 is returned.
+      @note In case there is no view in editing mode 0 is returned.
       If a value different to 0 is returned it is guaranteed to be a 3d view.
      */
-    Gui::MDIView* getEditingView() const;
-    /*! Get any mdi view of the document this view provider is part of.
-      In case there is an mdi view in editing mode that contains this
-      view provider that mdi view is returned. Otherwise any other
-      3d view that contains this view provider is returned.
+    Gui::BaseView* getEditingView() const;
+    /*! Get any view of the document this view provider is part of.
+      In case there is an view in editing mode that contains this
+      view provider that view is returned. Otherwise any other
+      inventor view that contains this view provider is returned.
       If a value different to 0 is returned it is guaranteed to be a 3d view.
      */
-    Gui::MDIView* getInventorView() const;
+    Gui::BaseView* getInventorView() const;
     /// Gets called by the container whenever a property has been changed
     virtual void onChanged(const App::Property* prop);
     /** Searches in all view providers that are attached to an object that

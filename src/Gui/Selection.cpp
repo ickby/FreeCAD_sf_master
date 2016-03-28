@@ -468,8 +468,9 @@ bool SelectionSingleton::setPreselect(const char* pDocName, const char* pObjectN
 
                     if (getMainWindow()) {
                         getMainWindow()->showMessage(QString::fromLatin1(buf),3000);
-                        Gui::MDIView* mdi = Gui::Application::Instance->activeDocument()->getActiveView();
-                        mdi->setOverrideCursor(QCursor(Qt::ForbiddenCursor));
+                        Gui::MDIView* mdi = dynamic_cast<Gui::MDIView*>(Gui::Application::Instance->activeDocument()->getActiveView());
+                        if(mdi)
+                            mdi->setOverrideCursor(QCursor(Qt::ForbiddenCursor));
                     }
                     return false;
                 }
@@ -576,8 +577,9 @@ void SelectionSingleton::rmvPreselect()
     hz = 0;
 
     if (ActiveGate && getMainWindow()) {
-        Gui::MDIView* mdi = Gui::Application::Instance->activeDocument()->getActiveView();
-        mdi->restoreOverrideCursor();
+        Gui::MDIView* mdi = dynamic_cast<Gui::MDIView*>(Gui::Application::Instance->activeDocument()->getActiveView());
+        if(mdi)
+            mdi->restoreOverrideCursor();
     }
 
     //Base::Console().Log("Sel : Rmv preselect \n");
@@ -606,8 +608,9 @@ void SelectionSingleton::rmvSelectionGate(void)
         ActiveGate=0;
         Gui::Document* doc = Gui::Application::Instance->activeDocument();
         if (doc) {
-            Gui::MDIView* mdi = doc->getActiveView();
-            mdi->restoreOverrideCursor();
+            Gui::MDIView* mdi = dynamic_cast<Gui::MDIView*>(doc->getActiveView());
+            if(mdi)
+                mdi->restoreOverrideCursor();
         }
     }
 }
@@ -642,8 +645,9 @@ bool SelectionSingleton::addSelection(const char* pDocName, const char* pObjectN
             if (!ActiveGate->allow(temp.pDoc,temp.pObject,pSubName)) {
                 if (getMainWindow()) {
                     getMainWindow()->showMessage(QString::fromLatin1("Selection not allowed by filter"),5000);
-                    Gui::MDIView* mdi = Gui::Application::Instance->activeDocument()->getActiveView();
-                    mdi->setOverrideCursor(Qt::ForbiddenCursor);
+                    Gui::MDIView* mdi = dynamic_cast<Gui::MDIView*>(Gui::Application::Instance->activeDocument()->getActiveView());
+                    if(mdi)
+                        mdi->setOverrideCursor(Qt::ForbiddenCursor);
                 }
                 QApplication::beep();
                 return false;

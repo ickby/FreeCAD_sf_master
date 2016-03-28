@@ -41,11 +41,11 @@
 
 using namespace Gui;
 
-TYPESYSTEM_SOURCE_ABSTRACT(Gui::MDIView,Gui::BaseView);
+TYPESYSTEM_SOURCE_ABSTRACT(Gui::MDIView,Gui::InventorView);
 
 
 MDIView::MDIView(Gui::Document* pcDocument,QWidget* parent, Qt::WindowFlags wflags)
-  : QMainWindow(parent, wflags), BaseView(pcDocument),currentMode(Child), wstate(Qt::WindowNoState)
+  : QMainWindow(parent, wflags), InventorView(pcDocument),currentMode(Child), wstate(Qt::WindowNoState)
 {
     setAttribute(Qt::WA_DeleteOnClose);
 }

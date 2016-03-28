@@ -47,7 +47,7 @@ class Document;
  * @see Application
  * @author Jürgen Riegel, Werner Mayer
  */
-class GuiExport MDIView : public QMainWindow, public BaseView
+class GuiExport MDIView : public QMainWindow, public InventorView
 {
     Q_OBJECT
 

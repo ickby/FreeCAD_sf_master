@@ -214,8 +214,9 @@ PyObject* Gui::Application::sSetActiveDocument(PyObject * /*self*/, PyObject *ar
     }
 
     if (Instance->activeDocument() != pcDoc) {
-        Gui::MDIView* view = pcDoc->getActiveView();
-        getMainWindow()->setActiveWindow(view);
+        Gui::MDIView* view = dynamic_cast<MDIView*>(pcDoc->getActiveView());
+        if(view && getMainWindow())
+            getMainWindow()->setActiveWindow(view);
     }
     Py_Return;
 }
@@ -502,7 +503,7 @@ PyObject* Application::sExport(PyObject * /*self*/, PyObject *args,PyObject * /*
             // get the view that belongs to the found document
             Gui::Document* gui_doc = Application::Instance->getDocument(doc);
             if (gui_doc) {
-                Gui::MDIView* view = gui_doc->getActiveView();
+                Gui::MDIView* view = dynamic_cast<MDIView*>(gui_doc->getActiveView());
                 if (view) {
                     View3DInventor* view3d = qobject_cast<View3DInventor*>(view);
                     if (view3d)

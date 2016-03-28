@@ -93,8 +93,8 @@ TaskCreateNodeSet::TaskCreateNodeSet(Fem::FemSetNodesObject *pcObject,QWidget *p
 void TaskCreateNodeSet::Poly(void)
 {
     Gui::Document* doc = Gui::Application::Instance->activeDocument();
-    Gui::MDIView* view = doc->getActiveView();
-    if (view->getTypeId().isDerivedFrom(Gui::View3DInventor::getClassTypeId())) {
+    Gui::MDIView* view = dynamic_cast<Gui::MDIView*>(doc->getActiveView());
+    if (view && view->getTypeId().isDerivedFrom(Gui::View3DInventor::getClassTypeId())) {
         Gui::View3DInventorViewer* viewer = ((Gui::View3DInventor*)view)->getViewer();
         viewer->setEditing(true);
         viewer->startSelection(Gui::View3DInventorViewer::Clip);

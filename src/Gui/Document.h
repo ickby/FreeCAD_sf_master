@@ -147,9 +147,9 @@ public:
     /** @name methods for View handling */
     //@{
     /// Getter for the active view
-    Gui::MDIView* getActiveView(void) const;
-    Gui::MDIView* getEditingViewOfViewProvider(Gui::ViewProvider*) const;
-    Gui::MDIView* getViewOfViewProvider(Gui::ViewProvider*) const;
+    BaseView* getActiveView(void) const;
+    BaseView* getEditingViewOfViewProvider(Gui::ViewProvider*) const;
+    BaseView* getViewOfViewProvider(Gui::ViewProvider*) const;
     /// Create a new view
     void createView(const Base::Type& typeId);
     /** send messages to the active view 
@@ -174,8 +174,12 @@ public:
     void onUpdate(void);
     /// call relabel to all attached views
     void onRelabel(void);
+    ///returns a list of all attached views
+    std::list<BaseView*> getViews() const;
     /// returns a list of all attached MDI views
     std::list<MDIView*> getMDIViews() const;
+    /// returns a list of all views of a certain type
+    std::list<BaseView*> getViewsOfType(const Base::Type& typeId) const;
     /// returns a list of all MDI views of a certain type
     std::list<MDIView*> getMDIViewsOfType(const Base::Type& typeId) const;
     //@}

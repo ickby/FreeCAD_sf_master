@@ -27,6 +27,7 @@
 #include <vector>
 #include <Base/BaseClass.h>
 
+
 namespace App
 {
 class Document;
@@ -36,6 +37,7 @@ namespace Gui
 {
 class Document;
 class ViewProvider;
+class InventorViewer;
 
 /** Base class of all windows belonging to a document
  *  there are two ways of belonging to a document. The 
@@ -107,6 +109,18 @@ protected:
     Gui::Document*  _pcDocument;
     bool bIsDetached;
     bool bIsPassive;
+};
+
+class GuiExport InventorView : public BaseView {
+    TYPESYSTEM_HEADER();
+    
+public:    
+    InventorView(Document* pcDocument = 0);
+    virtual InventorViewer* getInventorViewer(void) {return NULL;};
+    bool _pcIsInventorView() {return _pcIsInventor;};
+    
+protected:
+    bool _pcIsInventor;
 };
 
 } // namespace Gui

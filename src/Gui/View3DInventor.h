@@ -37,6 +37,7 @@ class QStackedWidget;
 namespace Gui {
 
 class Document;
+class InventorViewer;
 class View3DInventorViewer;
 class View3DPy;
 
@@ -105,7 +106,8 @@ public:
     void setOverlayWidget(QWidget*);
     void removeOverlayWidget();
 
-    View3DInventorViewer *getViewer(void) const {return _viewer;}
+    InventorViewer* getInventorViewer(void);
+    View3DInventorViewer* getViewer(void) const {return _viewer;}
   
 public Q_SLOTS:
     /// override the cursor in this view

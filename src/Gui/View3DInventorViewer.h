@@ -68,10 +68,69 @@ class GLGraphicsItem;
 class SoShapeScale;
 class ViewerEventFilter;
 
+/** Scenegraph and viewprovider handling common to all inventor views.
+ */
+class GuiExport InventorViewer 
+{
+public:
+    InventorViewer();
+    ~InventorViewer();
+ 
+    /** @name Handling of view providers */
+    //@{
+    SbBool hasViewProvider(ViewProvider*) const;
+    /// adds an ViewProvider to the view, e.g. from a feature
+    void addViewProvider(ViewProvider*);
+    /// remove a ViewProvider
+    void removeViewProvider(ViewProvider*);
+    /// get view provider by path
+    ViewProvider* getViewProviderByPath(SoPath*) const;
+    ViewProvider* getViewProviderByPathFromTail(SoPath*) const;
+    /// get all view providers of given type
+    std::vector<ViewProvider*> getViewProvidersOfType(const Base::Type& typeId) const;
+    /// set the ViewProvider in special edit mode
+    SbBool setEditingViewProvider(Gui::ViewProvider* p, int ModNum=0);
+    /// return whether a view provider is edited
+    SbBool isEditingViewProvider() const;
+    /// reset from edit mode
+    void resetEditingViewProvider();
+    /// display override mode
+    void setOverrideMode(const std::string &mode);
+    void updateOverrideMode(const std::string &mode);
+    std::string getOverrideMode() {return overrideMode;}
+    //@}
+    
+    /**
+     * Set up a callback function \a cb which will be invoked for the given eventtype. 
+     * \a userdata will be given as the first argument to the callback function. 
+     */
+    void addEventCallback(SoType eventtype, SoEventCallbackCB * cb, void* userdata = 0);
+    /**
+     * Unregister the given callback function \a cb.
+     */
+    void removeEventCallback(SoType eventtype, SoEventCallbackCB * cb, void* userdata = 0);
+    
+protected:
+    std::string overrideMode;
+    ViewProvider* editViewProvider;
+    std::set<ViewProvider*> _ViewProviderSet;
+    std::map<SoSeparator*,ViewProvider*> _ViewProviderMap;
+    
+    SoEventCallback* pEventCallback;
+    SoSeparator * backgroundroot;
+    SoSeparator * foregroundroot;
+    SoSeparator * pcViewProviderRoot;
+    SoFCBackgroundGradient *pcBackGround;
+    SoFCUnifiedSelection* selectionRoot;
+    SoSwitch *dimensionRoot;
+};
+
 /** GUI view into a 3D scene provided by View3DInventor
  *
  */
-class GuiExport View3DInventorViewer : public Quarter::SoQTQuarterAdaptor, public Gui::SelectionSingleton::ObserverType
+class GuiExport View3DInventorViewer : public Quarter::SoQTQuarterAdaptor, 
+                                       public InventorViewer,
+                                       public Gui::SelectionSingleton::ObserverType
 {
     typedef Quarter::SoQTQuarterAdaptor inherited;
     
@@ -167,30 +226,6 @@ public:
     std::list<GLGraphicsItem*> getGraphicsItemsOfType(const Base::Type&) const;
     void clearGraphicsItems();
 
-    /** @name Handling of view providers */
-    //@{
-    SbBool hasViewProvider(ViewProvider*) const;
-    /// adds an ViewProvider to the view, e.g. from a feature
-    void addViewProvider(ViewProvider*);
-    /// remove a ViewProvider
-    void removeViewProvider(ViewProvider*);
-    /// get view provider by path
-    ViewProvider* getViewProviderByPath(SoPath*) const;
-    ViewProvider* getViewProviderByPathFromTail(SoPath*) const;
-    /// get all view providers of given type
-    std::vector<ViewProvider*> getViewProvidersOfType(const Base::Type& typeId) const;
-    /// set the ViewProvider in special edit mode
-    SbBool setEditingViewProvider(Gui::ViewProvider* p, int ModNum=0);
-    /// return whether a view provider is edited
-    SbBool isEditingViewProvider() const;
-    /// reset from edit mode
-    void resetEditingViewProvider();
-    /// display override mode
-    void setOverrideMode(const std::string &mode);
-    void updateOverrideMode(const std::string &mode);
-    std::string getOverrideMode() {return overrideMode;}
-    //@}
-
     /** @name Making pictures */
     //@{
     /**
@@ -240,16 +275,6 @@ public:
     SbBool pubSeekToPoint(const SbVec2s& pos);
     void pubSeekToPoint(const SbVec3f& pos);
     //@}
-
-    /**
-     * Set up a callback function \a cb which will be invoked for the given eventtype. 
-     * \a userdata will be given as the first argument to the callback function. 
-     */
-    void addEventCallback(SoType eventtype, SoEventCallbackCB * cb, void* userdata = 0);
-    /**
-     * Unregister the given callback function \a cb.
-     */
-    void removeEventCallback(SoType eventtype, SoEventCallbackCB * cb, void* userdata = 0);
 
     /** @name Clipping plane, near and far plane */
     //@{
@@ -384,24 +409,13 @@ private:
 
 
 private:
-    std::set<ViewProvider*> _ViewProviderSet;
-    std::map<SoSeparator*,ViewProvider*> _ViewProviderMap;
-    std::list<GLGraphicsItem*> graphicsItems;
-    ViewProvider* editViewProvider;
-    SoFCBackgroundGradient *pcBackGround;
-    SoSeparator * backgroundroot;
-    SoSeparator * foregroundroot;
-    SoDirectionalLight* backlight;
-
-    SoSeparator * pcViewProviderRoot;
-    SoEventCallback* pEventCallback;
+    std::list<GLGraphicsItem*> graphicsItems;  
     NavigationStyle* navigation;
-    SoFCUnifiedSelection* selectionRoot;
-
+    SoDirectionalLight* backlight;
+    
     RenderType renderType;
     QGLFramebufferObject* framebuffer;
     QImage glImage;
-    SoSwitch *dimensionRoot;
 
     // small axis cross in the corner
     SbBool axiscrossEnabled;
@@ -418,8 +432,6 @@ private:
     QCursor editCursor, zoomCursor, panCursor, spinCursor;
     SbBool redirected;
     SbBool allowredir;
-
-    std::string overrideMode;
     
     ViewerEventFilter* viewerEventFilter;
     

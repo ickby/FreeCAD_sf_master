@@ -135,7 +135,7 @@ CrossSections::CrossSections(const Base::BoundBox3d& bb, QWidget* parent, Qt::Wi
     ui->position->setValue(c.z);
 
     Gui::Document* doc = Gui::Application::Instance->activeDocument();
-    view = qobject_cast<Gui::View3DInventor*>(doc->getActiveView());
+    view = qobject_cast<Gui::View3DInventor*>(dynamic_cast<Gui::MDIView*>(doc->getActiveView()));
     if (view) {
         view->getViewer()->addViewProvider(vp);
     }

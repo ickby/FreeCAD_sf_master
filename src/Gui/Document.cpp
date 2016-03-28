@@ -213,15 +213,17 @@ bool Document::setEdit(Gui::ViewProvider* p, int ModNum)
     if (d->_ViewProviderMap.find(dynamic_cast<ViewProviderDocumentObject*>(p)->getObject()) == d->_ViewProviderMap.end())
         return false;
 
-    View3DInventor *activeView = dynamic_cast<View3DInventor *>(getActiveView());
+    BaseView *activeView = getActiveView();
     // if the currently active view is not the 3d view search for it and activate it
-    if (!activeView) {
-        activeView = dynamic_cast<View3DInventor *>(getViewOfViewProvider(p));
-        if (activeView)
-            getMainWindow()->setActiveWindow(activeView);
+    if (!activeView || !activeView->isDerivedFrom(InventorView::getClassTypeId())) {
+        activeView = getViewOfViewProvider(p);
+        if (activeView && activeView->isDerivedFrom(MDIView::getClassTypeId()) && getMainWindow())
+            getMainWindow()->setActiveWindow(static_cast<MDIView*>(activeView));
     }
 
-    if (activeView && activeView->getViewer()->setEditingViewProvider(p,ModNum)) {
+    if (activeView && activeView->isDerivedFrom(InventorView::getClassTypeId()) &&
+        static_cast<InventorView*>(activeView)->getInventorViewer()->setEditingViewProvider(p,ModNum)) {
+        
         d->_editViewProvider = p;
         Gui::TaskView::TaskDialog* dlg = Gui::Control().activeDialog();
         if (dlg)
@@ -241,9 +243,9 @@ void Document::resetEdit(void)
     std::list<Gui::BaseView*>::iterator it;
     if (d->_editViewProvider) {
         for (it = d->baseViews.begin();it != d->baseViews.end();++it) {
-            View3DInventor *activeView = dynamic_cast<View3DInventor *>(*it);
+            InventorView *activeView = dynamic_cast<InventorView*>(*it);
             if (activeView)
-                activeView->getViewer()->resetEditingViewProvider();
+                activeView->getInventorViewer()->resetEditingViewProvider();
         }
 
         d->_editViewProvider->finishEditing();
@@ -257,8 +259,8 @@ ViewProvider *Document::getInEdit(void) const
 {
     if (d->_editViewProvider) {
         // there is only one 3d view which is in edit mode
-        View3DInventor *activeView = dynamic_cast<View3DInventor *>(getActiveView());
-        if (activeView && activeView->getViewer()->isEditingViewProvider())
+        InventorView *activeView = dynamic_cast<InventorView*>(getActiveView());
+        if (activeView && activeView->getInventorViewer()->isEditingViewProvider())
             return d->_editViewProvider;
     }
 
@@ -279,9 +281,9 @@ void Document::setAnnotationViewProvider(const char* name, ViewProvider *pcProvi
 
     // cycling to all views of the document
     for (vIt = d->baseViews.begin();vIt != d->baseViews.end();++vIt) {
-        View3DInventor *activeView = dynamic_cast<View3DInventor *>(*vIt);
+        InventorView *activeView = dynamic_cast<InventorView *>(*vIt);
         if (activeView)
-            activeView->getViewer()->addViewProvider(pcProvider);
+            activeView->getInventorViewer()->addViewProvider(pcProvider);
     }
 }
 
@@ -298,9 +300,9 @@ void Document::removeAnnotationViewProvider(const char* name)
 
     // cycling to all views of the document
     for (vIt = d->baseViews.begin();vIt != d->baseViews.end();++vIt) {
-        View3DInventor *activeView = dynamic_cast<View3DInventor *>(*vIt);
+        InventorView *activeView = dynamic_cast<InventorView *>(*vIt);
         if (activeView)
-            activeView->getViewer()->removeViewProvider(it->second);
+            activeView->getInventorViewer()->removeViewProvider(it->second);
     }
 
     delete it->second;
@@ -426,9 +428,9 @@ void Document::slotNewObject(const App::DocumentObject& Obj)
         std::list<Gui::BaseView*>::iterator vIt;
         // cycling to all views of the document
         for (vIt = d->baseViews.begin();vIt != d->baseViews.end();++vIt) {
-            View3DInventor *activeView = dynamic_cast<View3DInventor *>(*vIt);
+            InventorView *activeView = dynamic_cast<InventorView *>(*vIt);
             if (activeView)
-                activeView->getViewer()->addViewProvider(pcProvider);
+                activeView->getInventorViewer()->addViewProvider(pcProvider);
         }
     
         // adding to the tree
@@ -454,11 +456,11 @@ void Document::slotDeletedObject(const App::DocumentObject& Obj)
         (ViewProviderDocumentObject::getClassTypeId())) {
         // go through the views
         for (vIt = d->baseViews.begin();vIt != d->baseViews.end();++vIt) {
-            View3DInventor *activeView = dynamic_cast<View3DInventor *>(*vIt);
+            InventorView *activeView = dynamic_cast<InventorView *>(*vIt);
             if (activeView) {
                 if (d->_editViewProvider == viewProvider)
                     resetEdit();
-                activeView->getViewer()->removeViewProvider(viewProvider);
+                activeView->getInventorViewer()->removeViewProvider(viewProvider);
             }
         }
 
@@ -509,11 +511,11 @@ void Document::slotChangedObject(const App::DocumentObject& Obj, const App::Prop
 
                         // cycling to all views of the document to remove the viewprovider from the viewer itself
                         for (std::list<Gui::BaseView*>::iterator vIt = d->baseViews.begin();vIt != d->baseViews.end();++vIt) {
-                            View3DInventor *activeView = dynamic_cast<View3DInventor *>(*vIt);
+                            InventorView *activeView = dynamic_cast<InventorView *>(*vIt);
                             if (activeView && viewProvider) {
                                 if (d->_editViewProvider == ChildViewProvider)
                                     resetEdit();
-                                activeView->getViewer()->removeViewProvider(ChildViewProvider);
+                                activeView->getInventorViewer()->removeViewProvider(ChildViewProvider);
                             }
                         }
                     }
@@ -1012,9 +1014,11 @@ void Document::addRootObjectsToGroup(const std::vector<App::DocumentObject*>& ob
 
 void Document::createView(const Base::Type& typeId)
 {
-    if (!typeId.isDerivedFrom(MDIView::getClassTypeId()))
+    if (!typeId.isDerivedFrom(InventorView::getClassTypeId()))
         return;
 
+    InventorView* view = NULL;
+    
     std::list<MDIView*> theViews = this->getMDIViewsOfType(typeId);
     if (typeId == View3DInventor::getClassTypeId()) {
         View3DInventor* firstView = 0;
@@ -1030,14 +1034,6 @@ void Document::createView(const Base::Type& typeId)
             view3D->getViewer()->setOverrideMode(overrideMode);
         }
 
-        // attach the viewprovider
-        std::map<const App::DocumentObject*,ViewProviderDocumentObject*>::const_iterator It1;
-        for (It1=d->_ViewProviderMap.begin();It1!=d->_ViewProviderMap.end();++It1)
-            view3D->getViewer()->addViewProvider(It1->second);
-        std::map<std::string,ViewProvider*>::const_iterator It2;
-        for (It2=d->_ViewProviderMapAnnotation.begin();It2!=d->_ViewProviderMapAnnotation.end();++It2)
-            view3D->getViewer()->addViewProvider(It2->second);
-
         const char* name = getDocument()->Label.getValue();
         QString title = QString::fromLatin1("%1 : %2[*]")
             .arg(QString::fromUtf8(name)).arg(d->_iWinCount++);
@@ -1047,7 +1043,21 @@ void Document::createView(const Base::Type& typeId)
         view3D->setWindowIcon(QApplication::windowIcon());
         view3D->resize(400, 300);
         getMainWindow()->addWindow(view3D);
+        view = view3D;
     }
+    else 
+        view = static_cast<InventorView*>(static_cast<BaseView*>(Base::Type(typeId).createInstance()));
+    
+    if(!view)
+        return;
+    
+    // attach the viewprovider
+    std::map<const App::DocumentObject*,ViewProviderDocumentObject*>::const_iterator It1;
+    for (It1=d->_ViewProviderMap.begin();It1!=d->_ViewProviderMap.end();++It1)
+        view->getInventorViewer()->addViewProvider(It1->second);
+    std::map<std::string,ViewProvider*>::const_iterator It2;
+    for (It2=d->_ViewProviderMapAnnotation.begin();It2!=d->_ViewProviderMapAnnotation.end();++It2)
+        view->getInventorViewer()->addViewProvider(It2->second);
 }
 
 void Document::attachView(Gui::BaseView* pcView, bool bPassiv)
@@ -1134,7 +1144,7 @@ bool Document::isLastView(void)
 bool Document::canClose ()
 {
     if (!getDocument()->isClosable()) {
-        QMessageBox::warning(getActiveView(),
+        QMessageBox::warning(dynamic_cast<MDIView*>(getActiveView()),
             QObject::tr("Document not closable"),
             QObject::tr("The document is not closable for the moment."));
         return false;
@@ -1154,7 +1164,7 @@ bool Document::canClose ()
 
     bool ok = true;
     if (isModified()) {
-        QMessageBox box(getActiveView());
+        QMessageBox box(dynamic_cast<MDIView*>(getActiveView()));
         box.setIcon(QMessageBox::Question);
         box.setWindowTitle(QObject::tr("Unsaved document"));
         box.setText(QObject::tr("Do you want to save your changes to document '%1' before closing?")
@@ -1193,6 +1203,11 @@ bool Document::canClose ()
     return ok;
 }
 
+std::list< BaseView* > Document::getViews() const {
+    return d->baseViews;
+}
+
+
 std::list<MDIView*> Document::getMDIViews() const
 {
     std::list<MDIView*> views;
@@ -1205,6 +1220,19 @@ std::list<MDIView*> Document::getMDIViews() const
 
     return views;
 }
+
+std::list< BaseView* > Document::getViewsOfType(const Base::Type& typeId) const {
+
+    std::list<BaseView*> views;
+    for (std::list<BaseView*>::const_iterator it = d->baseViews.begin();
+         it != d->baseViews.end(); ++it) {
+        if((*it)->isDerivedFrom(typeId))
+            views.push_back(*it);
+    }
+
+    return views;
+}
+
 
 std::list<MDIView*> Document::getMDIViewsOfType(const Base::Type& typeId) const
 {
@@ -1243,7 +1271,7 @@ bool Document::sendMsgToViews(const char* pMsg)
 bool Document::sendMsgToFirstView(const Base::Type& typeId, const char* pMsg, const char** ppReturn)
 {
     // first try the active view
-    Gui::MDIView* view = getActiveView();
+    Gui::MDIView* view = dynamic_cast<MDIView*>(getActiveView());
     if (view && view->isDerivedFrom(typeId)) {
         if (view->onMsg(pMsg, ppReturn))
             return true;
@@ -1261,17 +1289,20 @@ bool Document::sendMsgToFirstView(const Base::Type& typeId, const char* pMsg, co
 }
 
 /// Getter for the active view
-MDIView* Document::getActiveView(void) const
+BaseView* Document::getActiveView(void) const
 {
     // get the main window's active view 
-    MDIView* active = getMainWindow()->activeWindow();
+    BaseView* active = NULL;
+    
+    if(getMainWindow())
+        getMainWindow()->activeWindow();
 
     // get all MDI views of the document
-    std::list<MDIView*> mdis = getMDIViews();
+    std::list<BaseView*> views = getViews();
 
     // check whether the active view is part of this document
     bool ok=false;
-    for (std::list<MDIView*>::const_iterator it = mdis.begin(); it != mdis.end(); ++it) {
+    for (std::list<BaseView*>::const_iterator it = views.begin(); it != views.end(); ++it) {
         if ((*it) == active) {
             ok = true;
             break;
@@ -1279,32 +1310,34 @@ MDIView* Document::getActiveView(void) const
     }
 
     // the active view is not part of this document, just use the last view
-    if (!ok && !mdis.empty())
-        active = mdis.back();
+    if (!ok && !views.empty())
+        active = views.back();
 
     return active;
 }
 
-Gui::MDIView* Document::getViewOfViewProvider(Gui::ViewProvider* vp) const
+Gui::BaseView* Document::getViewOfViewProvider(Gui::ViewProvider* vp) const
 {
-    std::list<MDIView*> mdis = getMDIViewsOfType(View3DInventor::getClassTypeId());
-    for (std::list<MDIView*>::const_iterator it = mdis.begin(); it != mdis.end(); ++it) {
-        View3DInventor* view = static_cast<View3DInventor*>(*it);
-        if (view->getViewer()->hasViewProvider(vp))
+    std::list<BaseView*> mdis = getViewsOfType(InventorView::getClassTypeId());
+    for (std::list<BaseView*>::const_iterator it = mdis.begin(); it != mdis.end(); ++it) {
+        InventorView* view = static_cast<InventorView*>(*it);
+        if (view && view->getInventorViewer()->hasViewProvider(vp))
             return *it;
     }
 
     return 0;
 }
 
-Gui::MDIView* Document::getEditingViewOfViewProvider(Gui::ViewProvider* vp) const
+Gui::BaseView* Document::getEditingViewOfViewProvider(Gui::ViewProvider* vp) const
 {
-    std::list<MDIView*> mdis = getMDIViewsOfType(View3DInventor::getClassTypeId());
-    for (std::list<MDIView*>::const_iterator it = mdis.begin(); it != mdis.end(); ++it) {
-        View3DInventor* view = static_cast<View3DInventor*>(*it);
-        View3DInventorViewer* viewer = view->getViewer();
+    std::list<BaseView*> mdis = getViewsOfType(InventorView::getClassTypeId());
+    for (std::list<BaseView*>::const_iterator it = mdis.begin(); it != mdis.end(); ++it) {
+        InventorView* view = static_cast<InventorView*>(*it);
+        if(!view)
+            continue;
+        InventorViewer* viewer = view->getInventorViewer();
         // there is only one 3d view which is in edit mode
-        if (viewer->hasViewProvider(vp) && viewer->isEditingViewProvider())
+        if (viewer && viewer->hasViewProvider(vp) && viewer->isEditingViewProvider())
             return *it;
     }
 

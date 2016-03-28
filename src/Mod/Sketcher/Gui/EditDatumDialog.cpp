@@ -84,7 +84,7 @@ void EditDatumDialog::exec(bool atCursor)
             return;
         }
 
-        Gui::MDIView *mdi = Gui::Application::Instance->activeDocument()->getActiveView();
+        Gui::MDIView *mdi = dynamic_cast<Gui::MDIView*>(Gui::Application::Instance->activeDocument()->getActiveView());
         Gui::View3DInventorViewer *viewer = static_cast<Gui::View3DInventor *>(mdi)->getViewer();
 
         QDialog dlg(viewer->getGLWidget());

@@ -208,7 +208,7 @@ private:
     {
         Gui::Document* doc = Gui::Application::Instance->activeDocument();
         if (doc) {
-            Gui::View3DInventor* view = qobject_cast<Gui::View3DInventor*>(doc->getActiveView());
+            Gui::View3DInventor* view = qobject_cast<Gui::View3DInventor*>(dynamic_cast<Gui::MDIView*>(doc->getActiveView()));
             if (view) {
                 Gui::View3DInventorViewer* viewer = view->getViewer();
                 SoSeparator* scene = static_cast<SoSeparator*>(viewer->getSceneGraph());

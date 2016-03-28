@@ -349,7 +349,7 @@ void ViewProviderSketch::purgeHandler(void)
     deactivateHandler();
 
     // ensure that we are in sketch only selection mode
-    Gui::MDIView *mdi = Gui::Application::Instance->activeDocument()->getActiveView();
+    Gui::MDIView *mdi = dynamic_cast<Gui::MDIView*>(Gui::Application::Instance->activeDocument()->getActiveView());
     Gui::View3DInventorViewer *viewer;
     viewer = static_cast<Gui::View3DInventor *>(mdi)->getViewer();
 
@@ -1329,7 +1329,7 @@ Base::Vector3d ViewProviderSketch::seekConstraintPosition(const Base::Vector3d &
                                                           const SoNode *constraint)
 {
     assert(edit);
-    Gui::MDIView *mdi = this->getEditingView();
+    Gui::MDIView *mdi = dynamic_cast<Gui::MDIView*>(this->getEditingView());
     if (!(mdi && mdi->isDerivedFrom(Gui::View3DInventor::getClassTypeId())))
         return Base::Vector3d(0, 0, 0);
     Gui::View3DInventorViewer *viewer = static_cast<Gui::View3DInventor *>(mdi)->getViewer();
@@ -1818,7 +1818,7 @@ SbVec3s ViewProviderSketch::getDisplayedSize(const SoImage *iconPtr) const
 
 void ViewProviderSketch::centerSelection()
 {
-    Gui::MDIView *mdi = this->getActiveView();
+    Gui::MDIView *mdi = dynamic_cast<Gui::MDIView*>(this->getActiveView());
     Gui::View3DInventor *view = qobject_cast<Gui::View3DInventor*>(mdi);
     if (!view || !edit)
         return;
@@ -2556,7 +2556,7 @@ void ViewProviderSketch::drawConstraintIcons()
             SbVec3f pos0(startingpoint.x,startingpoint.y,startingpoint.z);
             SbVec3f pos1(endpoint.x,endpoint.y,endpoint.z);
 
-            Gui::MDIView *mdi = this->getEditingView();
+            Gui::MDIView *mdi = dynamic_cast<Gui::MDIView*>(this->getEditingView());
             if (!(mdi && mdi->isDerivedFrom(Gui::View3DInventor::getClassTypeId())))
                 return;
             Gui::View3DInventorViewer *viewer = static_cast<Gui::View3DInventor *>(mdi)->getViewer();
@@ -2926,7 +2926,7 @@ void ViewProviderSketch::drawTypicalConstraintIcon(const constrIconQueueItem &i)
 
 float ViewProviderSketch::getScaleFactor()
 {
-    Gui::MDIView *mdi = this->getEditingView();
+    Gui::MDIView *mdi = dynamic_cast<Gui::MDIView*>(this->getEditingView());
     if (mdi && mdi->isDerivedFrom(Gui::View3DInventor::getClassTypeId())) {
         Gui::View3DInventorViewer *viewer = static_cast<Gui::View3DInventor *>(mdi)->getViewer();
         return viewer->getSoRenderManager()->getCamera()->getViewVolume(viewer->getSoRenderManager()->getCamera()->aspectRatio.getValue()).getWorldToScreenScale(SbVec3f(0.f, 0.f, 0.f), 0.1f) / 3;
@@ -3919,7 +3919,7 @@ Restart:
         }
     }
 
-    Gui::MDIView *mdi = this->getActiveView();
+    Gui::MDIView *mdi = dynamic_cast<Gui::MDIView*>(this->getActiveView());
     if (mdi && mdi->isDerivedFrom(Gui::View3DInventor::getClassTypeId())) { 
         static_cast<Gui::View3DInventor *>(mdi)->getViewer()->redraw();
     }
@@ -4128,7 +4128,7 @@ void ViewProviderSketch::updateData(const App::Property *prop)
 
         if(getSketchObject()->getExternalGeometryCount()+getSketchObject()->getHighestCurveIndex() + 1 == 
             getSketchObject()->getSolvedSketch().getGeometrySize()) {
-            Gui::MDIView *mdi = Gui::Application::Instance->activeDocument()->getActiveView();
+            Gui::MDIView *mdi = dynamic_cast<Gui::MDIView*>(Gui::Application::Instance->activeDocument()->getActiveView());
             if (mdi->isDerivedFrom(Gui::View3DInventor::getClassTypeId()))
                 draw(false);
             
