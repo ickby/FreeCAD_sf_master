@@ -180,6 +180,10 @@
 
 using namespace Part;
 
+int TopoShape::NamingCounter = -1;
+extern RefMap buildRefMap(const TopoDS_Shape& newShape, const TopoDS_Shape& oldShape);
+
+
 const char* BRepBuilderAPI_FaceErrorText(BRepBuilderAPI_FaceError et)
 {
     switch (et)
@@ -226,11 +230,18 @@ TopoShape::~TopoShape()
 
 TopoShape::TopoShape(const TopoDS_Shape& shape)
   : _Shape(shape)
-{
+{    
+    std::stringstream stream;
+    stream << "shape" << ++NamingCounter;
+    ShapeMap hist;
+    hist.name = stream.str();
+    hist.Map = buildRefMap(shape, TopoDS_Shape());
+
+    History.push_back(hist);
 }
 
 TopoShape::TopoShape(const TopoShape& shape)
-  : _Shape(shape._Shape)
+  : _Shape(shape._Shape), History(shape.History), TopInfo(shape.TopInfo)
 {
 }
 
