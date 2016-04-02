@@ -237,7 +237,7 @@ App::DocumentObjectExecReturn *Loft::execute(void)
         return new App::DocumentObjectExecReturn("No sections linked.");
 
     try {
-        TopTools_ListOfShape profiles;
+        std::vector<TopoShape> profiles;
         const std::vector<App::DocumentObject*>& shapes = Sections.getValues();
         std::vector<App::DocumentObject*>::const_iterator it;
         for (it = shapes.begin(); it != shapes.end(); ++it) {
@@ -247,34 +247,7 @@ App::DocumentObjectExecReturn *Loft::execute(void)
             if (shape.IsNull())
                 return new App::DocumentObjectExecReturn("Linked shape is invalid.");
 
-            // Extract first element of a compound
-            if (shape.ShapeType() == TopAbs_COMPOUND) {
-                TopoDS_Iterator it(shape);
-                for (; it.More(); it.Next()) {
-                    if (!it.Value().IsNull()) {
-                        shape = it.Value();
-                        break;
-                    }
-                }
-            }
-            if (shape.ShapeType() == TopAbs_FACE) {
-                TopoDS_Wire faceouterWire = ShapeAnalysis::OuterWire(TopoDS::Face(shape));
-                profiles.Append(faceouterWire);
-            }
-            else if (shape.ShapeType() == TopAbs_WIRE) {
-                BRepBuilderAPI_MakeWire mkWire(TopoDS::Wire(shape));
-                profiles.Append(mkWire.Wire());
-            }
-            else if (shape.ShapeType() == TopAbs_EDGE) {
-                BRepBuilderAPI_MakeWire mkWire(TopoDS::Edge(shape));
-                profiles.Append(mkWire.Wire());
-            }
-            else if (shape.ShapeType() == TopAbs_VERTEX) {
-                profiles.Append(shape);
-            }
-            else {
-                return new App::DocumentObjectExecReturn("Linked shape is not a vertex, edge, wire nor face.");
-            }
+            profiles.push_back(static_cast<Part::Feature*>(*it)->Shape.getShape());
         }
 
         Standard_Boolean isSolid = Solid.getValue() ? Standard_True : Standard_False;

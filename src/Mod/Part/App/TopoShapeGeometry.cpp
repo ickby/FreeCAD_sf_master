@@ -80,7 +80,7 @@ using namespace Part;
 extern RefMap buildRefMapFromSketch(const TopoDS_Shape shape, const std::vector<Geometry*>& geometry);
 extern RefMap buildRefMap(const TopoDS_Shape& newShape, const TopoDS_Shape& oldShape);
 extern RefMap joinMap(const RefMap& oldMap, const RefMap& newMap);
-extern RefMap buildRefMap(BRepPrimAPI_MakePrism &mkPrism, const TopoDS_Shape& oldShape);
+extern RefMap buildRefMap(BRepPrimAPI_MakeSweep &mkPrism, const TopoDS_Shape& oldShape);
 extern RefMap buildRefMap(BRepPrimAPI_MakeRevol &mkRevol, const TopoDS_Shape& oldShape);
 extern RefMap buildRefMap(BRepFeat_MakePrism &mkPrism, const TopoDS_Shape& oldShape);
 extern RefMap buildRefMap(BRepBuilderAPI_MakeShape &mkShape, const TopoDS_Shape& oldShape);
@@ -686,7 +686,7 @@ TopoDS_Shape getSolid(const TopoDS_Shape& shape)
 
     return TopoDS_Shape();
 }
-
+/*
 void TopoShape::tnFuse(const TopoShape& other, const bool thisIsBase ) {
     Base::Console().Error("=== MAKEFUSE ===\n");
 
@@ -732,7 +732,7 @@ void TopoShape::tnFuse(const TopoShape& other, const bool thisIsBase ) {
     printHistory();
 #endif
 }
-/*
+
 void TopoShape::makeCut(const TopoShape& other, const bool thisIsBase) {
     Base::Console().Error("=== MAKECUT ===\n");
 

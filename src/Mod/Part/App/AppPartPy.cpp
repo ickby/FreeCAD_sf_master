@@ -1127,7 +1127,7 @@ private:
             TopoShape helix;
             Standard_Boolean anIsLeft = PyObject_IsTrue(pleft) ? Standard_True : Standard_False;
             Standard_Boolean anIsVertHeight = PyObject_IsTrue(pvertHeight) ? Standard_True : Standard_False;
-            TopoDS_Shape wire = helix.makeHelix(pitch, height, radius, angle,
+            TopoShape wire = helix.makeHelix(pitch, height, radius, angle,
                                                 anIsLeft, anIsVertHeight);
             return Py::asObject(new TopoShapeWirePy(new TopoShape(wire)));
         }
@@ -1148,7 +1148,7 @@ private:
         try {
             TopoShape helix;
             Standard_Boolean anIsLeft = PyObject_IsTrue(pleft) ? Standard_True : Standard_False;
-            TopoDS_Shape wire = helix.makeLongHelix(pitch, height, radius, angle, anIsLeft);
+            TopoShape wire = helix.makeLongHelix(pitch, height, radius, angle, anIsLeft);
             return Py::asObject(new TopoShapeWirePy(new TopoShape(wire)));
         }
         catch (Standard_Failure) {
@@ -1164,7 +1164,7 @@ private:
 
         try {
             TopoShape helix;
-            TopoDS_Shape wire = helix.makeThread(pitch, depth, height, radius);
+            TopoShape wire = helix.makeThread(pitch, depth, height, radius);
             return Py::asObject(new TopoShapeWirePy(new TopoShape(wire)));
         }
         catch (Standard_Failure) {
@@ -1328,9 +1328,9 @@ private:
             cont = (int)GeomAbs_C0;
 
         try {
-            const TopoDS_Shape& path_shape = static_cast<TopoShapePy*>(pshape)->getTopoShapePtr()->_Shape;
+            const TopoShape& path_shape = *static_cast<TopoShapePy*>(pshape)->getTopoShapePtr();
             TopoShape myShape(path_shape);
-            TopoDS_Shape face = myShape.makeTube(radius, tolerance, cont, maxdegree, maxsegment);
+            TopoShape face = myShape.makeTube(radius, tolerance, cont, maxdegree, maxsegment);
             return Py::asObject(new TopoShapeFacePy(new TopoShape(face)));
         }
         catch (Standard_Failure) {
@@ -1351,11 +1351,11 @@ private:
             throw Py::Exception();
 
         try {
-            const TopoDS_Shape& path_shape = static_cast<TopoShapePy*>(path)->getTopoShapePtr()->_Shape;
-            const TopoDS_Shape& prof_shape = static_cast<TopoShapePy*>(profile)->getTopoShapePtr()->_Shape;
+            const TopoShape& path_shape = *static_cast<TopoShapePy*>(path)->getTopoShapePtr();
+            const TopoShape& prof_shape = *static_cast<TopoShapePy*>(profile)->getTopoShapePtr();
 
             TopoShape myShape(path_shape);
-            TopoDS_Shape face = myShape.makeSweep(prof_shape, tolerance, fillMode);
+            TopoShape face = myShape.makeSweep(prof_shape, tolerance, fillMode);
             return Py::asObject(new TopoShapeFacePy(new TopoShape(face)));
         }
         catch (Standard_Failure) {
@@ -1420,14 +1420,14 @@ private:
             throw Py::Exception();
         }
 
-        TopTools_ListOfShape profiles;
+        std::vector<TopoShape> profiles;
         Py::Sequence list(pcObj);
 
         for (Py::Sequence::iterator it = list.begin(); it != list.end(); ++it) {
             if (PyObject_TypeCheck((*it).ptr(), &(Part::TopoShapePy::Type))) {
-                const TopoDS_Shape& sh = static_cast<TopoShapePy*>((*it).ptr())->
-                    getTopoShapePtr()->_Shape;
-                profiles.Append(sh);
+                const TopoShape& sh = *static_cast<TopoShapePy*>((*it).ptr())->
+                    getTopoShapePtr();
+                profiles.push_back(sh);
             }
         }
 
@@ -1435,7 +1435,7 @@ private:
         Standard_Boolean anIsSolid = PyObject_IsTrue(psolid) ? Standard_True : Standard_False;
         Standard_Boolean anIsRuled = PyObject_IsTrue(pruled) ? Standard_True : Standard_False;
         Standard_Boolean anIsClosed = PyObject_IsTrue(pclosed) ? Standard_True : Standard_False;
-        TopoDS_Shape aResult = myShape.makeLoft(profiles, anIsSolid, anIsRuled,anIsClosed);
+        TopoShape aResult = myShape.makeLoft(profiles, anIsSolid, anIsRuled,anIsClosed);
         return Py::asObject(new TopoShapePy(new TopoShape(aResult)));
 #endif
     }

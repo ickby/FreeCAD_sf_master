@@ -237,9 +237,8 @@ PyObject* TopoShapeWirePy::makePipe(PyObject *args)
     PyObject *pShape;
     if (PyArg_ParseTuple(args, "O!", &(Part::TopoShapePy::Type), &pShape)) {
         try {
-            TopoDS_Shape profile = static_cast<TopoShapePy*>(pShape)->getTopoShapePtr()->_Shape;
-            TopoDS_Shape shape = this->getTopoShapePtr()->makePipe(profile);
-            return new TopoShapePy(new TopoShape(shape));
+            TopoShape profile = *static_cast<TopoShapePy*>(pShape)->getTopoShapePtr();
+            return new TopoShapePy(new TopoShape(this->getTopoShapePtr()->makePipe(profile)));
         }
         catch (Standard_Failure) {
             Handle_Standard_Failure e = Standard_Failure::Caught();
@@ -263,15 +262,15 @@ PyObject* TopoShapeWirePy::makePipeShell(PyObject *args)
                              &PyBool_Type, &is_Frenet,
                              &transition)) {
         try {
-            TopTools_ListOfShape sections;
+            std::vector<TopoShape> sections;
             Py::Sequence list(obj);
             for (Py::Sequence::iterator it = list.begin(); it != list.end(); ++it) {
                 if (PyObject_TypeCheck((*it).ptr(), &(Part::TopoShapePy::Type))) {
-                    const TopoDS_Shape& shape = static_cast<TopoShapePy*>((*it).ptr())->getTopoShapePtr()->_Shape;
-                    sections.Append(shape);
+                    const TopoShape& shape = *static_cast<TopoShapePy*>((*it).ptr())->getTopoShapePtr();
+                    sections.push_back(shape);
                 }
             }
-            TopoDS_Shape shape = this->getTopoShapePtr()->makePipeShell(sections, 
+            TopoShape shape = this->getTopoShapePtr()->makePipeShell(sections, 
                 PyObject_IsTrue(make_solid) ? Standard_True : Standard_False,
                 PyObject_IsTrue(is_Frenet)  ? Standard_True : Standard_False,
                 transition);

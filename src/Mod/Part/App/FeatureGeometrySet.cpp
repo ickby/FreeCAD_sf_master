@@ -56,7 +56,7 @@ App::DocumentObjectExecReturn *FeatureGeometrySet::execute(void)
             result._Shape = sh;
         }
         else {
-            result._Shape = result.fuse(sh);
+            result = result.fuse(sh);
         }
     }
     

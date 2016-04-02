@@ -160,6 +160,8 @@
 # include <APIHeaderSection_MakeHeader.hxx>
 # include <ShapeAnalysis_FreeBoundsProperties.hxx>
 # include <ShapeAnalysis_FreeBoundData.hxx>
+#include <BRepFeat_MakePrism.hxx>
+#include <ShapeAnalysis.hxx>
 
 #include <Base/Builder3D.h>
 #include <Base/FileInfo.h>
@@ -177,11 +179,25 @@
 #include "modelRefine.h"
 #include "Tools.h"
 #include "encodeFilename.h"
+#include "Geometry.h"
 
 using namespace Part;
 
 int TopoShape::NamingCounter = -1;
+
+extern RefMap buildRefMapFromGeometry(const TopoDS_Shape shape, const std::vector<Geometry*>& geometry);
 extern RefMap buildRefMap(const TopoDS_Shape& newShape, const TopoDS_Shape& oldShape);
+extern RefMap joinMap(const RefMap& oldMap, const RefMap& newMap);
+extern RefMap buildRefMap(BRepPrimAPI_MakePrism &mkPrism, const TopoDS_Shape& oldShape);
+extern RefMap buildRefMap(BRepPrimAPI_MakeRevol &mkRevol, const TopoDS_Shape& oldShape);
+extern RefMap buildRefMap(BRepFeat_MakePrism &mkPrism, const TopoDS_Shape& oldShape);
+extern RefMap buildRefMap(BRepBuilderAPI_MakeShape &mkShape, const TopoDS_Shape& oldShape);
+std::vector<RefMap> buildRefMap(BRepPrimAPI_MakeSweep &mkSweep, const std::vector<TopoDS_Shape> oldShapes);
+extern TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
+                                const std::vector<TopoDS_Shape> oldShape,
+                                std::vector<RefMap>& result,
+                                const std::vector<TopInfoMap> oldTopInfos,
+                                TopInfoMap& newTopInfo);
 
 
 const char* BRepBuilderAPI_FaceErrorText(BRepBuilderAPI_FaceError et)
@@ -237,6 +253,7 @@ TopoShape::TopoShape(const TopoDS_Shape& shape)
     hist.name = stream.str();
     hist.Map = buildRefMap(shape, TopoDS_Shape());
 
+    Base::Console().Error("Building shape %s\n", hist.name.c_str());
     History.push_back(hist);
 }
 
@@ -1372,68 +1389,145 @@ bool TopoShape::isClosed() const
     return BRep_Tool::IsClosed(this->_Shape) ? true : false;
 }
 
-TopoDS_Shape TopoShape::cut(TopoDS_Shape shape) const
-{
-    if (this->_Shape.IsNull())
-        Standard_Failure::Raise("Base shape is null");
-    if (shape.IsNull())
-        Standard_Failure::Raise("Tool shape is null");
-    BRepAlgoAPI_Cut mkCut(this->_Shape, shape);
-    return mkCut.Shape();
+//boolean operations 
+
+//helper function to build the resulting TopoShape including occ shape and history. The parameters 
+//are the boolean algorithm and the resulting shape,called result, as well as the operant used in 
+//the algo called shape.
+void TopoShape::buildBoolean(BRepAlgoAPI_BooleanOperation* op, TopoShape& result, TopoShape& shape) const {
+    
+        
+    if (!op->IsDone())
+        throw Base::Exception("TopoShape: Fusion failed");    
+    
+    // This is important, otherwise we may get weird circular edge segments split in arbitrary places!
+    op->RefineEdges();
+    
+    std::vector<RefMap> refmaps(2);
+    std::vector<TopoDS_Shape> oldShapes;
+    oldShapes.push_back(result._Shape);
+    oldShapes.push_back(shape._Shape);
+    std::vector<TopInfoMap> TopInfos;
+    TopInfos.push_back(result.TopInfo);
+    TopInfos.push_back(shape.TopInfo);
+    
+    result._Shape = buildRefMap(*op, oldShapes, refmaps, TopInfos, result.TopInfo);
+
+    for (std::vector<ShapeMap>::iterator h = result.History.begin(); h != result.History.end(); h++)
+        h->Map = joinMap(h->Map, refmaps[0]);
+    for (std::vector<ShapeMap>::const_iterator h = shape.History.begin(); h != shape.History.end(); h++) {
+        ShapeMap resultHistory = *h;
+        resultHistory.Map = joinMap(resultHistory.Map, refmaps[1]);
+        result.History.push_back(resultHistory);
+    }
 }
 
-TopoDS_Shape TopoShape::common(TopoDS_Shape shape) const
+TopoShape TopoShape::cut(TopoShape shape) const
 {
+#ifdef FC_DEBUG
+    Base::Console().Error("=== MAKE CUT ===\n");
+#endif
+
     if (this->_Shape.IsNull())
         Standard_Failure::Raise("Base shape is null");
-    if (shape.IsNull())
+    if (shape._Shape.IsNull())
         Standard_Failure::Raise("Tool shape is null");
-    BRepAlgoAPI_Common mkCommon(this->_Shape, shape);
-    return mkCommon.Shape();
+    
+    TopoShape resultShape(*this);    
+    BRepAlgoAPI_Cut mkCut(resultShape._Shape, shape._Shape);
+    
+    buildBoolean(&mkCut, resultShape, shape);
+
+#ifdef FC_DEBUG
+    resultShape.printHistory();
+#endif
+    
+    return resultShape;
 }
 
-TopoDS_Shape TopoShape::fuse(TopoDS_Shape shape) const
+TopoShape TopoShape::common(TopoShape shape) const
 {
+#ifdef FC_DEBUG
+    Base::Console().Error("=== MAKE COMMON ===\n");
+#endif
     if (this->_Shape.IsNull())
         Standard_Failure::Raise("Base shape is null");
-    if (shape.IsNull())
+    if (shape._Shape.IsNull())
         Standard_Failure::Raise("Tool shape is null");
-    BRepAlgoAPI_Fuse mkFuse(this->_Shape, shape);
-    return mkFuse.Shape();
+    
+    TopoShape resultShape(*this);    
+    BRepAlgoAPI_Common mkCommon(resultShape._Shape, shape._Shape);
+    buildBoolean(&mkCommon, resultShape, shape);
+
+#ifdef FC_DEBUG
+    resultShape.printHistory();
+#endif
+    
+    return resultShape;
 }
 
-TopoDS_Shape TopoShape::multiFuse(const std::vector<TopoDS_Shape>& shapes, Standard_Real tolerance) const
+TopoShape TopoShape::fuse(TopoShape shape) const
+{
+#ifdef FC_DEBUG
+    Base::Console().Error("=== MAKE FUSE ===\n");
+#endif
+    if (this->_Shape.IsNull())
+        Standard_Failure::Raise("Base shape is null");
+    if (shape._Shape.IsNull())
+        Standard_Failure::Raise("Tool shape is null");
+    
+    TopoShape resultShape(*this);    
+    BRepAlgoAPI_Fuse mkFuse(resultShape._Shape, shape._Shape);
+    
+    buildBoolean(&mkFuse, resultShape, shape);
+
+#ifdef FC_DEBUG
+    resultShape.printHistory();
+#endif
+    
+    return resultShape;
+}
+
+TopoShape TopoShape::multiFuse(const std::vector<TopoShape>& shapes, Standard_Real tolerance) const
 {
     if (this->_Shape.IsNull())
         Standard_Failure::Raise("Base shape is null");
+    
+    TopoShape resShape(*this);
+    
 #if OCC_VERSION_HEX <= 0x060800
     if (tolerance > 0.0)
         Standard_Failure::Raise("Fuzzy Booleans are not supported in this version of OCCT");
-    TopoDS_Shape resShape = this->_Shape;
-    if (resShape.IsNull())
-        throw Base::Exception("Object shape is null");
-    for (std::vector<TopoDS_Shape>::const_iterator it = shapes.begin(); it != shapes.end(); ++it) {
-        if (it->IsNull())
+    
+    for (std::vector<TopoShape>::const_iterator it = shapes.begin(); it != shapes.end(); ++it) {
+        if (it->_Shape.IsNull())
             throw Base::Exception("Input shape is null");
         // Let's call algorithm computing a fuse operation:
-        BRepAlgoAPI_Fuse mkFuse(resShape, *it);
-        // Let's check if the fusion has been successful
-        if (!mkFuse.IsDone())
-            throw Base::Exception("Fusion failed");
-        resShape = mkFuse.Shape();
+        resShape = resShape.fuse(*it);
     }
 #else
+
+#ifdef FC_DEBUG
+    Base::Console().Error("=== MAKE MULTIFUSE ===\n");
+#endif
     BRepAlgoAPI_Fuse mkFuse;
+    std::vector<TopoDS_Shape> oldShapes;
+    std::vector<TopInfoMap> TopInfos;
     TopTools_ListOfShape shapeArguments,shapeTools;
-    shapeArguments.Append(this->_Shape);
-    for (std::vector<TopoDS_Shape>::const_iterator it = shapes.begin(); it != shapes.end(); ++it) {
-        if (it->IsNull())
+    TopInfos.push_back(resShape.TopInfo);
+    oldShapes.push_back(resShape._Shape);
+    shapeArguments.Append(resShape._Shape);
+    for (std::vector<TopoShape>::const_iterator it = shapes.begin(); it != shapes.end(); ++it) {
+        if (it->_Shape.IsNull())
             throw Base::Exception("Tool shape is null");
         if (tolerance > 0.0)
             // workaround for http://dev.opencascade.org/index.php?q=node/1056#comment-520
-            shapeTools.Append(BRepBuilderAPI_Copy(*it).Shape());
+            shapeTools.Append(BRepBuilderAPI_Copy(it->_Shape).Shape());
         else
-            shapeTools.Append(*it);
+            shapeTools.Append(it->_Shape);
+        
+        oldShapes.push_back(it->_Shape);
+        TopInfos.push_back(it->TopInfo);
     }
     mkFuse.SetArguments(shapeArguments);
     mkFuse.SetTools(shapeTools);
@@ -1442,29 +1536,67 @@ TopoDS_Shape TopoShape::multiFuse(const std::vector<TopoDS_Shape>& shapes, Stand
     mkFuse.Build();
     if (!mkFuse.IsDone())
         throw Base::Exception("MultiFusion failed");
-    TopoDS_Shape resShape = mkFuse.Shape();
+    
+    // This is important, otherwise we may get weird circular edge segments split in arbitrary places!
+    mkFuse->RefineEdges();
+    
+    std::vector<RefMap> refmaps(shapes.size());   
+    result._Shape = buildRefMap(mkFuse, oldShapes, refmaps, TopInfos, resShape.TopInfo);
+
+    for(int i=0; refmaps.size(); ++i) {
+        for (std::vector<ShapeMap>::iterator h = result.History.begin(); h != result.History.end(); h++)
+            h->Map = joinMap(h->Map, refmaps[i]);
+    }
+    for(int i=0; refmaps.size(); ++i) {
+        TopoShape shape = shapes[i];
+        for (std::vector<ShapeMap>::const_iterator h = shape.History.begin(); h != shape.History.end(); h++) {
+            ShapeMap resultHistory = *h;
+            resultHistory.Map = joinMap(resultHistory.Map, refmaps[i]);
+            result.History.push_back(resultHistory);
+        }
+    }
 #endif
     return resShape;
 }
 
-TopoDS_Shape TopoShape::oldFuse(TopoDS_Shape shape) const
+TopoShape TopoShape::oldFuse(TopoShape shape) const
 {
+    Base::Console().Warning("This function is deprecated and does not support shape history");
+    
     if (this->_Shape.IsNull())
         Standard_Failure::Raise("Base shape is null");
-    if (shape.IsNull())
+    if (shape._Shape.IsNull())
         Standard_Failure::Raise("Tool shape is null");
-    BRepAlgo_Fuse mkFuse(this->_Shape, shape);
+
+    BRepAlgo_Fuse mkFuse(_Shape, shape._Shape);
+    
+    if (!mkFuse.IsDone())
+        throw Base::Exception("TopoShape: Fusion failed");    
+    
     return mkFuse.Shape();
 }
 
-TopoDS_Shape TopoShape::section(TopoDS_Shape shape) const
+TopoShape TopoShape::section(TopoShape shape) const
 {
+#ifdef FC_DEBUG
+    Base::Console().Error("=== MAKE SECTION ===\n");
+#endif
+    
     if (this->_Shape.IsNull())
         Standard_Failure::Raise("Base shape is null");
-    if (shape.IsNull())
+    if (shape._Shape.IsNull())
         Standard_Failure::Raise("Tool shape is null");
-    BRepAlgoAPI_Section mkSection(this->_Shape, shape);
-    return mkSection.Shape();
+    
+    TopoShape resultShape(*this); 
+    BRepAlgoAPI_Section mkSection(this->_Shape, shape._Shape);
+    
+    buildBoolean(&mkSection, resultShape, shape);
+
+#ifdef FC_DEBUG
+    resultShape.printHistory();
+#endif
+    
+    return resultShape;
 }
 
 std::list<TopoDS_Wire> TopoShape::slice(const Base::Vector3d& dir, double d) const
@@ -1497,29 +1629,53 @@ TopoDS_Compound TopoShape::slices(const Base::Vector3d& dir, const std::vector<d
     return comp;
 }
 
-TopoDS_Shape TopoShape::makePipe(const TopoDS_Shape& profile) const
+TopoShape TopoShape::makePipe(const TopoShape& profile) const
 {
+    
+#ifdef FC_DEBUG
+    Base::Console().Error("=== MAKE PIPE ===\n");
+#endif
+    
     if (this->_Shape.IsNull())
         Standard_Failure::Raise("Cannot sweep along empty spine");
     if (this->_Shape.ShapeType() != TopAbs_WIRE)
         Standard_Failure::Raise("Spine shape is not a wire");
-    if (profile.IsNull())
+    if (profile._Shape.IsNull())
         Standard_Failure::Raise("Cannot sweep empty profile");
-    BRepOffsetAPI_MakePipe mkPipe(TopoDS::Wire(this->_Shape), profile);
-    return mkPipe.Shape();
+    
+    TopoShape resultShape(*this);
+    BRepOffsetAPI_MakePipe mkPipe(TopoDS::Wire(resultShape._Shape), profile._Shape);
+
+    // Note: We assume that TopInfo is empty and stays empty
+    std::vector<TopoDS_Shape> vec(1);
+    vec.push_back(profile._Shape);
+    std::vector<RefMap> newMaps = buildRefMap(mkPipe, vec);
+    for (std::vector<ShapeMap>::iterator h = resultShape.History.begin(); h != resultShape.History.end(); h++)
+        resultShape.History.front().Map = joinMap(resultShape.History.front().Map, newMaps.front());
+    
+    resultShape._Shape = mkPipe.Shape();
+    
+#ifdef FC_DEBUG
+    printHistory();
+#endif
+    
+    return resultShape;
 }
 
-TopoDS_Shape TopoShape::makePipeShell(const TopTools_ListOfShape& profiles,
-                                      const Standard_Boolean make_solid,
-                                      const Standard_Boolean isFrenet,
-                                      int transition) const
+TopoShape TopoShape::makePipeShell(const std::vector<TopoShape>& profiles, const Standard_Boolean make_solid, const Standard_Boolean isFrenet, int transition) const
 {
+       
+#ifdef FC_DEBUG
+    Base::Console().Error("=== MAKE PIPESHELL ===\n");
+#endif
+    
     if (this->_Shape.IsNull())
         Standard_Failure::Raise("Cannot sweep along empty spine");
     if (this->_Shape.ShapeType() != TopAbs_WIRE)
         Standard_Failure::Raise("Spine shape is not a wire");
 
-    BRepOffsetAPI_MakePipeShell mkPipeShell(TopoDS::Wire(this->_Shape));
+    TopoShape resultShape(*this);
+    BRepOffsetAPI_MakePipeShell mkPipeShell(TopoDS::Wire(resultShape._Shape));
     BRepBuilderAPI_TransitionMode transMode;
     switch (transition) {
         case 1: transMode = BRepBuilderAPI_RightCorner;
@@ -1531,9 +1687,11 @@ TopoDS_Shape TopoShape::makePipeShell(const TopTools_ListOfShape& profiles,
     }
     mkPipeShell.SetMode(isFrenet);
     mkPipeShell.SetTransitionMode(transMode);
-    TopTools_ListIteratorOfListOfShape it;
-    for (it.Initialize(profiles); it.More(); it.Next()) {
-        mkPipeShell.Add(TopoDS_Shape(it.Value()));
+    
+    std::vector<TopoDS_Shape> vec;
+    for (const TopoShape& shape : profiles) {
+        mkPipeShell.Add(shape._Shape);
+        vec.push_back(shape._Shape);
     }
 
     if (!mkPipeShell.IsReady()) Standard_Failure::Raise("shape is not ready to build");
@@ -1541,7 +1699,28 @@ TopoDS_Shape TopoShape::makePipeShell(const TopTools_ListOfShape& profiles,
 
     if (make_solid)	mkPipeShell.MakeSolid();
 
-    return mkPipeShell.Shape();
+    std::vector<RefMap> newMaps = buildRefMap(mkPipeShell, vec);
+    resultShape.History.front().Map = joinMap(resultShape.History.front().Map, newMaps.front());
+    resultShape._Shape = mkPipeShell.Shape();
+    
+    for(int i=0; newMaps.size(); ++i) {
+        for (std::vector<ShapeMap>::iterator h = resultShape.History.begin(); h != resultShape.History.end(); h++)
+            h->Map = joinMap(h->Map, newMaps[i]);
+    }
+    for(int i=0; newMaps.size(); ++i) {  
+        TopoShape shape = profiles[i];
+        for (std::vector<ShapeMap>::const_iterator h = shape.History.begin(); h != shape.History.end(); h++) {
+            ShapeMap resultHistory = *h;
+            resultHistory.Map = joinMap(resultHistory.Map, newMaps[i]);
+            resultShape.History.push_back(resultHistory);
+        }
+    }
+ 
+#ifdef FC_DEBUG
+    printHistory();
+#endif
+    
+    return resultShape;
 }
 
 #if 0
@@ -1590,8 +1769,12 @@ static Handle(Law_Function) CreateBsFunction (const Standard_Real theFirst, cons
     return aFunc;
 }
 
-TopoDS_Shape TopoShape::makeTube(double radius, double tol, int cont, int maxdegree, int maxsegm) const
+TopoShape TopoShape::makeTube(double radius, double tol, int cont, int maxdegree, int maxsegm) const
 {
+#ifdef FC_DEBUG
+    Base::Console().Error("=== MAKE TUBE ===\n");
+#endif
+    
     // http://opencascade.blogspot.com/2009/11/surface-modeling-part3.html
     Standard_Real theTol = tol;
     Standard_Real theRadius = radius;
@@ -1604,9 +1787,10 @@ TopoDS_Shape TopoShape::makeTube(double radius, double tol, int cont, int maxdeg
     if (this->_Shape.IsNull())
         Standard_Failure::Raise("Cannot sweep along empty spine");
 
+    TopoShape resultShape(*this);
     Handle(Adaptor3d_HCurve) myPath;
-    if (this->_Shape.ShapeType() == TopAbs_EDGE) {
-        const TopoDS_Edge& path_edge = TopoDS::Edge(this->_Shape);
+    if (resultShape._Shape.ShapeType() == TopAbs_EDGE) {
+        const TopoDS_Edge& path_edge = TopoDS::Edge(resultShape._Shape);
         BRepAdaptor_Curve path_adapt(path_edge);
         myPath = new BRepAdaptor_HCurve(path_adapt);
     }
@@ -1646,28 +1830,44 @@ TopoDS_Shape TopoShape::makeTube(double radius, double tol, int cont, int maxdeg
           , Precision::Confusion()
 #endif
         );
-        return mkBuilder.Shape();
+        
+        RefMap newMap = buildRefMap(mkBuilder, resultShape._Shape);
+    
+        for (std::vector<ShapeMap>::iterator h = resultShape.History.begin(); h != resultShape.History.end(); h++)
+            h->Map = joinMap(h->Map, newMap);
+        
+        resultShape._Shape = mkBuilder.Shape();
+#ifdef FC_DEBUG
+        printHistory();
+#endif
+        
+        return resultShape;
     }
 
-    return TopoDS_Shape();
+    return TopoShape();
 }
 #endif
 
-TopoDS_Shape TopoShape::makeSweep(const TopoDS_Shape& profile, double tol, int fillMode) const
+TopoShape TopoShape::makeSweep(const TopoShape& profile, double tol, int fillmode) const
 {
+#ifdef FC_DEBUG
+    Base::Console().Error("=== MAKE SWEEP ===\n");
+#endif
+    
     // http://opencascade.blogspot.com/2009/10/surface-modeling-part2.html
     if (this->_Shape.IsNull())
         Standard_Failure::Raise("Cannot sweep along empty spine");
     if (this->_Shape.ShapeType() != TopAbs_EDGE)
         Standard_Failure::Raise("Spine shape is not an edge");
 
-    if (profile.IsNull())
+    if (profile._Shape.IsNull())
         Standard_Failure::Raise("Cannot sweep with empty profile");
-    if (profile.ShapeType() != TopAbs_EDGE)
+    if (profile._Shape.ShapeType() != TopAbs_EDGE)
         Standard_Failure::Raise("Profile shape is not an edge");
 
-    const TopoDS_Edge& path_edge = TopoDS::Edge(this->_Shape);
-    const TopoDS_Edge& prof_edge = TopoDS::Edge(profile);
+    TopoShape resultShape(*this);
+    const TopoDS_Edge& path_edge = TopoDS::Edge(resultShape._Shape);
+    const TopoDS_Edge& prof_edge = TopoDS::Edge(profile._Shape);
 
     BRepAdaptor_Curve path_adapt(path_edge);
     double umin = path_adapt.FirstParameter();
@@ -1693,7 +1893,7 @@ TopoDS_Shape TopoShape::makeSweep(const TopoDS_Shape& profile, double tol, int f
     if (hProfile.IsNull())
         Standard_Failure::Raise("invalid curve in profile edge");
 
-    GeomFill_Pipe mkSweep(hPath, hProfile, (GeomFill_Trihedron)fillMode);
+    GeomFill_Pipe mkSweep(hPath, hProfile, (GeomFill_Trihedron)fillmode);
     mkSweep.GenerateParticularCase(Standard_True);
     mkSweep.Perform(tol, Standard_False, GeomAbs_C1, BSplCLib::MaxDegree(), 1000);
 
@@ -1703,10 +1903,21 @@ TopoDS_Shape TopoShape::makeSweep(const TopoDS_Shape& profile, double tol, int f
       , Precision::Confusion()
 #endif
     );
-    return mkBuilder.Face();
+    
+    RefMap newMap = buildRefMap(mkBuilder, resultShape._Shape);
+    
+    for (std::vector<ShapeMap>::iterator h = resultShape.History.begin(); h != resultShape.History.end(); h++)
+        h->Map = joinMap(h->Map, newMap);
+    
+    resultShape._Shape = mkBuilder.Shape();
+#ifdef FC_DEBUG
+    printHistory();
+#endif
+    
+    return resultShape;
 }
 
-TopoDS_Shape TopoShape::makeHelix(Standard_Real pitch, Standard_Real height,
+TopoShape TopoShape::makeHelix(Standard_Real pitch, Standard_Real height,
                                   Standard_Real radius, Standard_Real angle,
                                   Standard_Boolean leftHanded,
                                   Standard_Boolean newStyle) const
@@ -1760,16 +1971,25 @@ TopoDS_Shape TopoShape::makeHelix(Standard_Real pitch, Standard_Real height,
     TopoDS_Edge edgeOnSurf = BRepBuilderAPI_MakeEdge(segm , surf);
     TopoDS_Wire wire = BRepBuilderAPI_MakeWire(edgeOnSurf);
     BRepLib::BuildCurves3d(wire);
-    return wire;
+    
+    //build up the history.
+    TopoShape resultShape;
+    std::stringstream stream;
+    stream << "shape" << ++NamingCounter;
+    ShapeMap hist;
+    hist.name = stream.str();
+    hist.Map = buildRefMap(wire, TopoDS_Shape());
+    resultShape.History.push_back(hist);
+    resultShape._Shape = wire;
+    
+    return resultShape;
 }
 
 //***********
 // makeLongHelix is a workaround for an OCC problem found in helices with more than
 // some magic number of turns.  See Mantis #0954.
 //***********
-TopoDS_Shape TopoShape::makeLongHelix(Standard_Real pitch, Standard_Real height,
-                                      Standard_Real radius, Standard_Real angle,
-                                      Standard_Boolean leftHanded) const
+TopoShape TopoShape::makeLongHelix(Standard_Real pitch, Standard_Real height, Standard_Real radius, Standard_Real angle, Standard_Boolean left) const
 {
     if (pitch < Precision::Confusion())
         Standard_Failure::Raise("Pitch of helix too small");
@@ -1802,7 +2022,7 @@ TopoDS_Shape TopoShape::makeLongHelix(Standard_Real pitch, Standard_Real height,
     gp_Pnt2d aPnt(0, 0);
     gp_Dir2d aDir(2. * M_PI, pitch);
     Standard_Real coneDir = 1.0;
-    if (leftHanded) {
+    if (left) {
         aDir.SetCoord(-2. * M_PI, pitch);
         coneDir = -1.0;
     }
@@ -1846,13 +2066,33 @@ TopoDS_Shape TopoShape::makeLongHelix(Standard_Real pitch, Standard_Real height,
 
     TopoDS_Wire wire = mkWire.Wire();
     BRepLib::BuildCurves3d(wire);
-    return wire;
+    
+    //build up the history.
+    RefMap result;
+    TopTools_IndexedMapOfShape M = TopTools_IndexedMapOfShape();
+    TopExp::MapShapes(wire, TopAbs_ShapeEnum::TopAbs_VERTEX, M);
+    for (int i=0; i<M.Extent(); ++i) {
+        result[ShapeRef(ShapeRef::NewVertex, i)].push_back(ShapeRef(ShapeRef::Vertex, i));
+    }
+    TopExp::MapShapes(wire, TopAbs_ShapeEnum::TopAbs_EDGE, M);
+    for (int i=0; i<M.Extent(); ++i) {
+        result[ShapeRef(ShapeRef::NewEdge, i)].push_back(ShapeRef(ShapeRef::Edge, i));
+    }
+    
+    //build up the history.
+    TopoShape resultShape;
+    std::stringstream stream;
+    stream << "shape" << ++NamingCounter;
+    ShapeMap hist;
+    hist.name = stream.str();
+    hist.Map = buildRefMap(wire, TopoDS_Shape());
+    resultShape.History.push_back(hist);
+    resultShape._Shape = wire;
+    
+    return resultShape;
 }
 
-TopoDS_Shape TopoShape::makeThread(Standard_Real pitch,
-                                   Standard_Real depth,
-                                   Standard_Real height,
-                                   Standard_Real radius) const
+TopoShape TopoShape::makeThread(Standard_Real pitch, Standard_Real depth, Standard_Real height, Standard_Real radius) const
 {
     if (pitch < Precision::Confusion())
         Standard_Failure::Raise("Pitch of thread too small");
@@ -1908,32 +2148,60 @@ TopoDS_Shape TopoShape::makeThread(Standard_Real pitch,
     aTool.AddWire(threadingWire2);
     aTool.CheckCompatibility(Standard_False);
 
-    return aTool.Shape();
+    TopoDS_Shape res = aTool.Shape();
+    
+    //build up the history.
+    TopoShape resultShape;
+    std::stringstream stream;
+    stream << "shape" << ++NamingCounter;
+    ShapeMap hist;
+    hist.name = stream.str();
+    hist.Map = buildRefMap(res, TopoDS_Shape());
+    resultShape.History.push_back(hist);
+    resultShape._Shape = res;
+    
+    return resultShape;
 }
 
-TopoDS_Shape TopoShape::makeLoft(const TopTools_ListOfShape& profiles, 
-                                 Standard_Boolean isSolid,
-                                 Standard_Boolean isRuled,
-                                 Standard_Boolean isClosed) const
+TopoShape TopoShape::makeLoft(const std::vector<TopoShape>& profiles, Standard_Boolean isSolid, Standard_Boolean isRuled, Standard_Boolean isClosed) const
 {
     // http://opencascade.blogspot.com/2010/01/surface-modeling-part5.html
     BRepOffsetAPI_ThruSections aGenerator (isSolid,isRuled);
-
+            
     TopTools_ListIteratorOfListOfShape it;
     int countShapes = 0;
-    for (it.Initialize(profiles); it.More(); it.Next()) {
-        const TopoDS_Shape& item = it.Value();
-        if (!item.IsNull() && item.ShapeType() == TopAbs_VERTEX) {
+    for (TopoShape shape : profiles) {
+        TopoDS_Shape item = shape._Shape;
+        if(item.IsNull())
+            continue;
+        
+        //sometimes valid shapes are inside a compound
+        if (item.ShapeType() == TopAbs_COMPOUND) {
+            TopoDS_Iterator it(item);
+            for (; it.More(); it.Next()) {
+                if (!it.Value().IsNull()) {
+                    item = it.Value();
+                    break;
+                }
+            }
+        }
+        
+        if (item.ShapeType() == TopAbs_VERTEX) {
             aGenerator.AddVertex(TopoDS::Vertex (item));
             countShapes++;
         }
-        else if (!item.IsNull() && item.ShapeType() == TopAbs_EDGE) {
+        else if (item.ShapeType() == TopAbs_EDGE) {
             BRepBuilderAPI_MakeWire mkWire(TopoDS::Edge(item));
             aGenerator.AddWire(mkWire.Wire());
             countShapes++;
         }
-        else if (!item.IsNull() && item.ShapeType() == TopAbs_WIRE) {
+        else if (item.ShapeType() == TopAbs_WIRE) {
             aGenerator.AddWire(TopoDS::Wire (item));
+            countShapes++;
+        }
+        else if (item.ShapeType() == TopAbs_FACE) {
+            TopoDS_Wire faceouterWire = ShapeAnalysis::OuterWire(TopoDS::Face(item));
+            aGenerator.AddWire(faceouterWire);
             countShapes++;
         }
     }
@@ -1948,11 +2216,11 @@ TopoDS_Shape TopoShape::makeLoft(const TopTools_ListOfShape& profiles,
             - V1-W1-W2-W3     ==> V1-W1-W2-W3-V1     valid closed
             - W1-W2-W3-V1     ==> W1-W2-W3-V1-W1     invalid closed
             - W1-W2-W3        ==> W1-W2-W3-W1        valid closed*/
-            if (profiles.Last().ShapeType() == TopAbs_VERTEX)  {
+            if (profiles.back()._Shape.ShapeType() == TopAbs_VERTEX)  {
                 Base::Console().Message("TopoShape::makeLoft: can't close Loft with Vertex as last profile. 'Closed' ignored.\n"); }
             else {
                 // repeat Add logic above for first profile
-                const TopoDS_Shape& firstProfile = profiles.First();
+                const TopoDS_Shape& firstProfile = profiles.front()._Shape;
                 if (firstProfile.ShapeType() == TopAbs_VERTEX)  {
                     aGenerator.AddVertex(TopoDS::Vertex (firstProfile));
                     countShapes++;
@@ -1975,27 +2243,72 @@ TopoDS_Shape TopoShape::makeLoft(const TopTools_ListOfShape& profiles,
     if (!aGenerator.IsDone())
         Standard_Failure::Raise("Failed to create loft face");
     
-    //Base::Console().Message("DEBUG: TopoShape::makeLoft returns.\n");
-    return aGenerator.Shape();
+    //TODO: It is unclear how to handle the closed loft profile duplication, hence this case is not handled yet
+    //TODO: ThrouSections provide First/LastShape(Shape) functions as well as Generated(Shape), this can maybe used 
+    //      better refmaps  
+    TopoShape resultShape(*this);
+    std::vector<RefMap> newMaps(profiles.size());
+    for(unsigned int i=0; i<profiles.size(); ++i) 
+        newMaps[i] = buildRefMap(aGenerator, profiles[i]._Shape);
+    
+    for(unsigned int i=0; i<profiles.size(); ++i) {
+        for (std::vector<ShapeMap>::iterator h = resultShape.History.begin(); h != resultShape.History.end(); h++)
+            h->Map = joinMap(h->Map, newMaps[i]);
+    }
+    for(unsigned int i=0; i<profiles.size(); ++i) {
+        TopoShape shape = profiles[i];
+        for (std::vector<ShapeMap>::const_iterator h = shape.History.begin(); h != shape.History.end(); h++) {
+            ShapeMap resultHistory = *h;
+            resultHistory.Map = joinMap(resultHistory.Map, newMaps[i]);
+            resultShape.History.push_back(resultHistory);
+        }            
+    }
+     
+    resultShape._Shape = aGenerator.Shape();
+#ifdef FC_DEBUG
+        printHistory();
+#endif
+        
+    return resultShape;
 }
 
-TopoDS_Shape TopoShape::makePrism(const gp_Vec& vec) const
+TopoShape TopoShape::makePrism(const gp_Vec& vec) const
 {
+    Base::Console().Error("=== MAKEPRISM (Length) ===\n");
+
     if (this->_Shape.IsNull()) Standard_Failure::Raise("cannot sweep empty shape");
-    BRepPrimAPI_MakePrism mkPrism(this->_Shape, vec);
-    return mkPrism.Shape();
+    
+    TopoShape resultShape(*this);
+    BRepPrimAPI_MakePrism mkPrism(resultShape._Shape, vec);
+    
+    // Note: We assume that TopInfo is empty and stays empty
+    RefMap newMap = buildRefMap(mkPrism, resultShape._Shape);
+    
+    for (std::vector<ShapeMap>::iterator h = resultShape.History.begin(); h != resultShape.History.end(); h++)
+        h->Map = joinMap(h->Map, newMap);
+    
+    resultShape._Shape = mkPrism.Shape();
+#ifdef FC_DEBUG
+    printHistory();
+#endif
+    
+    return resultShape;
 }
 
-TopoDS_Shape TopoShape::revolve(const gp_Ax1& axis, double d, Standard_Boolean isSolid) const
+TopoShape TopoShape::revolve(const gp_Ax1& axis, double d, Standard_Boolean isSolid) const
 {
+    Base::Console().Error("=== MAKEREVOLVE ===\n");
+
     if (this->_Shape.IsNull()) Standard_Failure::Raise("cannot revolve empty shape");
 
+    TopoShape resultShape(*this);
+    
     TopoDS_Face f; 
     TopoDS_Wire w;
     TopoDS_Edge e;
     Standard_Boolean convertFailed = false;
 
-    TopoDS_Shape base = this->_Shape; 
+    TopoDS_Shape base = resultShape._Shape; 
     if ((isSolid) && (BRep_Tool::IsClosed(base)) &&
         ((base.ShapeType() == TopAbs_EDGE) || (base.ShapeType() == TopAbs_WIRE))) {
         if (base.ShapeType() == TopAbs_EDGE) {
@@ -2021,7 +2334,22 @@ TopoDS_Shape TopoShape::revolve(const gp_Ax1& axis, double d, Standard_Boolean i
         Base::Console().Message("TopoShape::revolve could not make Solid from Wire/Edge.\n");}
 
     BRepPrimAPI_MakeRevol mkRevol(base, axis,d);
-    return mkRevol.Shape();
+    
+    // Note: We assume that TopInfo is empty and stays empty
+    RefMap newMap = buildRefMap(mkRevol, base);
+    
+    if(isSolid && !convertFailed)
+            newMap = joinMap(buildRefMap(base, _Shape), newMap);
+    
+    for (std::vector<ShapeMap>::iterator h = resultShape.History.begin(); h != resultShape.History.end(); h++)
+        h->Map = joinMap(h->Map, newMap);
+    
+    resultShape._Shape = mkRevol.Shape();
+#ifdef FC_DEBUG
+    printHistory();
+#endif
+    
+    return resultShape;
 }
 
 TopoDS_Shape TopoShape::makeOffsetShape(double offset, double tol, bool intersection,
@@ -2127,15 +2455,47 @@ TopoDS_Shape TopoShape::makeOffsetShape(double offset, double tol, bool intersec
     return outputShape;
 }
 
-TopoDS_Shape TopoShape::makeThickSolid(const TopTools_ListOfShape& remFace,
+TopoShape TopoShape::makeThickSolid(const std::vector<TopoShape>& remFaces,
                                        double offset, double tol, bool intersection,
                                        bool selfInter, short offsetMode, short join) const
 {
-    BRepOffsetAPI_MakeThickSolid mkThick(this->_Shape, remFace, offset, tol, BRepOffset_Mode(offsetMode),
+    TopTools_ListOfShape faces;
+    for (TopoShape& shape : remFaces) {
+        TopoDS_Face face = TopoDS::Face(shape._Shape);
+        faces.Append(face);
+    }
+    
+    BRepOffsetAPI_MakeThickSolid mkThick(this->_Shape, faces, offset, tol, BRepOffset_Mode(offsetMode),
         intersection ? Standard_True : Standard_False,
         selfInter ? Standard_True : Standard_False,
         GeomAbs_JoinType(join));
-    return mkThick.Shape();
+    
+    //TODO: MakeOffsetShape provide Generated(Shape) and GeneratedEdges, this can maybe used for
+    //      better refmaps  
+    TopoShape resultShape(*this);
+    std::vector<RefMap> newMaps(remFaces.size());
+    for(unsigned int i=0; i<remFaces.size(); ++i) 
+        newMaps[i] = buildRefMap(mkThick, remFaces[i]._Shape);
+    
+    for(unsigned int i=0; i<remFaces.size(); ++i) {
+        for (std::vector<ShapeMap>::iterator h = resultShape.History.begin(); h != resultShape.History.end(); h++)
+            h->Map = joinMap(h->Map, newMaps[i]);
+    }
+    for(unsigned int i=0; i<remFaces.size(); ++i) {
+        TopoShape shape = remFaces[i];
+        for (std::vector<ShapeMap>::const_iterator h = shape.History.begin(); h != shape.History.end(); h++) {
+            ShapeMap resultHistory = *h;
+            resultHistory.Map = joinMap(resultHistory.Map, newMaps[i]);
+            resultShape.History.push_back(resultHistory);
+        }            
+    }
+     
+    resultShape._Shape = mkThick.Shape();
+#ifdef FC_DEBUG
+        printHistory();
+#endif
+        
+    return resultShape;
 }
 
 void TopoShape::transformGeometry(const Base::Matrix4D &rclMat)

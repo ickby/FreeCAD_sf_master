@@ -77,9 +77,9 @@ App::DocumentObjectExecReturn *Revolution::execute(void)
         // Now, let's get the TopoDS_Shape
         //TopoDS_Shape revolve = base->Shape.getShape().revolve(gp_Ax1(pnt, dir),
         //    Angle.getValue()/180.0f*M_PI);
-        TopoDS_Shape revolve = base->Shape.getShape().revolve(gp_Ax1(pnt, dir),
+        TopoShape revolve = base->Shape.getShape().revolve(gp_Ax1(pnt, dir),
             Angle.getValue()/180.0f*M_PI,isSolid);
-        if (revolve.IsNull())
+        if (revolve._Shape.IsNull())
             return new App::DocumentObjectExecReturn("Resulting shape is null");
         this->Shape.setValue(revolve);
         return App::DocumentObject::StdReturn;

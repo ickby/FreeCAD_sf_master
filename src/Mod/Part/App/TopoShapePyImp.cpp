@@ -136,7 +136,7 @@ int TopoShapePy::PyInit(PyObject* args, PyObject*)
                         shape._Shape = sh;
                     }
                     else {
-                        shape._Shape = shape.fuse(sh);
+                        shape = shape.fuse(sh);
                     }
                 }
             }
@@ -545,8 +545,8 @@ PyObject* TopoShapePy::extrude(PyObject *args)
     if (PyArg_ParseTuple(args, "O!", &(Base::VectorPy::Type), &pVec)) {
         try {
             Base::Vector3d vec = static_cast<Base::VectorPy*>(pVec)->value();
-            TopoDS_Shape shape = this->getTopoShapePtr()->makePrism(gp_Vec(vec.x,vec.y,vec.z));
-            TopAbs_ShapeEnum type = shape.ShapeType();
+            TopoShape shape = this->getTopoShapePtr()->makePrism(gp_Vec(vec.x,vec.y,vec.z));
+            TopAbs_ShapeEnum type = shape._Shape.ShapeType();
             switch (type)
             {
             case TopAbs_COMPOUND:
@@ -610,9 +610,9 @@ PyObject* TopoShapePy::revolve(PyObject *args)
 
             Base::Vector3d pos = static_cast<Base::VectorPy*>(pPos)->value();
             Base::Vector3d dir = static_cast<Base::VectorPy*>(pDir)->value();
-            TopoDS_Shape shape = this->getTopoShapePtr()->revolve(
+            TopoShape shape = this->getTopoShapePtr()->revolve(
                 gp_Ax1(gp_Pnt(pos.x,pos.y,pos.z), gp_Dir(dir.x,dir.y,dir.z)),d*(M_PI/180));
-            TopAbs_ShapeEnum type = shape.ShapeType();
+            TopAbs_ShapeEnum type = shape._Shape.ShapeType();
             switch (type)
             {
             case TopAbs_COMPOUND:
@@ -671,11 +671,10 @@ PyObject*  TopoShapePy::fuse(PyObject *args)
     if (!PyArg_ParseTuple(args, "O!", &(TopoShapePy::Type), &pcObj))
         return NULL;
 
-    TopoDS_Shape shape = static_cast<TopoShapePy*>(pcObj)->getTopoShapePtr()->_Shape;
+    TopoShape shape = *static_cast<TopoShapePy*>(pcObj)->getTopoShapePtr();
     try {
         // Let's call algorithm computing a fuse operation:
-        TopoDS_Shape fusShape = this->getTopoShapePtr()->fuse(shape);
-        return new TopoShapePy(new TopoShape(fusShape));
+        return new TopoShapePy(new TopoShape(this->getTopoShapePtr()->fuse(shape)));
     }
     catch (Standard_Failure) {
         Handle_Standard_Failure e = Standard_Failure::Caught();
@@ -694,12 +693,12 @@ PyObject*  TopoShapePy::multiFuse(PyObject *args)
     PyObject *pcObj;
     if (!PyArg_ParseTuple(args, "O|d", &pcObj, &tolerance))
         return NULL;
-    std::vector<TopoDS_Shape> shapeVec;
+    std::vector<TopoShape> shapeVec;
     Py::Sequence shapeSeq(pcObj);
     for (Py::Sequence::iterator it = shapeSeq.begin(); it != shapeSeq.end(); ++it) {
         PyObject* item = (*it).ptr();
         if (PyObject_TypeCheck(item, &(Part::TopoShapePy::Type))) {
-            shapeVec.push_back(static_cast<Part::TopoShapePy*>(item)->getTopoShapePtr()->_Shape);
+            shapeVec.push_back(*static_cast<Part::TopoShapePy*>(item)->getTopoShapePtr());
         }
         else {
             PyErr_SetString(PyExc_TypeError, "non-shape object in sequence");
@@ -707,8 +706,7 @@ PyObject*  TopoShapePy::multiFuse(PyObject *args)
        }
     }
     try {
-        TopoDS_Shape multiFusedShape = this->getTopoShapePtr()->multiFuse(shapeVec,tolerance);
-        return new TopoShapePy(new TopoShape(multiFusedShape));
+        return new TopoShapePy(new TopoShape(this->getTopoShapePtr()->multiFuse(shapeVec,tolerance)));
     }
     catch (Standard_Failure) {
         Handle_Standard_Failure e = Standard_Failure::Caught();
@@ -727,11 +725,10 @@ PyObject*  TopoShapePy::oldFuse(PyObject *args)
     if (!PyArg_ParseTuple(args, "O!", &(TopoShapePy::Type), &pcObj))
         return NULL;
 
-    TopoDS_Shape shape = static_cast<TopoShapePy*>(pcObj)->getTopoShapePtr()->_Shape;
+    TopoShape shape = *static_cast<TopoShapePy*>(pcObj)->getTopoShapePtr();
     try {
         // Let's call algorithm computing a fuse operation:
-        TopoDS_Shape fusShape = this->getTopoShapePtr()->oldFuse(shape);
-        return new TopoShapePy(new TopoShape(fusShape));
+        return new TopoShapePy(new TopoShape(this->getTopoShapePtr()->oldFuse(shape)));
     }
     catch (Standard_Failure) {
         Handle_Standard_Failure e = Standard_Failure::Caught();
@@ -750,11 +747,10 @@ PyObject*  TopoShapePy::common(PyObject *args)
     if (!PyArg_ParseTuple(args, "O!", &(TopoShapePy::Type), &pcObj))
         return NULL;
 
-    TopoDS_Shape shape = static_cast<TopoShapePy*>(pcObj)->getTopoShapePtr()->_Shape;
+    TopoShape shape = *static_cast<TopoShapePy*>(pcObj)->getTopoShapePtr();
     try {
         // Let's call algorithm computing a common operation:
-        TopoDS_Shape comShape = this->getTopoShapePtr()->common(shape);
-        return new TopoShapePy(new TopoShape(comShape));
+        return new TopoShapePy(new TopoShape(this->getTopoShapePtr()->common(shape)));
     }
     catch (Standard_Failure) {
         Handle_Standard_Failure e = Standard_Failure::Caught();
@@ -773,11 +769,10 @@ PyObject*  TopoShapePy::section(PyObject *args)
     if (!PyArg_ParseTuple(args, "O!", &(TopoShapePy::Type), &pcObj))
         return NULL;
 
-    TopoDS_Shape shape = static_cast<TopoShapePy*>(pcObj)->getTopoShapePtr()->_Shape;
+    TopoShape shape = *static_cast<TopoShapePy*>(pcObj)->getTopoShapePtr();
     try {
         // Let's call algorithm computing a section operation:
-        TopoDS_Shape secShape = this->getTopoShapePtr()->section(shape);
-        return new TopoShapePy(new TopoShape(secShape));
+        return new TopoShapePy(new TopoShape(this->getTopoShapePtr()->section(shape)));
     }
     catch (Standard_Failure) {
         Handle_Standard_Failure e = Standard_Failure::Caught();
@@ -851,11 +846,10 @@ PyObject*  TopoShapePy::cut(PyObject *args)
     if (!PyArg_ParseTuple(args, "O!", &(TopoShapePy::Type), &pcObj))
         return NULL;
 
-    TopoDS_Shape shape = static_cast<TopoShapePy*>(pcObj)->getTopoShapePtr()->_Shape;
+    TopoShape shape = *static_cast<TopoShapePy*>(pcObj)->getTopoShapePtr();
     try {
         // Let's call algorithm computing a cut operation:
-        TopoDS_Shape cutShape = this->getTopoShapePtr()->cut(shape);
-        return new TopoShapePy(new TopoShape(cutShape));
+        return new TopoShapePy(new TopoShape(this->getTopoShapePtr()->cut(shape)));
     }
     catch (Standard_Failure) {
         Handle_Standard_Failure e = Standard_Failure::Caught();

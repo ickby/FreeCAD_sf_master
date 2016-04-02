@@ -615,8 +615,6 @@ RefMap joinMap(const RefMap& oldMap, const RefMap& newMap) // const bool merge =
         //    result[o->first] = o->second; // add new history on top of old history
 
         for (RefVec::const_iterator r = o->second.begin(); r != o->second.end(); r++) {
-            bool found = false;
-
             for (RefMap::const_iterator n = newMap.begin(); n != newMap.end(); n++) {
                 if (*r == n->first) {
                     for (RefVec::const_iterator r2 = n->second.begin(); r2 != n->second.end(); r2++) {
@@ -624,8 +622,6 @@ RefMap joinMap(const RefMap& oldMap, const RefMap& newMap) // const bool merge =
                         second.modified = (r->modified || r2->modified);
                         result[o->first].push_back(second);
                     }
-
-                    found = true;
                 }
             }
         }
@@ -727,6 +723,31 @@ RefMap buildRefMap(BRepBuilderAPI_MakeShape &mkShape, const TopoDS_Shape& oldSha
     return result;
 }
 
+/**
+  * Build map using the information from the BRepPrimAPI_MakeSweep object
+  * oldShapes contains the base shape of the sweep (i.e. the face created from a sketch). As a 
+  * sweep can be created from multiple profiles many oldshapes are accepted.
+  * The map from each oldShape to mkSweep.Shape() is returned in result
+  */
+std::vector<RefMap> buildRefMap(BRepPrimAPI_MakeSweep &mkSweep, const std::vector<TopoDS_Shape> oldShapes)
+{
+    // Extract all subshapes from old and new shape
+    typedef std::vector<TopTools_IndexedMapOfShape*> ShapeMap;
+    ShapeMap newM;
+    newM = extractSubShapes(mkSweep.Shape());
+
+    std::vector<ShapeMap> oldM(oldShapes.size());    
+    for(unsigned int i=0; i<oldShapes.size(); ++i)
+        oldM[i] = extractSubShapes(oldShapes[i]);
+
+    // Build general history for all BRepBuilderAPI_MakeShape classes
+    std::vector<RefMap> result(oldShapes.size());
+    for(unsigned int i=0; i< oldM.size(); ++i)
+        result[i] = buildGenericRefMap(mkSweep, newM, oldM[i]);
+    
+    return result;
+}
+    
 /**
   * Build map using the information from the BRepPrimAPI_MakePrism object
   * oldShape contains the base shape of the prism (i.e. the face created from a sketch)
@@ -990,11 +1011,11 @@ const TopAbs_Orientation getTwinOrientation(const ShapeRef& ref1, const ShapeRef
 }
 
 /**
-  * Build map using the information from the BRepAlgoAPI_BooleanOperation object
+  * Build map using the information from the BooleanOperation object
   * The map from oldShape[0] to mkBool.Shape() is returned in result[0], and from
-  * oldShape[1] to mkBool.Shape() in result[1]
-  * Information about split segments and symmetry is returned in TopInfo
-  * Returns the new shape with refined (merged) coplanar faces
+  * oldShape[1] to mkBool.Shape() in result[1] and so on. Number of old shapes is not limited, but 
+  * must be the same as result size. Information about split segments and symmetry is returned in 
+  * TopInfo. Returns the new shape with refined (merged) coplanar faces
   */
 TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
                          const std::vector<TopoDS_Shape> oldShape,
@@ -1002,17 +1023,22 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
                          const std::vector<TopInfoMap> oldTopInfos,
                          TopInfoMap& newTopInfo)
 {    
+    if(oldShape.size() != result.size())
+        throw Base::Exception("Wrong usage of buildRefMap: different number of old shapes and result maps");
+        
+    int shapeNum = oldShape.size();
+    
     // Join coplanar faces - this saves us a lot of trouble with split shapes and section edges!
     BRepBuilderAPI_RefineModel mkRefine(mkBool.Shape());
     if (!mkRefine.IsDone())
-        throw Base::Exception("TopoShape: mkBool: Refine faces failed");
-
+        throw Base::Exception("TopoShape: mkBool: Refine faces failed");        
+    
     // Extract all subshapes from old and new shapes, and build general history
     // for all BRepBuilderAPI_MakeShape classes
     std::vector<TopTools_IndexedMapOfShape*> newM = extractSubShapes(mkBool.Shape());
-    std::vector<std::vector<TopTools_IndexedMapOfShape*> > oldM(2);
-    std::vector<RefVec> splitOrigins(2);
-    for (int i = 0; i < 2; i++) {
+    std::vector<std::vector<TopTools_IndexedMapOfShape*> > oldM(shapeNum);
+    std::vector<RefVec> splitOrigins(shapeNum);
+    for (int i = 0; i < shapeNum; i++) {
         oldM[i] = extractSubShapes(oldShape[i]);
         result[i] = buildGenericRefMap(mkBool, newM, oldM[i], &splitOrigins[i]);
     }
@@ -1025,11 +1051,11 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
     // on this subject.
     Base::Console().Error("Building map for refined faces\n");
     RefMap refineMap = buildGenericRefMap(mkRefine, refineM, newM);
-    for (int i = 0; i < 2; i++)
+    for (int i = 0; i < shapeNum; i++)
         result[i] = joinMap(result[i], refineMap);
 
     // Create a new, combined TopInfoMap so that we can build a splitPath later on
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < shapeNum; i++) {
         for (TopInfoMap::const_iterator t = oldTopInfos[i].begin(); t != oldTopInfos[i].end(); t++) {
             RefMap::const_iterator newRefs = result[i].find(t->first);
             if (newRefs == result[i].end())
@@ -1053,7 +1079,7 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
     childrenMap mapVertexEdge = buildChildrenMap(refineM[idxEDGE], TopAbs_VERTEX);
     childrenMap mapVertexFace = buildChildrenMap(refineM[idxFACE], TopAbs_VERTEX);
 
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < shapeNum; i++) {
         // Find all split segments
         RefVec splitSegments;
         for (RefVec::const_iterator o = splitOrigins[i].begin(); o != splitOrigins[i].end(); o++) {
@@ -1129,7 +1155,7 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
         // SectionEdges() also returns edges that have been handled in the general RefMap
         // (when the section edge coincides with an edge of the sketch on the sketchface)
         // We can't completely skip this edge, though, because of its vertices
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < shapeNum; i++) {
             if (isInMap(result[i], edgeRef)) {
                 Shapes[edgeRef].original = true;
                 Base::Console().Error("   %s belongs to original %u\n", edgeRef.toString().c_str(), i+1);
@@ -1274,9 +1300,9 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
     // Note: If we were sure that segment sequence by OCC is consistent, we wouldn't need Modifiers at
     //       all. But we don't trust OCC that far...
     Base::Console().Error("Investigating split shapes\n");
-    std::vector<RefMap> newRefs(2);
+    std::vector<RefMap> newRefs(shapeNum);
 
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < shapeNum; i++) {
         int j = (i == 0 ? 1 : 0); // TODO: Will !i do the trick?
 
         for (RefVec::const_iterator o = splitOrigins[i].begin(); o != splitOrigins[i].end(); o++) {
@@ -1339,7 +1365,7 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
         }
     }
 
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < shapeNum; i++) {
         // Register in the result[] map all faces stored in newRef as Modifiers of the split shape
         // Note: If we had inserted the newRefs into result[] right away, then there would have beeen
         // tons of duplicate origins because some of the split shapes will appear as modifiers in the
@@ -1410,7 +1436,7 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
             Base::Console().Error("      %s is adjacent to %s\n", s->toString().c_str(), sectRef.toString().c_str());
 
             // Register all ancestors of the adjacent shape as ancestors of the section edge/vertex
-            for (int i = 0; i < 2; i++) {
+            for (int i = 0; i < shapeNum; i++) {
                 RefVec ancVec = findAncestorsInMap(result[i], *s);
                 if (ancVec.empty())
                     continue; // Wrong result[] map
@@ -1433,7 +1459,7 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
                 Base::Console().Error("      %s touches %s\n", s->toString().c_str(), sectRef.toString().c_str());
 
                 // Register all ancestors of the touching faces as modifiers of the section edge
-                for (int i = 0; i < 2; i++) {
+                for (int i = 0; i < shapeNum; i++) {
                     RefVec modVec = findAncestorsInMap(result[i], *s);
                     if (modVec.empty())
                         continue; // Wrong result[] map
@@ -1528,7 +1554,7 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
 
     clearSubShapes(newM);
     clearSubShapes(refineM);
-    for (int i = 0; i < 2; i++)
+    for (int i = 0; i < shapeNum; i++)
         clearSubShapes(oldM[i]);
 
     // Note: The difference between Modified() and Modified2() is that the first returns
@@ -1698,18 +1724,20 @@ RefVec findShapesInHistory(const std::vector<ShapeMap>& history, const OriginRec
 }
 
 #ifdef FC_DEBUG
-const std::string TopoShape::printRef(const ShapeRef& r, const bool _short) {
+const std::string TopoShape::printRef(const ShapeRef& r, const bool _short) const {
     std::stringstream strm;
     strm << r.toString(_short);
-    strm << (TopInfo[r].symmetryFlag ? "R" : "");
-    if (TopInfo[r].splitPath.size() > 0) {
-        for (std::vector<std::pair<int, int> >::const_iterator i = TopInfo[r].splitPath.begin(); i != TopInfo[r].splitPath.end(); i++)
+    TopInfoMap tim(TopInfo);
+    
+    strm << (tim[r].symmetryFlag ? "R" : "");
+    if (tim[r].splitPath.size() > 0) {
+        for (std::vector<std::pair<int, int> >::const_iterator i = tim[r].splitPath.begin(); i != tim[r].splitPath.end(); i++)
             strm << "#" << (i->first + 1) << "/" << i->second;
     }
     return strm.str();
 }
 
-void TopoShape::printHistory()
+void TopoShape::printHistory() const
 {
     std::map<ShapeRef, std::vector<std::string> > inverse;
 
@@ -1777,6 +1805,7 @@ void TopoShape::printHistory()
         }
     }
 
+    TopInfoMap tim(TopInfo);
     std::map<std::string, RefSet> dups, symmetries, segments;
     for (std::map<std::string, std::vector<RefVec> >::const_iterator d = duplicates.begin(); d != duplicates.end(); d++) {
         std::string refStr = d->first;
@@ -1784,8 +1813,8 @@ void TopoShape::printHistory()
         for (int i = 0; i < numShapeTypes; i++) {
             for (RefVec::const_iterator r1 = d->second[i].begin(); r1 != d->second[i].end(); r1++) {
                 for (RefVec::const_iterator r2 = r1 + 1; r2 != d->second[i].end(); r2++) {
-                    if (TopInfo[*r1].symmetryFlag == TopInfo[*r2].symmetryFlag) {
-                        if (TopInfo[*r1].splitPath == TopInfo[*r2].splitPath) {
+                    if (tim[*r1].symmetryFlag == tim[*r2].symmetryFlag) {
+                        if (tim[*r1].splitPath == tim[*r2].splitPath) {
                             dups[refStr].insert(*r1);
                             dups[refStr].insert(*r2);
                         } else {
