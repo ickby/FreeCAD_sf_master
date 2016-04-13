@@ -183,7 +183,7 @@
 
 using namespace Part;
 
-int TopoShape::NamingCounter = -1;
+std::random_device TopoShape::_RandomDevice;
 
 extern RefMap buildRefMapFromGeometry(const TopoDS_Shape shape, const std::vector<Geometry*>& geometry);
 extern RefMap buildRefMap(const TopoDS_Shape& newShape, const TopoDS_Shape& oldShape);
@@ -236,7 +236,7 @@ std::string ShapeSegment::getName() const
 
 TYPESYSTEM_SOURCE(Part::TopoShape , Data::ComplexGeoData);
 
-TopoShape::TopoShape()
+TopoShape::TopoShape() : _Uid(_RandomDevice()/2)
 {
 }
 
@@ -244,21 +244,29 @@ TopoShape::~TopoShape()
 {
 }
 
-TopoShape::TopoShape(const TopoDS_Shape& shape)
-  : _Shape(shape)
+TopoShape::TopoShape(const TopoDS_Shape& shape, const RefMap& history)
+  : _Shape(shape), _Uid(_RandomDevice()/2)
 {    
     std::stringstream stream;
-    stream << "shape" << ++NamingCounter;
+    stream << "shape" << _Uid;
     ShapeMap hist;
     hist.name = stream.str();
-    hist.Map = buildRefMap(shape, TopoDS_Shape());
+    if(history.empty())
+        hist.Map = buildRefMap(shape, TopoDS_Shape());
+    else
+        hist.Map = history;
 
-    Base::Console().Error("Building shape %s\n", hist.name.c_str());
-    History.push_back(hist);
+    _History.push_back(hist);
 }
 
+TopoShape::TopoShape(const TopoDS_Shape& shape, std::vector< ShapeMap > history, TopInfoMap info)
+ : _Shape(shape), _History(history), _TopInfo(info), _Uid(_RandomDevice()/2)
+{
+}
+
+
 TopoShape::TopoShape(const TopoShape& shape)
-  : _Shape(shape._Shape), History(shape.History), TopInfo(shape.TopInfo)
+  : _Shape(shape._Shape), _History(shape._History), _TopInfo(shape._TopInfo), _Uid(shape._Uid)
 {
 }
 
@@ -484,9 +492,17 @@ PyObject * TopoShape::getPySubShape(const char* Type) const
 void TopoShape::operator = (const TopoShape& sh)
 {
     if (this != &sh) {
-        this->_Shape = sh._Shape;
+        this->_Shape  = sh._Shape;
+        this->_History = sh._History;
+        this->_TopInfo = sh._TopInfo;
+        this->_Uid    = sh._Uid;
     }
 }
+
+void TopoShape::paste(const TopoShape& ts) {
+    *this = ts;
+}
+
 
 void TopoShape::convertTogpTrsf(const Base::Matrix4D& mtrx, gp_Trsf& trsf)
 {
@@ -1408,17 +1424,17 @@ void TopoShape::buildBoolean(BRepAlgoAPI_BooleanOperation* op, TopoShape& result
     oldShapes.push_back(result._Shape);
     oldShapes.push_back(shape._Shape);
     std::vector<TopInfoMap> TopInfos;
-    TopInfos.push_back(result.TopInfo);
-    TopInfos.push_back(shape.TopInfo);
+    TopInfos.push_back(result._TopInfo);
+    TopInfos.push_back(shape._TopInfo);
     
-    result._Shape = buildRefMap(*op, oldShapes, refmaps, TopInfos, result.TopInfo);
+    result._Shape = buildRefMap(*op, oldShapes, refmaps, TopInfos, result._TopInfo);
 
-    for (std::vector<ShapeMap>::iterator h = result.History.begin(); h != result.History.end(); h++)
+    for (std::vector<ShapeMap>::iterator h = result._History.begin(); h != result._History.end(); h++)
         h->Map = joinMap(h->Map, refmaps[0]);
-    for (std::vector<ShapeMap>::const_iterator h = shape.History.begin(); h != shape.History.end(); h++) {
+    for (std::vector<ShapeMap>::const_iterator h = shape._History.begin(); h != shape._History.end(); h++) {
         ShapeMap resultHistory = *h;
         resultHistory.Map = joinMap(resultHistory.Map, refmaps[1]);
-        result.History.push_back(resultHistory);
+        result._History.push_back(resultHistory);
     }
 }
 
@@ -1650,13 +1666,13 @@ TopoShape TopoShape::makePipe(const TopoShape& profile) const
     std::vector<TopoDS_Shape> vec(1);
     vec.push_back(profile._Shape);
     std::vector<RefMap> newMaps = buildRefMap(mkPipe, vec);
-    for (std::vector<ShapeMap>::iterator h = resultShape.History.begin(); h != resultShape.History.end(); h++)
-        resultShape.History.front().Map = joinMap(resultShape.History.front().Map, newMaps.front());
+    for (std::vector<ShapeMap>::iterator h = resultShape._History.begin(); h != resultShape._History.end(); h++)
+        resultShape._History.front().Map = joinMap(resultShape._History.front().Map, newMaps.front());
     
     resultShape._Shape = mkPipe.Shape();
     
 #ifdef FC_DEBUG
-    printHistory();
+    resultShape.printHistory();
 #endif
     
     return resultShape;
@@ -1700,24 +1716,24 @@ TopoShape TopoShape::makePipeShell(const std::vector<TopoShape>& profiles, const
     if (make_solid)	mkPipeShell.MakeSolid();
 
     std::vector<RefMap> newMaps = buildRefMap(mkPipeShell, vec);
-    resultShape.History.front().Map = joinMap(resultShape.History.front().Map, newMaps.front());
+    resultShape._History.front().Map = joinMap(resultShape._History.front().Map, newMaps.front());
     resultShape._Shape = mkPipeShell.Shape();
     
     for(int i=0; newMaps.size(); ++i) {
-        for (std::vector<ShapeMap>::iterator h = resultShape.History.begin(); h != resultShape.History.end(); h++)
+        for (std::vector<ShapeMap>::iterator h = resultShape._History.begin(); h != resultShape._History.end(); h++)
             h->Map = joinMap(h->Map, newMaps[i]);
     }
     for(int i=0; newMaps.size(); ++i) {  
         TopoShape shape = profiles[i];
-        for (std::vector<ShapeMap>::const_iterator h = shape.History.begin(); h != shape.History.end(); h++) {
+        for (std::vector<ShapeMap>::const_iterator h = shape._History.begin(); h != shape._History.end(); h++) {
             ShapeMap resultHistory = *h;
             resultHistory.Map = joinMap(resultHistory.Map, newMaps[i]);
-            resultShape.History.push_back(resultHistory);
+            resultShape._History.push_back(resultHistory);
         }
     }
  
 #ifdef FC_DEBUG
-    printHistory();
+    resultShape.printHistory();
 #endif
     
     return resultShape;
@@ -1833,12 +1849,12 @@ TopoShape TopoShape::makeTube(double radius, double tol, int cont, int maxdegree
         
         RefMap newMap = buildRefMap(mkBuilder, resultShape._Shape);
     
-        for (std::vector<ShapeMap>::iterator h = resultShape.History.begin(); h != resultShape.History.end(); h++)
+        for (std::vector<ShapeMap>::iterator h = resultShape._History.begin(); h != resultShape._History.end(); h++)
             h->Map = joinMap(h->Map, newMap);
         
         resultShape._Shape = mkBuilder.Shape();
 #ifdef FC_DEBUG
-        printHistory();
+        resultShape.printHistory();
 #endif
         
         return resultShape;
@@ -1906,12 +1922,12 @@ TopoShape TopoShape::makeSweep(const TopoShape& profile, double tol, int fillmod
     
     RefMap newMap = buildRefMap(mkBuilder, resultShape._Shape);
     
-    for (std::vector<ShapeMap>::iterator h = resultShape.History.begin(); h != resultShape.History.end(); h++)
+    for (std::vector<ShapeMap>::iterator h = resultShape._History.begin(); h != resultShape._History.end(); h++)
         h->Map = joinMap(h->Map, newMap);
     
     resultShape._Shape = mkBuilder.Shape();
 #ifdef FC_DEBUG
-    printHistory();
+    resultShape.printHistory();
 #endif
     
     return resultShape;
@@ -1973,15 +1989,9 @@ TopoShape TopoShape::makeHelix(Standard_Real pitch, Standard_Real height,
     BRepLib::BuildCurves3d(wire);
     
     //build up the history.
-    TopoShape resultShape;
-    std::stringstream stream;
-    stream << "shape" << ++NamingCounter;
-    ShapeMap hist;
-    hist.name = stream.str();
-    hist.Map = buildRefMap(wire, TopoDS_Shape());
-    resultShape.History.push_back(hist);
-    resultShape._Shape = wire;
-    
+    RefMap map = buildRefMap(wire, TopoDS_Shape());
+    TopoShape resultShape(wire, map);
+   
     return resultShape;
 }
 
@@ -2080,14 +2090,8 @@ TopoShape TopoShape::makeLongHelix(Standard_Real pitch, Standard_Real height, St
     }
     
     //build up the history.
-    TopoShape resultShape;
-    std::stringstream stream;
-    stream << "shape" << ++NamingCounter;
-    ShapeMap hist;
-    hist.name = stream.str();
-    hist.Map = buildRefMap(wire, TopoDS_Shape());
-    resultShape.History.push_back(hist);
-    resultShape._Shape = wire;
+    RefMap map = buildRefMap(wire, TopoDS_Shape());
+    TopoShape resultShape(wire, map);
     
     return resultShape;
 }
@@ -2151,14 +2155,8 @@ TopoShape TopoShape::makeThread(Standard_Real pitch, Standard_Real depth, Standa
     TopoDS_Shape res = aTool.Shape();
     
     //build up the history.
-    TopoShape resultShape;
-    std::stringstream stream;
-    stream << "shape" << ++NamingCounter;
-    ShapeMap hist;
-    hist.name = stream.str();
-    hist.Map = buildRefMap(res, TopoDS_Shape());
-    resultShape.History.push_back(hist);
-    resultShape._Shape = res;
+    RefMap map = buildRefMap(res, TopoDS_Shape());
+    TopoShape resultShape(res, map);
     
     return resultShape;
 }
@@ -2252,21 +2250,21 @@ TopoShape TopoShape::makeLoft(const std::vector<TopoShape>& profiles, Standard_B
         newMaps[i] = buildRefMap(aGenerator, profiles[i]._Shape);
     
     for(unsigned int i=0; i<profiles.size(); ++i) {
-        for (std::vector<ShapeMap>::iterator h = resultShape.History.begin(); h != resultShape.History.end(); h++)
+        for (std::vector<ShapeMap>::iterator h = resultShape._History.begin(); h != resultShape._History.end(); h++)
             h->Map = joinMap(h->Map, newMaps[i]);
     }
     for(unsigned int i=0; i<profiles.size(); ++i) {
         TopoShape shape = profiles[i];
-        for (std::vector<ShapeMap>::const_iterator h = shape.History.begin(); h != shape.History.end(); h++) {
+        for (std::vector<ShapeMap>::const_iterator h = shape._History.begin(); h != shape._History.end(); h++) {
             ShapeMap resultHistory = *h;
             resultHistory.Map = joinMap(resultHistory.Map, newMaps[i]);
-            resultShape.History.push_back(resultHistory);
+            resultShape._History.push_back(resultHistory);
         }            
     }
      
     resultShape._Shape = aGenerator.Shape();
 #ifdef FC_DEBUG
-        printHistory();
+        resultShape.printHistory();
 #endif
         
     return resultShape;
@@ -2284,12 +2282,12 @@ TopoShape TopoShape::makePrism(const gp_Vec& vec) const
     // Note: We assume that TopInfo is empty and stays empty
     RefMap newMap = buildRefMap(mkPrism, resultShape._Shape);
     
-    for (std::vector<ShapeMap>::iterator h = resultShape.History.begin(); h != resultShape.History.end(); h++)
+    for (std::vector<ShapeMap>::iterator h = resultShape._History.begin(); h != resultShape._History.end(); h++)
         h->Map = joinMap(h->Map, newMap);
     
     resultShape._Shape = mkPrism.Shape();
 #ifdef FC_DEBUG
-    printHistory();
+    resultShape.printHistory();
 #endif
     
     return resultShape;
@@ -2341,12 +2339,12 @@ TopoShape TopoShape::revolve(const gp_Ax1& axis, double d, Standard_Boolean isSo
     if(isSolid && !convertFailed)
             newMap = joinMap(buildRefMap(base, _Shape), newMap);
     
-    for (std::vector<ShapeMap>::iterator h = resultShape.History.begin(); h != resultShape.History.end(); h++)
+    for (std::vector<ShapeMap>::iterator h = resultShape._History.begin(); h != resultShape._History.end(); h++)
         h->Map = joinMap(h->Map, newMap);
     
     resultShape._Shape = mkRevol.Shape();
 #ifdef FC_DEBUG
-    printHistory();
+    resultShape.printHistory();
 #endif
     
     return resultShape;
@@ -2460,7 +2458,7 @@ TopoShape TopoShape::makeThickSolid(const std::vector<TopoShape>& remFaces,
                                        bool selfInter, short offsetMode, short join) const
 {
     TopTools_ListOfShape faces;
-    for (TopoShape& shape : remFaces) {
+    for (const TopoShape& shape : remFaces) {
         TopoDS_Face face = TopoDS::Face(shape._Shape);
         faces.Append(face);
     }
@@ -2478,21 +2476,21 @@ TopoShape TopoShape::makeThickSolid(const std::vector<TopoShape>& remFaces,
         newMaps[i] = buildRefMap(mkThick, remFaces[i]._Shape);
     
     for(unsigned int i=0; i<remFaces.size(); ++i) {
-        for (std::vector<ShapeMap>::iterator h = resultShape.History.begin(); h != resultShape.History.end(); h++)
+        for (std::vector<ShapeMap>::iterator h = resultShape._History.begin(); h != resultShape._History.end(); h++)
             h->Map = joinMap(h->Map, newMaps[i]);
     }
     for(unsigned int i=0; i<remFaces.size(); ++i) {
         TopoShape shape = remFaces[i];
-        for (std::vector<ShapeMap>::const_iterator h = shape.History.begin(); h != shape.History.end(); h++) {
+        for (std::vector<ShapeMap>::const_iterator h = shape._History.begin(); h != shape._History.end(); h++) {
             ShapeMap resultHistory = *h;
             resultHistory.Map = joinMap(resultHistory.Map, newMaps[i]);
-            resultShape.History.push_back(resultHistory);
+            resultShape._History.push_back(resultHistory);
         }            
     }
      
     resultShape._Shape = mkThick.Shape();
 #ifdef FC_DEBUG
-        printHistory();
+    resultShape.printHistory();
 #endif
         
     return resultShape;

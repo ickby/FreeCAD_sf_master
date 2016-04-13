@@ -1256,16 +1256,16 @@ PyObject* TopoShapePy::makeThickness(PyObject *args)
         return 0;
 
     try {
-        TopTools_ListOfShape facesToRemove;
+        std::vector<TopoShape> facesToRemove;
         Py::Sequence list(obj);
         for (Py::Sequence::iterator it = list.begin(); it != list.end(); ++it) {
             if (PyObject_TypeCheck((*it).ptr(), &(Part::TopoShapePy::Type))) {
-                const TopoDS_Shape& shape = static_cast<TopoShapePy*>((*it).ptr())->getTopoShapePtr()->_Shape;
-                facesToRemove.Append(shape);
+                const TopoShape& shape = *static_cast<TopoShapePy*>((*it).ptr())->getTopoShapePtr();
+                facesToRemove.push_back(shape);
             }
         }
 
-        TopoDS_Shape shape = this->getTopoShapePtr()->makeThickSolid(facesToRemove, offset, tolerance,
+        TopoShape shape = this->getTopoShapePtr()->makeThickSolid(facesToRemove, offset, tolerance,
             PyObject_IsTrue(inter) ? true : false, PyObject_IsTrue(self_inter) ? true : false, offsetMode, join);
         return new TopoShapeSolidPy(new TopoShape(shape));
     }

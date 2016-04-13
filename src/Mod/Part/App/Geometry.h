@@ -53,6 +53,7 @@
 #include <gp_Ax1.hxx>
 #include <gp_Dir.hxx>
 #include <list>
+#include <random>
 #include <Base/Persistence.h>
 #include <Base/Vector3D.h>
 
@@ -75,12 +76,31 @@ public:
     /// construction geometry (means no impact on a later built topo)
     bool Construction;
 
+    ///access the univeral ID assigned to this geometry
+    int getUid() {return myUid;};
+    ///sets the universal ID for this geometry. Be very careful with this, as no check is done if
+    ///the ID realy is universal. All responsibility for this is transfered to the caller.
+    void setUid(int id) {myUid = id;}
+    
 protected:
     Geometry();
 
 private:
     Geometry(const Geometry&);
     Geometry& operator = (const Geometry&);
+    
+     /*
+      * Unique ID for a geometry element, required for robust references. It must be a integer type to
+      * work in the reference environment, hence classical uuid implementations (128bit) are not 
+      * fitting well. The scope of the uniqueness is very limited: Geometries must be only unique in
+      * the group of geometries which creat a topology, e.g. the four lines making up a quardatic wire.
+      * However, the geometries and hence IDs may be saved. Therefore a counter cannt be used. We are 
+      * going for a randowm number. It is not excluded that there will be double uuids, but the large
+      * amount of possible number (2^32 / 2 minimum) compared to the uniqueness set (most likely <100)
+      * gives good enough propability for uniqueness
+      * */
+    int myUid;
+    static std::random_device myRandomDevice;
 };
 
 class PartExport GeomPoint : public Geometry

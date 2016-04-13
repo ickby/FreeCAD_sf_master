@@ -129,6 +129,7 @@
 
 using namespace Part;
 
+std::random_device Geometry::myRandomDevice;
 
 const char* gce_ErrorStatusText(gce_ErrorType et)
 {
@@ -172,7 +173,7 @@ const char* gce_ErrorStatusText(gce_ErrorType et)
 TYPESYSTEM_SOURCE_ABSTRACT(Part::Geometry,Base::Persistence);
 
 Geometry::Geometry()
-  : Construction(false)
+  : Construction(false), myUid(myRandomDevice()/2)
 {
 }
 

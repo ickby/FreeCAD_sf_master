@@ -158,6 +158,26 @@ const bool ShapeRef::isNew() const
     return (type > New);
 }
 
+//check if shape is a newly created shape
+const bool ShapeRef::isNewShape() const {
+    return (type >= NewVertex) & (type <= NewFace);
+}
+
+//check if shape is directly generated from geometry
+const bool ShapeRef::isGeometryBased() const {
+    return (type >= GeometryVtx) & (type <= GeometryFace);
+}
+
+//check if shape is a sweept/revolved/extruded counterpart of a old shape
+const bool ShapeRef::isSweepShape() const {
+    return (type >= SweepVertex) & (type <= SweepFace);
+}
+
+//check if shape is a generated shape of annother shape
+const bool ShapeRef::isGeneratedShape() const {
+    return (type >= GeneratedVertex) & (type <= GeneratedSolid);
+}
+
 const bool ShapeRef::operator==(const ShapeRef& other) const
 {
     return ((type == other.type) && (index == other.index));
@@ -204,7 +224,7 @@ const bool compareSurfaces(const BRepAdaptor_Surface& sf1, const BRepAdaptor_Sur
     GeomAbs_SurfaceType t1 = sf1.GetType();
     GeomAbs_SurfaceType t2 = sf2.GetType();
     if (t1 != t2) {
-        //Base::Console().Error("Surface types are different\n");
+        //Base::Console().Message("Surface types are different\n");
         return false;
     }
 
@@ -213,13 +233,13 @@ const bool compareSurfaces(const BRepAdaptor_Surface& sf1, const BRepAdaptor_Sur
     case GeomAbs_Plane:
         result = ((sf1.Plane().Axis().Direction().IsEqual(sf2.Plane().Axis().Direction(), Precision::Confusion())) &&
                   (sf1.Plane().Axis().Location().IsEqual(sf2.Plane().Axis().Location(), Precision::Confusion())));
-        //Base::Console().Error("Planes are %s\n", result ? "identical" : "different");
+        //Base::Console().Message("Planes are %s\n", result ? "identical" : "different");
         return result;
     case GeomAbs_Cylinder:
         result = ((sf1.Cylinder().Axis().Direction().IsEqual(sf2.Cylinder().Axis().Direction(), Precision::Confusion())) &&
                   (sf1.Cylinder().Axis().Location().IsEqual(sf2.Cylinder().Axis().Location(), Precision::Confusion())) &&
                   (sf1.Cylinder().Radius() == sf2.Cylinder().Radius()));
-        //Base::Console().Error("Cylinders are %s\n", result ? "identical" : "different");
+        //Base::Console().Message("Cylinders are %s\n", result ? "identical" : "different");
         return result;
     default:
         return false;
@@ -229,15 +249,15 @@ const bool compareSurfaces(const BRepAdaptor_Surface& sf1, const BRepAdaptor_Sur
 const bool compareShapes(const TopoDS_Shape& s1, const TopoDS_Shape& s2, const TopAbs_ShapeEnum type) {
     // FIXME: Why doesn't IsPartner, IsEqual or IsSame work?
     if (s1.IsEqual(s2)) {
-        Base::Console().Error("Compare:Found equal\n");
+        Base::Console().Message("Compare:Found equal\n");
         return true;
     }
     if (s1.IsSame(s2)) {
-        Base::Console().Error("Compare:Found same\n");
+        Base::Console().Message("Compare:Found same\n");
         return true;
     }
     if (s1.IsPartner(s2)) {
-        Base::Console().Error("Compare:Found partner\n");
+        Base::Console().Message("Compare:Found partner\n");
         return true;
     }
 
@@ -269,8 +289,8 @@ const bool compareShapes(const TopoDS_Shape& s1, const TopoDS_Shape& s2, const T
             c1.D0(c1.LastParameter(), pl1);
             c2.D0(c2.FirstParameter(), pf2);
             c2.D0(c2.LastParameter(), pl2);
-            //Base::Console().Error("Line1: %f, %f, %f - %f, %f, %f\n", pf1.X(), pf1.Y(), pf1.Z(), pl1.X(), pl1.Y(), pl1.Z());
-            //Base::Console().Error("Line2: %f, %f, %f - %f, %f, %f\n", pf2.X(), pf2.Y(), pf2.Z(), pl2.X(), pl2.Y(), pl2.Z());
+            //Base::Console().Message("Line1: %f, %f, %f - %f, %f, %f\n", pf1.X(), pf1.Y(), pf1.Z(), pl1.X(), pl1.Y(), pl1.Z());
+            //Base::Console().Message("Line2: %f, %f, %f - %f, %f, %f\n", pf2.X(), pf2.Y(), pf2.Z(), pl2.X(), pl2.Y(), pl2.Z());
 
             if (!(pf1.IsEqual(pf2, Precision::Confusion()) && pl1.IsEqual(pl2, Precision::Confusion())))
                 if (!(pf1.IsEqual(pl2, Precision::Confusion()) && pl1.IsEqual(pf2, Precision::Confusion())))
@@ -366,7 +386,7 @@ ShapeRef findRef(const std::vector<TopTools_IndexedMapOfShape*> M, const TopoDS_
     for (int i=1; i <= m->Extent(); i++) {
         if ((*m)(i).IsSame(shape)) {
             ShapeRef result(shape.ShapeType(), i-1);
-            //Base::Console().Error("         Corresponds to mapped shape %s\n", result.toString().c_str());
+            //Base::Console().Message("         Corresponds to mapped shape %s\n", result.toString().c_str());
             return result;
         }
     }
@@ -470,19 +490,19 @@ RefMap buildRefMap(const TopoDS_Shape& newShape, const TopoDS_Shape& oldShape)
         for (Standard_Integer i = 1; i <= newM[t]->Extent(); i++)
             newIndices[t].insert(i);
 
-        Base::Console().Error("Investigating %s in old shape\n", shapeTypeToString[shapeTypes[t]].c_str());
+        Base::Console().Message("Investigating %s in old shape\n", shapeTypeToString[shapeTypes[t]].c_str());
         ShapeRef refOld(shapeTypes[t]);
 
         for (int i=1; i<=oldM[t]->Extent(); i++) {
             refOld.index = i-1; // adjust indices to start at zero
-            Base::Console().Error("   Investigating subshape %s\n", refOld.toString().c_str());
+            Base::Console().Message("   Investigating subshape %s\n", refOld.toString().c_str());
 
             for (int j=1; j<=newM[t]->Extent(); j++) { // find object in newM corresponding to oldM
                 ShapeRef refNew(shapeTypes[t], j-1);
                 TopoDS_Shape oldShape = findShape(oldM, refOld);
 
                 if (compareShapes(oldShape, findShape(newM, refNew), (TopAbs_ShapeEnum)refOld.type)) {
-                    Base::Console().Error("      Corresponds to new %s\n", refNew.toString().c_str());
+                    Base::Console().Message("      Corresponds to new %s\n", refNew.toString().c_str());
                     result[refOld].push_back(refNew);
                     newIndices[t].erase(j);
                     break;
@@ -492,7 +512,7 @@ RefMap buildRefMap(const TopoDS_Shape& newShape, const TopoDS_Shape& oldShape)
 
         // Handle shapes not found (e.g. the face generated from a closed loop of edges!)
         if (newIndices[t].size() > 1)
-            Base::Console().Error("WARNING: More than one new shape! Could break naming if order changes!\n");
+            Base::Console().Message("WARNING: More than one new shape! Could break naming if order changes!\n");
         int newIndex = 0; // Just to be consistent with buildRefMap(mkPrism, ...)
         for (std::set<Standard_Integer>::const_iterator i = newIndices[t].begin(); i != newIndices[t].end(); i++)
             result[ShapeRef(ShapeRef::NewVertex + t, newIndex++)].push_back(ShapeRef(shapeTypes[t], (*i)-1));
@@ -518,11 +538,11 @@ RefMap buildGenericRefMap(BRepBuilderAPI_MakeShape& mkShape,
 
     // Look at all objects in the old shape and try to find the related object in the new shape
     for (int t = 0; t < numShapeTypes; t++) {
-        Base::Console().Error("Investigating %s in old shape\n", shapeTypeToString[shapeTypes[t]].c_str());
+        Base::Console().Message("Investigating %s in old shape\n", shapeTypeToString[shapeTypes[t]].c_str());
         ShapeRef refOld(shapeTypes[t]);
 
         for (int i=1; i<=oldM[t]->Extent(); i++) {
-            Base::Console().Error("   Investigating subshape %u of %u\n", i, oldM[t]->Extent());
+            Base::Console().Message("   Investigating subshape %u of %u\n", i, oldM[t]->Extent());
             refOld.index = i-1; // adjust indices to start at zero
             TopoDS_Shape oldShape = findShape(oldM, refOld);
 
@@ -536,7 +556,7 @@ RefMap buildGenericRefMap(BRepBuilderAPI_MakeShape& mkShape,
             // ambiguities can be resolved by the calling method
             const TopTools_ListOfShape& mod(mkShape.Modified(oldShape));
             if ((mod.Extent() > 1) && (splitShapes != NULL)) {
-                Base::Console().Error("         Recording origin of split shapes %s\n", refOld.toString().c_str());
+                Base::Console().Message("         Recording origin of split shapes %s\n", refOld.toString().c_str());
                 splitShapes->push_back(refOld);
             }
 
@@ -545,7 +565,7 @@ RefMap buildGenericRefMap(BRepBuilderAPI_MakeShape& mkShape,
 
                 // find object in newM corresponding to Modified() object
                 refNew = findRef(newM, it.Value());
-                Base::Console().Error("      Found modified object: %s\n", refNew.toString().c_str());
+                Base::Console().Message("      Found modified object: %s\n", refNew.toString().c_str());
                 if (!refNew.isEmpty())
                     result[refOld].push_back(refNew);
             }
@@ -556,9 +576,16 @@ RefMap buildGenericRefMap(BRepBuilderAPI_MakeShape& mkShape,
 
                 // The shape might not be found e.g. for the case of FACE -> SOLID
                 // But the found = true remains valid anyway to avoid duplicate references!
-                refNew = findRef(newM, it.Value());                
+                refNew = findRef(newM, it.Value());                   
                 if (!refNew.isEmpty()) {
-                    Base::Console().Error("      Found generated object: %s\n", refNew.toString().c_str());
+                    if(refNew.type == ShapeRef::Vertex)
+                        refNew.type == ShapeRef::GeneratedVertex;
+                    else if(refNew.type == ShapeRef::Edge)
+                        refNew.type == ShapeRef::GeneratedEdge;
+                    else if(refNew.type == ShapeRef::Face)
+                        refNew.type == ShapeRef::GeneratedFace;
+                
+                    Base::Console().Message("      Found generated object: %s\n", refNew.toString().c_str());
                     result[refOld].push_back(refNew);
                 }
             }
@@ -571,7 +598,7 @@ RefMap buildGenericRefMap(BRepBuilderAPI_MakeShape& mkShape,
                 // Note: BRepFeat_MakePrism throws an exception when IsDeleted is called with a vertex
                 // of the face used to extrude the prism
 //                if (mkShape.IsDeleted(oldShape)) {
-//                    Base::Console().Error("      Found deleted object\n");
+//                    Base::Console().Message("      Found deleted object\n");
 //                } else {
                     // This branch is actually the most likely one as all shapes that have not been
                     // touched by the mkShape operation fall into this category
@@ -580,10 +607,10 @@ RefMap buildGenericRefMap(BRepBuilderAPI_MakeShape& mkShape,
                     // to avoid duplicates occuring e.g. with boolean operations
                     refNew = findRef(newM, oldShape);
                     if (!refNew.isEmpty()) {
-                        Base::Console().Error("      Found same object: %s\n", refNew.toString().c_str());
+                        Base::Console().Message("      Found same object: %s\n", refNew.toString().c_str());
                         result[refOld].push_back(refNew);                                                
                     } else {
-                        Base::Console().Error("      Found nothing for object, marked as deleted\n");
+                        Base::Console().Message("      Found nothing for object, marked as deleted\n");
                     }
 //                }
             }
@@ -599,7 +626,8 @@ RefMap buildGenericRefMap(BRepBuilderAPI_MakeShape& mkShape,
 /*
   * If merge is true, then records in the oldMap that do not match any records
   * in the newMap get copied to the result. Otherwise, the old shape is marked
-  * as deleted in the map
+  * as deleted in the map.
+  * Note that new 
 */
 // e.g. old map: VERTEX0 -> EDGE0, new map: EDGE0 -> FACE2, result map: VERTEX0 -> FACE2
 RefMap joinMap(const RefMap& oldMap, const RefMap& newMap) // const bool merge = false
@@ -639,15 +667,14 @@ RefMap joinMap(const RefMap& oldMap, const RefMap& newMap) // const bool merge =
 }
 
 // Build a RefMap from a sketch's geometry
-RefMap buildRefMapFromSketch(const TopoDS_Shape shape, const std::vector<Geometry*>& geometry)
+RefMap buildRefMapFromGeometry(const TopoDS_Shape shape, const std::vector<Geometry*>& geometry)
 {
     RefMap map;
-/*
+
     // Extract all subshapes from the shape (having one or more wires)
     std::vector<TopTools_IndexedMapOfShape*> M = extractSubShapes(shape);
 
     // Look at all entities in the geometry
-    // Note: Currently sketches can only contain points, lines, arcs, circles and ellipses
     // TODO: Can we assume that the first entity allways gets mapped to the first edge etc. ? That would save a lot of time
     for (unsigned entity = 0; entity < geometry.size(); entity++) {
         // Get entity type
@@ -659,7 +686,7 @@ RefMap buildRefMapFromSketch(const TopoDS_Shape shape, const std::vector<Geometr
         else if (geometry[entity]->isDerivedFrom(Part::GeomSurface::getClassTypeId()))
             type = TopAbs_FACE;
 
-        Base::Console().Error("Looking at %s with uid %u\n", shapeTypeToString[ShapeRef::typeEnum(type)].c_str(), geometry[entity]->uid);
+        Base::Console().Message("Looking at %s with uid %u\n", shapeTypeToString[ShapeRef::typeEnum(type)].c_str(), geometry[entity]->getUid());
 
         // Find the corresponding object in the shape
         TopoDS_Shape geoShape = geometry[entity]->toShape();
@@ -672,16 +699,16 @@ RefMap buildRefMapFromSketch(const TopoDS_Shape shape, const std::vector<Geometr
             TopoDS_Shape newShape = (*M[shapeTypeIndex[type]])(i);
 
             if (compareShapes(geoShape, newShape, type)) {
-                Base::Console().Error("   Found corresponding object %u\n", i);
+                Base::Console().Message("   Found corresponding object %u\n", i);
                 int geotype = ShapeRef::GeometryVertex + shapeTypeIndex[type];
-                ShapeRef geoRef(geotype, geometry[entity]->uid - 1); // The -1 only to be consistent when debug-printing...
+                ShapeRef geoRef(geotype, geometry[entity]->getUid());
                 map[geoRef].push_back(ShapeRef(type, i-1));
 
                 // Get the points of the edge because they are not contained in geometry
                 TopTools_IndexedMapOfShape V;
                 TopExp::MapShapes(newShape, TopAbs_VERTEX, V);
                 geoRef.type = ShapeRef::GeometryVtx; // set unique type so the vertex doesn't overlap a GeometryVertex
-                geoRef.index = geometry[entity]->uid - 1;
+                geoRef.index = geometry[entity]->getUid();
                 for (int v=1; v<=V.Extent(); v++) {
                     if (V(v).Orientation() == TopAbs_FORWARD)
                         // One vertex per edge is enough, since every vertex belongs to two edges...
@@ -693,10 +720,10 @@ RefMap buildRefMapFromSketch(const TopoDS_Shape shape, const std::vector<Geometr
         }
 
         if (!found)
-            Base::Console().Error("   WARNING: Unhandled entity\n");
+            Base::Console().Message("   WARNING: Unhandled entity\n");
     }
 
-    clearSubShapes(M);*/
+    clearSubShapes(M);
     return map;
 }
 
@@ -766,11 +793,11 @@ RefMap buildRefMap(BRepPrimAPI_MakePrism &mkPrism, const TopoDS_Shape& oldShape)
     // Look at all objects in the base shape and try to find the related object at the
     // beginning and end of the prism
     for (int t = 0; t < numShapeTypes; t++) {
-        Base::Console().Error("Investigating %s in base shape of prism\n", shapeTypeToString[shapeTypes[t]].c_str());
+        Base::Console().Message("Investigating %s in base shape of prism\n", shapeTypeToString[shapeTypes[t]].c_str());
         ShapeRef refOld(shapeTypes[t]);
 
         for (int i=1; i<=oldM[t]->Extent(); i++) {
-            Base::Console().Error("   Investigating subshape %u of %u\n", i, oldM[t]->Extent());
+            Base::Console().Message("   Investigating subshape %u of %u\n", i, oldM[t]->Extent());
             refOld.index = i-1;
             TopoDS_Shape oldShape = findShape(oldM, refOld);
 
@@ -780,7 +807,7 @@ RefMap buildRefMap(BRepPrimAPI_MakePrism &mkPrism, const TopoDS_Shape& oldShape)
 
             refNew = findRef(newM, mkPrism.LastShape(oldShape));
             if (!refNew.isEmpty()) {
-                Base::Console().Error("      Found new object: %s\n", refNew.toString().c_str());
+                Base::Console().Message("      Found new object: %s\n", refNew.toString().c_str());
                 // Make sure indices are unique. This only works because refOld.index corresponds
                 // to the UID of the SketchGeometry
                 int type = ShapeRef::SweepVertex + t; //shapeTypeIndex[TopAbs_ShapeEnum(refOld.type)];
@@ -813,11 +840,11 @@ RefMap buildRefMap(BRepPrimAPI_MakeRevol &mkRevol, const TopoDS_Shape& oldShape)
 
     // Look at all objects in the base shape and try to find the related object at the end of the sweep
     for (int t = 0; t < numShapeTypes; t++) {
-        Base::Console().Error("Investigating %s in base shape of revolution\n", shapeTypeToString[shapeTypes[t]].c_str());
+        Base::Console().Message("Investigating %s in base shape of revolution\n", shapeTypeToString[shapeTypes[t]].c_str());
         ShapeRef refOld(shapeTypes[t]);
 
         for (int i=1; i<=oldM[t]->Extent(); i++) {
-            Base::Console().Error("   Investigating subshape %u of %u\n", i, oldM[t]->Extent());
+            Base::Console().Message("   Investigating subshape %u of %u\n", i, oldM[t]->Extent());
             refOld.index = i-1;
             TopoDS_Shape oldShape = findShape(oldM, refOld);
 
@@ -977,7 +1004,7 @@ const TopAbs_Orientation getTwinOrientation(const ShapeRef& ref1, const ShapeRef
         o2 = findSameShape(findShape(refineM, *vadj2), shape2).Orientation();
         if (o1 != o2)
             break;
-        Base::Console().Error("      Orientation is identical on %s and %s\n", vadj1->toString().c_str(), vadj2->toString().c_str());
+        Base::Console().Message("      Orientation is identical on %s and %s\n", vadj1->toString().c_str(), vadj2->toString().c_str());
         vadj1++;
         vadj2++;
     }
@@ -991,12 +1018,12 @@ const TopAbs_Orientation getTwinOrientation(const ShapeRef& ref1, const ShapeRef
         // edge loop is split. The common vertex was created by the seam edge of the ancestor shape
         RefVec vertices1 = Shapes.at(ref1).vertices;
         RefVec vertices2 = Shapes.at(ref2).vertices;
-        Base::Console().Error("      Searching for common vertex\n");
+        Base::Console().Message("      Searching for common vertex\n");
         for (RefVec::const_iterator v1 = vertices1.begin(); v1 != vertices1.end(); v1++) {
             for (RefVec::const_iterator v2 = vertices2.begin(); v2 != vertices2.end(); v2++) {
                 if (*v1 == *v2) {
                     TopoDS_Shape commonVertex = findShape(refineM, *v1);
-                    Base::Console().Error("      Found common vertex %s\n", v1->toString().c_str());
+                    Base::Console().Message("      Found common vertex %s\n", v1->toString().c_str());
                     o1 = findSameShape(shape1, commonVertex).Orientation();
                     o2 = findSameShape(shape2, commonVertex).Orientation();
                     if (o1 != o2)
@@ -1006,7 +1033,7 @@ const TopAbs_Orientation getTwinOrientation(const ShapeRef& ref1, const ShapeRef
         }
     }
 
-    Base::Console().Error("      Orientation is identical, disambiguation failed\n");
+    Base::Console().Message("      Orientation is identical, disambiguation failed\n");
     return TopAbs_INTERNAL; // Misuse this to report failure
 }
 
@@ -1049,7 +1076,7 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
     // registered as deleted, while the other is registered as modified. From the point of view
     // of shape history, it would be better that both are registered as modified. I opened a thread
     // on this subject.
-    Base::Console().Error("Building map for refined faces\n");
+    Base::Console().Message("Building map for refined faces\n");
     RefMap refineMap = buildGenericRefMap(mkRefine, refineM, newM);
     for (int i = 0; i < shapeNum; i++)
         result[i] = joinMap(result[i], refineMap);
@@ -1071,7 +1098,7 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
     }
 
     // Collect the topological information required for the algorithms below
-    Base::Console().Error("Collecting topological data\n");
+    Base::Console().Message("Collecting topological data\n");
     std::map<ShapeRef, shapeData> Shapes;
 
     // Note: Theoretically we can construct mapVertexFace from the other two maps
@@ -1094,7 +1121,7 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
         for (RefVec::const_iterator r = splitSegments.begin(); r != splitSegments.end(); r++) {
             TopoDS_Shape rShape = findShape(refineM, *r);
             Shapes[*r].splitSegment = true;
-            Base::Console().Error("   Investigating split %s\n", r->toString().c_str());
+            Base::Console().Message("   Investigating split %s\n", r->toString().c_str());
 
             if (r->type == ShapeRef::Face) {
                 // for split segment faces, find all adjacent faces because they may have caused the split
@@ -1109,7 +1136,7 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
                             // Other split faces do not count as adjacent faces
                             if (std::find(splitSegments.begin(), splitSegments.end(), faceRef) != splitSegments.end())
                                 continue;
-                            Base::Console().Error("      %s is adjacent to split %s\n", faceRef.toString().c_str(), r->toString().c_str());
+                            Base::Console().Message("      %s is adjacent to split %s\n", faceRef.toString().c_str(), r->toString().c_str());
                             Shapes[*r].touchFaces.insert(faceRef);
                         }
                     }
@@ -1133,7 +1160,7 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
                         // Other split faces do not count as adjacent faces
                         if (std::find(splitSegments.begin(), splitSegments.end(), faceRef) != splitSegments.end())
                             continue;
-                        Base::Console().Error("      %s touches split %s\n", faceRef.toString().c_str(), r->toString().c_str());
+                        Base::Console().Message("      %s touches split %s\n", faceRef.toString().c_str(), r->toString().c_str());
                         Shapes[*r].touchFaces.insert(faceRef);
                     }
                 }
@@ -1142,7 +1169,7 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
     }
 
     // Find all section edges
-    Base::Console().Error("Collecting section edges\n");
+    Base::Console().Message("Collecting section edges\n");
     TopTools_ListIteratorOfListOfShape it;
     RefVec sectionEdges;
     for (it.Initialize(mkBool.SectionEdges()); it.More(); it.Next()) {
@@ -1158,7 +1185,7 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
         for (int i = 0; i < shapeNum; i++) {
             if (isInMap(result[i], edgeRef)) {
                 Shapes[edgeRef].original = true;
-                Base::Console().Error("   %s belongs to original %u\n", edgeRef.toString().c_str(), i+1);
+                Base::Console().Message("   %s belongs to original %u\n", edgeRef.toString().c_str(), i+1);
                 break;
             }
         }
@@ -1169,7 +1196,7 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
 
     // Collect topological data for the section edges
     for (RefVec::const_iterator r = sectionEdges.begin(); r != sectionEdges.end(); r++) {
-        Base::Console().Error("   Investigating section %s\n", r->toString().c_str());
+        Base::Console().Message("   Investigating section %s\n", r->toString().c_str());
 
         // Find the adjacent edges of the section edge's vertices, excluding other section edges
         TopTools_IndexedMapOfShape V;
@@ -1194,7 +1221,7 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
         for (int v = 1; v <= V.Extent(); v++) {
             ShapeRef vertexRef = findRef(refineM, V(v));
             Shapes[*r].vertices.push_back(vertexRef);
-            Base::Console().Error("      %s is a section vertex of %s\n", vertexRef.toString().c_str(), r->toString().c_str());
+            Base::Console().Message("      %s is a section vertex of %s\n", vertexRef.toString().c_str(), r->toString().c_str());
 
             // Find the face that touches the vertex but is not adjacent to the edge itself
             // Note: We cannot use the touchFace of an already processed vertex because it is different
@@ -1207,14 +1234,14 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
                 ShapeRef faceRef(ShapeRef::Face, *vtxAdjFaces.begin());
                 Shapes[vertexRef].touchFaces.insert(faceRef);
                 Shapes[*r].touchFaces.insert(faceRef);
-                Base::Console().Error("         %s touches section %s\n", faceRef.toString().c_str(), r->toString().c_str());
+                Base::Console().Message("         %s touches section %s\n", faceRef.toString().c_str(), r->toString().c_str());
             } else {
                 // This happens if the vertex is a singular vertex touching a seam edge
-                //Base::Console().Error("Warning: Found %u faces touching the vertex. Check TNaming code\n", vertexAdjFaces.size());
+                //Base::Console().Message("Warning: Found %u faces touching the vertex. Check TNaming code\n", vertexAdjFaces.size());
             }
 
             if (Shapes[vertexRef].section == true) {
-                Base::Console().Error("         This vertex has already been processed\n");
+                Base::Console().Message("         This vertex has already been processed\n");
                 continue; // We already handled this vertex in an adjacent section edge
             }
             if (!Shapes[vertexRef].original)
@@ -1230,10 +1257,10 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
                     ShapeRef edgeRef(ShapeRef::Edge, *e);
 
                     if (Shapes[edgeRef].section) {
-                        Base::Console().Error("         Section %s is adjacent to section %s\n", edgeRef.toString().c_str(), vertexRef.toString().c_str());
+                        Base::Console().Message("         Section %s is adjacent to section %s\n", edgeRef.toString().c_str(), vertexRef.toString().c_str());
                         adjSectionEdge = edgeRef;
                     } else {
-                        Base::Console().Error("         %s is adjacent to section %s\n", edgeRef.toString().c_str(), vertexRef.toString().c_str());
+                        Base::Console().Message("         %s is adjacent to section %s\n", edgeRef.toString().c_str(), vertexRef.toString().c_str());
                         Shapes[vertexRef].adjShapes.insert(edgeRef);
                     }
                 }
@@ -1253,12 +1280,12 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
                 for (std::set<int>::const_iterator f = vertexAdjFaces.begin(); f != vertexAdjFaces.end(); f++) {
                     if (std::find(adjEdgeAdjFaces.begin(), adjEdgeAdjFaces.end(), *f) == adjEdgeAdjFaces.end()) {
                         ShapeRef faceRef(ShapeRef::Face, *f);
-                        Base::Console().Error("         %s is adjacent to section %s\n", faceRef.toString().c_str(), vertexRef.toString().c_str());
+                        Base::Console().Message("         %s is adjacent to section %s\n", faceRef.toString().c_str(), vertexRef.toString().c_str());
                         Shapes[vertexRef].adjShapes.insert(faceRef);
                     }
                 }
             } else if (Shapes[vertexRef].adjShapes.size() != 2) {
-                Base::Console().Error("Warning: Found %u adjacent edges to section edge. Check TNaming code\n", Shapes[vertexRef].adjShapes.size());
+                Base::Console().Message("Warning: Found %u adjacent edges to section edge. Check TNaming code\n", Shapes[vertexRef].adjShapes.size());
             }            
 
             // The adjacent section edge is sometimes required by getTwinOrientation()
@@ -1268,7 +1295,7 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
 
         // This edge has already been handled in the general buildRefMap()
         if (Shapes[*r].original) {
-            Base::Console().Error("      %s has been handled in general buildRefMap()\n", r->toString().c_str());
+            Base::Console().Message("      %s has been handled in general buildRefMap()\n", r->toString().c_str());
             Shapes.erase(*r);
             continue;
         }
@@ -1276,7 +1303,7 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
         // Find the adjacent faces of the section edge (should be exactly two normally...)               
         for (std::set<int>::const_iterator f = edgeAdjFaces.begin(); f != edgeAdjFaces.end(); f++) {
             ShapeRef faceRef(ShapeRef::Face, *f);
-            Base::Console().Error("      %s is adjacent to section %s\n", faceRef.toString().c_str(), r->toString().c_str());
+            Base::Console().Message("      %s is adjacent to section %s\n", faceRef.toString().c_str(), r->toString().c_str());
             Shapes[*r].adjShapes.insert(faceRef);
         }
     }
@@ -1299,7 +1326,7 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
     // Note that newRefs[] will only contain Modifiers
     // Note: If we were sure that segment sequence by OCC is consistent, we wouldn't need Modifiers at
     //       all. But we don't trust OCC that far...
-    Base::Console().Error("Investigating split shapes\n");
+    Base::Console().Message("Investigating split shapes\n");
     std::vector<RefMap> newRefs(shapeNum);
 
     for (int i = 0; i < shapeNum; i++) {
@@ -1310,7 +1337,7 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
             if (segments.size() < 2)
                 continue; // Can happen as a result of the ModelRefine()
 
-            Base::Console().Error("Investigating %s in old shape\n", o->toString().c_str());
+            Base::Console().Message("Investigating %s in old shape\n", o->toString().c_str());
 
             // Check if a shape loop was split, then we can use the orientation of the singular vertex/edge
             // as additional topological information for the adjacent segments
@@ -1323,7 +1350,7 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
                 // multiple splits it might be required.
                 // NOTE: This depends on OCC being consistent with the ordering of the split segments...
                 newTopInfo[*seg].splitPath.push_back(std::pair<int, int>(splitIndex++, segments.size()));
-                Base::Console().Error("   Looking at segment %s (%u of %u)\n", seg->toString().c_str(), splitIndex, segments.size());
+                Base::Console().Message("   Looking at segment %s (%u of %u)\n", seg->toString().c_str(), splitIndex, segments.size());
 
                 if (!singularRef.isEmpty()) {
                     // Set the symmetry flag on this segment to distinguish it from the other
@@ -1331,16 +1358,16 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
                     // NOTE: This assumes that OCC is consistent in orienting the edge vertices and seam edge
                     // Note: And on some topologies the singular shape has identical orientation on both
                     // split segments...
-                    Base::Console().Error("      Found singular %s in old shape %u\n", singularRef.toString().c_str(), i);
+                    Base::Console().Message("      Found singular %s in old shape %u\n", singularRef.toString().c_str(), i);
                     TopoDS_Shape segmentShape = findShape(refineM, *seg);
                     TopoDS_Shape newSingularShape = findSameShape(segmentShape, singularShape);
                     if (!newSingularShape.IsNull()) {
                         // If the shape was split into several segments, only two can be adjacent to the
                         // singular shape!
                         newTopInfo[*seg].symmetryFlag = (newSingularShape.Orientation() == TopAbs_REVERSED);
-                        Base::Console().Error("      Setting symmetry flag to %s\n", newTopInfo[*seg].symmetryFlag == TopAbs_REVERSED ? "REVERSED" : "FORWARD");
+                        Base::Console().Message("      Setting symmetry flag to %s\n", newTopInfo[*seg].symmetryFlag == TopAbs_REVERSED ? "REVERSED" : "FORWARD");
                     } else {
-                        Base::Console().Error("      This segment is not adjacent to the singular shape\n");
+                        Base::Console().Message("      This segment is not adjacent to the singular shape\n");
                     }
                 }
 
@@ -1357,7 +1384,7 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
                     RefVec parents = findParentsInMap(result[j], *c);
                     for (RefVec::const_iterator o = parents.begin(); o != parents.end(); o++) {
                         // This face is responsible for splitting the object
-                        Base::Console().Error("      Parent %s has split the object\n", o->toString().c_str());
+                        Base::Console().Message("      Parent %s has split the object\n", o->toString().c_str());
                         newRefs[j][*o].push_back(*seg);
                     }
                 }
@@ -1405,7 +1432,7 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
     // Symmetry: See documentation for handling of twinShapes
     // Numbering: If disambiguation by symmetry fails, the pair of vertices is numbered instead
     //
-    Base::Console().Error("Investigating section edges and vertices\n");
+    Base::Console().Message("Investigating section edges and vertices\n");
     // Map to store ancestors and modifiers of adjacent shapes to check for ambiguities. Especially booleans of
     // cylinders tend to produce pairs of section edges and vertices with identical adjacent shapes
     std::map<ShapeRef, RefSet> ancMap, modMap;
@@ -1416,12 +1443,12 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
             continue;
         if (s->second.splitSegment) {
             // TODO: Will this ever be reached? Otherwise the splitSegment flag might be unnecessary
-            Base::Console().Error("SPLITSEGMENT REACHED\n");
+            Base::Console().Message("SPLITSEGMENT REACHED\n");
             continue;
         }
 
         ShapeRef sectRef = s->first;
-        Base::Console().Error("   Section%s\n", sectRef.toString().c_str());
+        Base::Console().Message("   Section%s\n", sectRef.toString().c_str());
 
         // Edge: Register the adjacent shapes as ancestors (usually there should be exactly
         // two adjacent faces and two ancestors)
@@ -1433,7 +1460,7 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
         for (RefSet::iterator s = adjShapes.begin(); s != adjShapes.end(); s++) {
             if (Shapes[*s].section)
                 continue;
-            Base::Console().Error("      %s is adjacent to %s\n", s->toString().c_str(), sectRef.toString().c_str());
+            Base::Console().Message("      %s is adjacent to %s\n", s->toString().c_str(), sectRef.toString().c_str());
 
             // Register all ancestors of the adjacent shape as ancestors of the section edge/vertex
             for (int i = 0; i < shapeNum; i++) {
@@ -1442,7 +1469,7 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
                     continue; // Wrong result[] map
 
                 for (RefVec::const_iterator a = ancVec.begin(); a != ancVec.end(); a++) {
-                    Base::Console().Error("      %s is ancestor of %s in old shape %u\n", a->toString().c_str(), s->toString().c_str(), i);
+                    Base::Console().Message("      %s is ancestor of %s in old shape %u\n", a->toString().c_str(), s->toString().c_str(), i);
                     result[i][*a].push_back(sectRef);
                     ancestors.insert(*a);
                 }
@@ -1456,7 +1483,7 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
             sectRefMod.modified = true;
 
             for (RefSet::iterator s = limitShapes.begin(); s != limitShapes.end(); s++) {
-                Base::Console().Error("      %s touches %s\n", s->toString().c_str(), sectRef.toString().c_str());
+                Base::Console().Message("      %s touches %s\n", s->toString().c_str(), sectRef.toString().c_str());
 
                 // Register all ancestors of the touching faces as modifiers of the section edge
                 for (int i = 0; i < shapeNum; i++) {
@@ -1465,7 +1492,7 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
                         continue; // Wrong result[] map
 
                     for (RefVec::const_iterator m = modVec.begin(); m != modVec.end(); m++) {
-                        Base::Console().Error("      %s is modifier of %s in old shape %u\n", m->toString().c_str(), s->toString().c_str(), i);
+                        Base::Console().Message("      %s is modifier of %s in old shape %u\n", m->toString().c_str(), s->toString().c_str(), i);
                         result[i][*m].push_back(sectRefMod);
                         modifiers.insert(*m);
                     }
@@ -1496,7 +1523,7 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
                 continue;
 
             if ((a->second == ancestors) && (modMap[a->first] == modifiers)) {
-                Base::Console().Error("   ! %s is symmetric to %s\n", a->first.toString().c_str(), sectRef.toString().c_str());
+                Base::Console().Message("   ! %s is symmetric to %s\n", a->first.toString().c_str(), sectRef.toString().c_str());
                 twinRef = a->first;
                 // There shouldn't be more than one pair of symmetric shapes...
                 ancMap.erase(a->first);
@@ -1519,7 +1546,7 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
                     break;
             }
             if (identCount == 2) {
-                Base::Console().Error("   ! Adjacent faces of %s and %s are identical\n", a->first.toString().c_str(), sectRef.toString().c_str());
+                Base::Console().Message("   ! Adjacent faces of %s and %s are identical\n", a->first.toString().c_str(), sectRef.toString().c_str());
                 twinRef = a->first;
                 // There shouldn't be more than one pair of symmetric shapes...
                 ancMap.erase(a->first);
@@ -1537,13 +1564,13 @@ TopoDS_Shape buildRefMap(BRepAlgoAPI_BooleanOperation &mkBool,
             if (o != TopAbs_INTERNAL) {
                 newTopInfo[sectRef].symmetryFlag = (o == TopAbs_REVERSED);
                 newTopInfo[twinRef].symmetryFlag = (o == TopAbs_FORWARD);
-                Base::Console().Error("      SymmetryFlag of %s: %s\n", sectRef.toString().c_str(), o == TopAbs_REVERSED ? "REVERSED" : "FORWARD");
-                Base::Console().Error("      SymmetryFlag of %s: %s\n", twinRef.toString().c_str(), o == TopAbs_FORWARD ? "REVERSED" : "FORWARD");
+                Base::Console().Message("      SymmetryFlag of %s: %s\n", sectRef.toString().c_str(), o == TopAbs_REVERSED ? "REVERSED" : "FORWARD");
+                Base::Console().Message("      SymmetryFlag of %s: %s\n", twinRef.toString().c_str(), o == TopAbs_FORWARD ? "REVERSED" : "FORWARD");
             } else {
                 newTopInfo[sectRef].splitPath.push_back(std::pair<int, int>(0,2));
                 newTopInfo[twinRef].splitPath.push_back(std::pair<int, int>(1,2));
-                Base::Console().Error("      Segment number of %s: #1/2\n", sectRef.toString().c_str());
-                Base::Console().Error("      Segment number of %s: #2/2\n", twinRef.toString().c_str());
+                Base::Console().Message("      Segment number of %s: #1/2\n", sectRef.toString().c_str());
+                Base::Console().Message("      Segment number of %s: #2/2\n", twinRef.toString().c_str());
 
             }
         } else {
@@ -1594,7 +1621,7 @@ const RefVec intersect(const RefVec& vec1, const RefSet& vec2)
   */
 OriginRec findOriginInHistory(const std::vector<ShapeMap>& history, const ShapeRef& subRef)
 {
-    Base::Console().Error("   Find origin in history for %s\n", subRef.toString(false).c_str());
+    Base::Console().Message("   Find origin in history for %s\n", subRef.toString(false).c_str());
 
     OriginRec result;
 
@@ -1603,12 +1630,12 @@ OriginRec findOriginInHistory(const std::vector<ShapeMap>& history, const ShapeR
         findInMap(h->Map, subRef, ancestors, modifiers);
 
         for (RefVec::const_iterator a = ancestors.begin(); a != ancestors.end(); a++) {
-            Base::Console().Error("      Ancestor: %s:%s\n", h->name.c_str(), a->toString().c_str());
+            Base::Console().Message("      Ancestor: %s:%s\n", h->name.c_str(), a->toString().c_str());
             result.Ancestors.push_back(AncestorRef(h->name, *a));
         }
 
         for (RefVec::const_iterator m = modifiers.begin(); m != modifiers.end(); m++) {
-            Base::Console().Error("      Modifier: %s:%s\n", h->name.c_str(), m->toString().c_str());
+            Base::Console().Message("      Modifier: %s:%s\n", h->name.c_str(), m->toString().c_str());
             result.Modifiers.push_back(AncestorRef(h->name, *m));
         }
     }
@@ -1622,7 +1649,7 @@ OriginRec findOriginInHistory(const std::vector<ShapeMap>& history, const ShapeR
 RefVec findShapesInHistory(const std::vector<ShapeMap>& history, const OriginRec& origin,
                            const ShapeRef::typeEnum& type)
 {
-    Base::Console().Error("   Find shapes in history\n");
+    Base::Console().Message("   Find shapes in history\n");
     RefVec result;
 
     // Find all shapes generated by the ancestor. If there is more than one ancestor, then
@@ -1630,7 +1657,7 @@ RefVec findShapesInHistory(const std::vector<ShapeMap>& history, const OriginRec
     for (AncestorVec::const_iterator a = origin.Ancestors.begin(); a != origin.Ancestors.end(); a++) {
         for (std::vector<ShapeMap>::const_iterator h = history.begin(); h != history.end(); h++) {
             if (h->name == a->name) {
-                Base::Console().Error("      Ancestor: %s in %s\n", a->ref.toString().c_str(), a->name.c_str());
+                Base::Console().Message("      Ancestor: %s in %s\n", a->ref.toString().c_str(), a->name.c_str());
                 RefMap::const_iterator m = h->Map.find(a->ref);
                 if (m == h->Map.end())
                     // This can happen if the ancestor doesn't point to any geometry any more
@@ -1662,14 +1689,14 @@ RefVec findShapesInHistory(const std::vector<ShapeMap>& history, const OriginRec
     }
 
     for (RefVec::const_iterator r = result.begin(); r != result.end(); r++)
-        Base::Console().Error("         Found from ancestor(s): %s\n", r->toString().c_str());
+        Base::Console().Message("         Found from ancestor(s): %s\n", r->toString().c_str());
 
     if (result.size() == 1)
         return result;
 
     // Eliminate shapes based on the modifiers
     for (AncestorVec::const_iterator m = origin.Modifiers.begin(); m != origin.Modifiers.end(); m++) {
-        Base::Console().Error("      Modifier: %s in %s\n", m->ref.toString().c_str(), m->name.c_str());
+        Base::Console().Message("      Modifier: %s in %s\n", m->ref.toString().c_str(), m->name.c_str());
 
         for (std::vector<ShapeMap>::const_iterator h = history.begin(); h != history.end(); h++) {
             if (h->name == m->name) {
@@ -1704,7 +1731,7 @@ RefVec findShapesInHistory(const std::vector<ShapeMap>& history, const OriginRec
 
     if (!origin.Modifiers.empty())
         for (RefVec::const_iterator r = result.begin(); r != result.end(); r++)
-            Base::Console().Error("         Found from modifier(s): %s\n", r->toString(false).c_str());
+            Base::Console().Message("         Found from modifier(s): %s\n", r->toString(false).c_str());
 
     if (result.size() == 1)
         return result;
@@ -1713,10 +1740,10 @@ RefVec findShapesInHistory(const std::vector<ShapeMap>& history, const OriginRec
     RefVec result2;
     for (RefVec::iterator r = result.begin(); r != result.end(); r++) {
         if (origin == findOriginInHistory(history, *r)) {
-            Base::Console().Error("      Found matching origin: %s\n", r->toString(false).c_str());
+            Base::Console().Message("      Found matching origin: %s\n", r->toString(false).c_str());
             result2.push_back(*r);
         } else {
-            Base::Console().Error("      Eliminated %s because origin does not match\n", r->toString(false).c_str());
+            Base::Console().Message("      Eliminated %s because origin does not match\n", r->toString(false).c_str());
         }
     }
 
@@ -1727,7 +1754,7 @@ RefVec findShapesInHistory(const std::vector<ShapeMap>& history, const OriginRec
 const std::string TopoShape::printRef(const ShapeRef& r, const bool _short) const {
     std::stringstream strm;
     strm << r.toString(_short);
-    TopInfoMap tim(TopInfo);
+    TopInfoMap tim(_TopInfo);
     
     strm << (tim[r].symmetryFlag ? "R" : "");
     if (tim[r].splitPath.size() > 0) {
@@ -1741,23 +1768,23 @@ void TopoShape::printHistory() const
 {
     std::map<ShapeRef, std::vector<std::string> > inverse;
 
-    Base::Console().Error("====== SUMMARY ======\n");
-    for (std::vector<ShapeMap>::const_iterator h = History.begin(); h != History.end(); h++) {
-        Base::Console().Error("=== SHAPE HISTORY FROM '%s' TO TOPOSHAPE ===\n", h->name.c_str());
-        Base::Console().Error("Read as: Ancestor shape generates shape\n");
-        Base::Console().Error("R: Symmetry flag set\n");
-        Base::Console().Error("#i/j: Ancestor shape was split into j segments and this is segment #i\n");
-        Base::Console().Error("(m): Ancestor shape only modifies this shape indirectly (e.g. if the ancestor\n");
-        Base::Console().Error("     shape is a face which splits the referenced shape into segments)\n");
+    Base::Console().Message("====== SUMMARY ======\n");
+    for (std::vector<ShapeMap>::const_iterator h = _History.begin(); h != _History.end(); h++) {
+        Base::Console().Message("=== SHAPE HISTORY FROM '%s' TO TOPOSHAPE ===\n", h->name.c_str());
+        Base::Console().Message("Read as: Ancestor shape generates shape\n");
+        Base::Console().Message("R: Symmetry flag set\n");
+        Base::Console().Message("#i/j: Ancestor shape was split into j segments and this is segment #i\n");
+        Base::Console().Message("(m): Ancestor shape only modifies this shape indirectly (e.g. if the ancestor\n");
+        Base::Console().Message("     shape is a face which splits the referenced shape into segments)\n");
 
         for (RefMap::const_iterator r = h->Map.begin(); r != h->Map.end(); r++) {
-            Base::Console().Error("%s\t ==> ", printRef(r->first).c_str());
+            Base::Console().Message("%s\t ==> ", printRef(r->first).c_str());
             for (RefVec::const_iterator s = r->second.begin(); s != r->second.end(); ) {
-                Base::Console().Error("%s", printRef(*s, false).c_str());
+                Base::Console().Message("%s", printRef(*s, false).c_str());
                 s++;
-                if (s != r->second.end()) Base::Console().Error(", ");
+                if (s != r->second.end()) Base::Console().Message(", ");
             }
-            Base::Console().Error("\n");
+            Base::Console().Message("\n");
         }
 
         // Add entries to inverse map of result shape to origin shape
@@ -1771,16 +1798,16 @@ void TopoShape::printHistory() const
         }
     }
 
-    Base::Console().Error("====== INVERSE SHAPE HISTORY FOR RESULT TOPOSHAPE ======\n");
-    Base::Console().Error("Read as: New shape depends on ancestor shape(s)\n");
+    Base::Console().Message("====== INVERSE SHAPE HISTORY FOR RESULT TOPOSHAPE ======\n");
+    Base::Console().Message("Read as: New shape depends on ancestor shape(s)\n");
     for (std::map<ShapeRef, std::vector<std::string> >::const_iterator r = inverse.begin(); r != inverse.end(); r++) {
-        Base::Console().Error("%s\t <== ", printRef(r->first).c_str());
+        Base::Console().Message("%s\t <== ", printRef(r->first).c_str());
         for (std::vector<std::string>::const_iterator s = r->second.begin(); s != r->second.end(); ) {
-            Base::Console().Error("%s", s->c_str());
+            Base::Console().Message("%s", s->c_str());
             s++;
-            if (s != r->second.end()) Base::Console().Error(", ");
+            if (s != r->second.end()) Base::Console().Message(", ");
         }
-        Base::Console().Error("\n");
+        Base::Console().Message("\n");
     }
 
     // Check for ambiguous references (means there is a flaw in the naming algorithm!)
@@ -1805,7 +1832,7 @@ void TopoShape::printHistory() const
         }
     }
 
-    TopInfoMap tim(TopInfo);
+    TopInfoMap tim(_TopInfo);
     std::map<std::string, RefSet> dups, symmetries, segments;
     for (std::map<std::string, std::vector<RefVec> >::const_iterator d = duplicates.begin(); d != duplicates.end(); d++) {
         std::string refStr = d->first;
@@ -1837,25 +1864,25 @@ void TopoShape::printHistory() const
     }
 
     if (!symmetries.empty())
-        Base::Console().Error("====== SYMMETRIES (indistinguishable except for symmetry flag) ======\n");
+        Base::Console().Message("====== SYMMETRIES (indistinguishable except for symmetry flag) ======\n");
     for (std::map<std::string, RefSet>::const_iterator i = symmetries.begin(); i != symmetries.end(); i++) {
         for (RefSet::const_iterator r = i->second.begin(); r != i->second.end(); r++)
-            Base::Console().Error("%s, ", printRef(*r).c_str());
-        Base::Console().Error("\n");
+            Base::Console().Message("%s, ", printRef(*r).c_str());
+        Base::Console().Message("\n");
     }
     if (!segments.empty())
-        Base::Console().Error("====== SPLIT SEGMENTS (indistinguishable except for split path) ======\n");
+        Base::Console().Message("====== SPLIT SEGMENTS (indistinguishable except for split path) ======\n");
     for (std::map<std::string, RefSet>::const_iterator i = segments.begin(); i != segments.end(); i++) {
         for (RefSet::const_iterator r = i->second.begin(); r != i->second.end(); r++)
-            Base::Console().Error("%s, ", printRef(*r).c_str());
-        Base::Console().Error("\n");
+            Base::Console().Message("%s, ", printRef(*r).c_str());
+        Base::Console().Message("\n");
     }
     if (!dups.empty())
-        Base::Console().Error("====== AMBIGUITIES (CHECK NAMING ALGORITHM!) ======\n");
+        Base::Console().Message("====== AMBIGUITIES (CHECK NAMING ALGORITHM!) ======\n");
     for (std::map<std::string, RefSet>::const_iterator i = dups.begin(); i != dups.end(); i++) {
         for (RefSet::const_iterator r = i->second.begin(); r != i->second.end(); r++)
-            Base::Console().Error("%s, ", printRef(*r).c_str());
-        Base::Console().Error("\n");
+            Base::Console().Message("%s, ", printRef(*r).c_str());
+        Base::Console().Message("\n");
     }
 
     // Check that all shapes are handled
@@ -1864,11 +1891,11 @@ void TopoShape::printHistory() const
     for (int i = 0; i < numShapeTypes; i++)
         totalNewShapes += newM[i]->Extent();
     if (inverse.size() != totalNewShapes) {
-        Base::Console().Error("=== ERROR: THERE ARE UNHANDLED SHAPES ===\n");
-        Base::Console().Error("Total new shapes: %u, total ShapeRefs: %u\n", totalNewShapes, inverse.size());
+        Base::Console().Message("=== ERROR: THERE ARE UNHANDLED SHAPES ===\n");
+        Base::Console().Message("Total new shapes: %u, total ShapeRefs: %u\n", totalNewShapes, inverse.size());
     }
 
-    Base::Console().Error("====== FINISH SUMMARY ======\n");
+    Base::Console().Message("====== FINISH SUMMARY ======\n");
     clearSubShapes(newM);
 
 }

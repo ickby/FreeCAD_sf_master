@@ -77,7 +77,7 @@ using namespace Part;
 #endif
 
 // All these are defined in TopoShapeNaming.cpp
-extern RefMap buildRefMapFromSketch(const TopoDS_Shape shape, const std::vector<Geometry*>& geometry);
+extern RefMap buildRefMapFromGeometry(const TopoDS_Shape shape, const std::vector<Geometry*>& geometry);
 extern RefMap buildRefMap(const TopoDS_Shape& newShape, const TopoDS_Shape& oldShape);
 extern RefMap joinMap(const RefMap& oldMap, const RefMap& newMap);
 extern RefMap buildRefMap(BRepPrimAPI_MakeSweep &mkPrism, const TopoDS_Shape& oldShape);

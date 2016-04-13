@@ -63,6 +63,8 @@
 #include <GCPnts_TangentialDeflection.hxx>
 #include <GCPnts_QuasiUniformAbscissa.hxx>
 #include <GCPnts_QuasiUniformDeflection.hxx>
+#include <TopTools_IndexedMapOfShape.hxx>
+#include <TopExp.hxx>
 
 #include <Base/Vector3D.h>
 #include <Base/VectorPy.h>
@@ -88,6 +90,10 @@
 #include "BSplineCurvePy.h"
 
 using namespace Part;
+
+extern RefMap     buildRefMapFromGeometry(const TopoDS_Shape shape, const std::vector<Geometry*>& geometry);
+extern const bool compareShapes(const TopoDS_Shape& s1, const TopoDS_Shape& s2, const TopAbs_ShapeEnum type);
+extern RefMap     joinMap(const RefMap& oldMap, const RefMap& newMap);
 
 // returns a string which represents the object e.g. when printed in python
 std::string TopoShapeEdgePy::representation(void) const
@@ -124,7 +130,18 @@ int TopoShapeEdgePy::PyInit(PyObject* args, PyObject* /*kwd*/)
 
         try {
             BRepBuilderAPI_MakeEdge mkEdge(curve, first, last);
-            getTopoShapePtr()->_Shape = mkEdge.Edge();
+            TopoDS_Edge edge = mkEdge.Edge();
+
+            RefMap map;
+            ShapeRef geoRef(ShapeRef::GeometryEdge, geom->getUid());
+            ShapeRef v1Ref(ShapeRef::NewVertex, 0);
+            ShapeRef v2Ref(ShapeRef::NewVertex, 1);
+            map[geoRef].push_back(ShapeRef(ShapeRef::Edge, 0));
+            map[v1Ref].push_back(ShapeRef(ShapeRef::Vertex, 0));
+            map[v2Ref].push_back(ShapeRef(ShapeRef::Vertex, 1));
+            
+            getTopoShapePtr()->paste(TopoShape(mkEdge.Edge(), map));
+            getTopoShapePtr()->printHistory();
             return 0;
         }
         catch (Standard_Failure) {
@@ -136,9 +153,9 @@ int TopoShapeEdgePy::PyInit(PyObject* args, PyObject* /*kwd*/)
 
     PyErr_Clear();
     if (PyArg_ParseTuple(args, "O!", &(Part::TopoShapePy::Type), &pcObj)) {
-        TopoShape* shape = static_cast<TopoShapePy*>(pcObj)->getTopoShapePtr();
-        if (shape && !shape->_Shape.IsNull() && shape->_Shape.ShapeType() == TopAbs_EDGE) {
-            this->getTopoShapePtr()->_Shape = shape->_Shape;
+        TopoShape& shape = *static_cast<TopoShapePy*>(pcObj)->getTopoShapePtr();
+        if (!shape._Shape.IsNull() && shape._Shape.ShapeType() == TopAbs_EDGE) {
+            this->getTopoShapePtr()->paste(shape);
             return 0;
         }
         else {
@@ -150,15 +167,51 @@ int TopoShapeEdgePy::PyInit(PyObject* args, PyObject* /*kwd*/)
     PyErr_Clear();
     if (PyArg_ParseTuple(args, "O!O!", &(Part::TopoShapeVertexPy::Type), &pcObj,
                                        &(Part::TopoShapeVertexPy::Type), &pcObj2)) {
-        TopoShape* shape1 = static_cast<TopoShapePy*>(pcObj)->getTopoShapePtr();
-        TopoShape* shape2 = static_cast<TopoShapePy*>(pcObj2)->getTopoShapePtr();
-        const TopoDS_Vertex& v1 = TopoDS::Vertex(shape1->_Shape);
-        const TopoDS_Vertex& v2 = TopoDS::Vertex(shape2->_Shape);
+        TopoShape& shape1 = *static_cast<TopoShapePy*>(pcObj)->getTopoShapePtr();
+        TopoShape& shape2 = *static_cast<TopoShapePy*>(pcObj2)->getTopoShapePtr();
+        const TopoDS_Vertex& v1 = TopoDS::Vertex(shape1._Shape);
+        const TopoDS_Vertex& v2 = TopoDS::Vertex(shape2._Shape);
 
         try {
             BRepBuilderAPI_MakeEdge mkEdge(v1, v2);
-            getTopoShapePtr()->_Shape = mkEdge.Edge();
-            return 0;
+            TopoDS_Edge edge = mkEdge.Edge();
+            
+            TopoShape resultShape(shape1); //to copy the history
+            RefMap map1, map2;
+            ShapeRef refV(TopAbs_VERTEX, 0);    //the ref for both base vertices are equal
+            ShapeRef vertex1(TopAbs_VERTEX, 0); //the result shape vertex reference for the first 
+            ShapeRef vertex2(TopAbs_VERTEX, 1); //and the second 
+            
+            //building up the correct reference information for the vertices is involved, we need to 
+            //make sure the first provided to this constructor is the first by reference
+            TopTools_IndexedMapOfShape V;
+            TopExp::MapShapes(edge, TopAbs_VERTEX, V);
+            if (compareShapes(V(0), shape1._Shape, TopAbs_VERTEX)) {
+                map1[refV].push_back(vertex1);
+                map2[refV].push_back(vertex2);
+            }
+            else {
+                map1[refV].push_back(vertex2);
+                map2[refV].push_back(vertex1);
+            }
+            
+            //the edge will always be attributed as new
+            ShapeRef refNE(ShapeRef::NewEdge, 0);
+            ShapeRef refE(ShapeRef::Edge, 0);
+            map1[refNE].push_back(refE);
+            map2[refNE].push_back(refE);
+            
+            for (std::vector<ShapeMap>::iterator h = resultShape._History.begin(); h != resultShape._History.end(); h++)
+                h->Map = joinMap(h->Map, map1);
+            for (std::vector<ShapeMap>::const_iterator h = shape2._History.begin(); h != shape2._History.end(); h++) {
+                ShapeMap resultHistory = *h;
+                resultHistory.Map = joinMap(resultHistory.Map, map2);
+                resultShape._History.push_back(resultHistory);
+            }           
+            
+            resultShape._Shape = edge;
+            getTopoShapePtr()->paste(resultShape);
+            getTopoShapePtr()->printHistory();
         }
         catch (Standard_Failure) {
             Handle_Standard_Failure e = Standard_Failure::Caught();

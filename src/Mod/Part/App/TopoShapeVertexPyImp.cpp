@@ -115,6 +115,8 @@ int TopoShapeVertexPy::PyInit(PyObject* args, PyObject* /*kwd*/)
             if (!shape.IsNull() && shape.ShapeType() == TopAbs_VERTEX) {
                 TopoShapeVertexPy::PointerType vert = reinterpret_cast<TopoShapeVertexPy::PointerType>(_pcTwinPointer);
                 vert->_Shape = ptr->_Shape;
+                vert->_History = ptr->_History;
+                vert->_TopInfo = ptr->_TopInfo;
                 return 0;
             }
         }
@@ -128,6 +130,16 @@ int TopoShapeVertexPy::PyInit(PyObject* args, PyObject* /*kwd*/)
     BRepBuilderAPI_MakeVertex aBuilder(gp_Pnt(x,y,z));
     TopoDS_Shape s = aBuilder.Vertex();
     ptr->_Shape = s;
+    
+    //setup the history
+    std::stringstream stream;
+    stream << "shape" << ptr->getUid();
+    ShapeMap hist;
+    RefMap map;
+    map[ShapeRef(Part::ShapeRef::NewVertex, 0)].push_back(ShapeRef(TopAbs_VERTEX, 0));
+    hist.name = stream.str();
+    hist.Map = map;
+    ptr->_History.push_back(hist);
 
     return 0;
 }

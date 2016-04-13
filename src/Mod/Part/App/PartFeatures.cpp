@@ -560,7 +560,9 @@ App::DocumentObjectExecReturn *Thickness::execute(void)
     if (countSolids != 1)
         return new App::DocumentObjectExecReturn("Source shape is not a solid.");
 
-    TopTools_ListOfShape closingFaces;
+    //TODO:Reenable when getSubShape is portet to TopoShape and history
+/*
+    std::vector<TopoShape> closingFaces;
     const std::vector<std::string>& subStrings = Faces.getSubValues();
     for (std::vector<std::string>::const_iterator it = subStrings.begin(); it != subStrings.end(); ++it) {
         TopoDS_Face face = TopoDS::Face(shape.getSubShape(it->c_str()));
@@ -577,6 +579,6 @@ App::DocumentObjectExecReturn *Thickness::execute(void)
     if (fabs(thickness) > 2*tol)
         this->Shape.setValue(shape.makeThickSolid(closingFaces, thickness, tol, inter, self, mode, join));
     else
-        this->Shape.setValue(shape);
+        this->Shape.setValue(shape);*/
     return App::DocumentObject::StdReturn;
 }
