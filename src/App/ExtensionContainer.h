@@ -127,12 +127,12 @@ public:
     bool hasExtension(Base::Type) const; //returns first of type (or derived from) and throws otherwise
     bool hasExtension(const std::string& name) const; //this version does not check derived classes
     bool hasExtensions() const;
-    App::Extension* getExtension(Base::Type);  //returns first of type (or derived from) and throws otherwise
-    App::Extension* getExtension(const std::string& name); //this version does not check derived classes
+    App::Extension* getExtension(Base::Type) const; 
+    App::Extension* getExtension(const std::string& name) const; //this version does not check derived classes
     
     //returns first of type (or derived from) and throws otherwise
     template<typename ExtensionT>
-    ExtensionT* getExtensionByType() {
+    ExtensionT* getExtensionByType() const {
         return dynamic_cast<ExtensionT*>(getExtension(ExtensionT::getExtensionClassTypeId()));
     };
     
@@ -177,10 +177,10 @@ public:
     virtual const char* getPropertyDocumentation(const char *name) const override;
     //@}
     
-    virtual void onChanged(const Property*);
+    virtual void onChanged(const Property*) override;
     
-    virtual void Save(Base::Writer& writer) const;
-    virtual void Restore(Base::XMLReader& reader);
+    virtual void Save(Base::Writer& writer) const override;
+    virtual void Restore(Base::XMLReader& reader) override;
     
     //those methods save/restore the dynamic extenions without handling properties, which is something
     //done by the default Save/Restore methods.
