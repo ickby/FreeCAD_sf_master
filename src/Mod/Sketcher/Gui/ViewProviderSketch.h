@@ -352,9 +352,6 @@ protected:
     void addSelectPoint(int SelectPoint);
     void removeSelectPoint(int SelectPoint);
     void clearSelectPoints(void);
-
-    // handle stacked placements of App::Parts
-    Base::Placement getPlacement();
     
     // modes while sketching
     SketchMode Mode;
@@ -395,8 +392,6 @@ protected:
     std::string oldWb;
 
     Gui::Rubberband* rubberband;
-    App::Part*          parentPart = nullptr;
-    Part::BodyBase*     parentBody = nullptr;
 };
 
 } // namespace PartGui
