@@ -65,6 +65,7 @@ int TopoShapeVertexPy::PyInit(PyObject* args, PyObject* /*kwd*/)
     double x=0.0,y=0.0,z=0.0;
     PyObject *object;
     bool success = false;
+    Identifier id = Identifier::buildNew(Identifier::Shape::Vertex, Identifier::Operation::Topology);
     if (PyArg_ParseTuple(args, "|ddd", &x,&y,&z)) {
         // do nothing here
         success = true;
@@ -79,6 +80,7 @@ int TopoShapeVertexPy::PyInit(PyObject* args, PyObject* /*kwd*/)
             z = ptr->z;
             success = true;
         }
+        id = Identifier::buildNew(Identifier::Shape::Vertex, Identifier::Operation::Topology);
     }
     if (!success) {
         PyErr_Clear(); // set by PyArg_ParseTuple()
@@ -104,6 +106,8 @@ int TopoShapeVertexPy::PyInit(PyObject* args, PyObject* /*kwd*/)
             x = pnt.X();
             y = pnt.Y();
             z = pnt.Z();
+            id = Identifier::buildGenerated(Identifier::Shape::Vertex, Identifier::Operation::Topology, 
+                                            static_cast<PointPy*>(object)->getGeomPointPtr()->identifier());
             success = true;
         }
     }
@@ -115,6 +119,7 @@ int TopoShapeVertexPy::PyInit(PyObject* args, PyObject* /*kwd*/)
             if (!shape.IsNull() && shape.ShapeType() == TopAbs_VERTEX) {
                 TopoShapeVertexPy::PointerType vert = reinterpret_cast<TopoShapeVertexPy::PointerType>(_pcTwinPointer);
                 vert->setShape(ptr->getShape());
+                vert->setIdentifier(ptr->identifier());
                 return 0;
             }
         }
@@ -128,6 +133,7 @@ int TopoShapeVertexPy::PyInit(PyObject* args, PyObject* /*kwd*/)
     BRepBuilderAPI_MakeVertex aBuilder(gp_Pnt(x,y,z));
     TopoDS_Shape s = aBuilder.Vertex();
     ptr->setShape(s);
+    ptr->setIdentifier(id);
 
     return 0;
 }

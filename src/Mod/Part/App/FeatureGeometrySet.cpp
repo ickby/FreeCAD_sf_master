@@ -50,13 +50,13 @@ App::DocumentObjectExecReturn *FeatureGeometrySet::execute(void)
 
     bool first = true;
     for(std::vector<Geometry*>::const_iterator it=Geoms.begin();it!=Geoms.end();++it){
-        TopoDS_Shape sh = (*it)->toShape();
+        TopoShape sh = (*it)->toShape();
         if (first) {
             first = false;
-            result.setShape(sh);
+            result = sh;
         }
         else {
-            result.setShape(result.fuse(sh));
+            result.setShape(result.fuse(sh.getShape()));
         }
     }
     

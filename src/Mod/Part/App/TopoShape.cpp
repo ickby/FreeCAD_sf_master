@@ -3115,3 +3115,47 @@ void TopoShape::getFacesFromSubelement(const Data::Segment* element,
             Points.push_back(Base::Vector3d(it->X(),it->Y(),it->Z()));
     }
 }
+
+const Identifier& TopoShape::identifier() const
+{
+    return _ShapeID;
+}
+
+
+void TopoShape::setIdentifier(const Identifier& id)
+{
+    _ShapeID = id;
+}
+
+void TopoShape::setSubshapeIdentifier(const TopoDS_Shape& shape, const Identifier& id)
+{
+    if (this->_Shape.IsNull())
+        Standard_Failure::Raise("Cannot set sub-shape identifier in empty shape");
+
+    if (shape.ShapeType() == TopAbs_FACE) {
+        TopTools_IndexedMapOfShape anIndices;
+        TopExp::MapShapes(this->_Shape, TopAbs_FACE, anIndices);
+        // To avoid a segmentation fault we have to check if container is empty
+        if (anIndices.IsEmpty())
+            Standard_Failure::Raise("This face is not a subshape of this shape");
+        _FaceIDs[anIndices.FindIndex(shape)] = id;
+    }
+    else if (shape.ShapeType() == TopAbs_EDGE) {
+        TopTools_IndexedMapOfShape anIndices;
+        TopExp::MapShapes(this->_Shape, TopAbs_EDGE, anIndices);
+        // To avoid a segmentation fault we have to check if container is empty
+        if (anIndices.IsEmpty())
+            Standard_Failure::Raise("This edge is not a subshape of this shape");
+        _EdgeIDs[anIndices.FindIndex(shape)] = id;
+    }
+    else if (shape.ShapeType() == TopAbs_VERTEX) {
+        TopTools_IndexedMapOfShape anIndices;
+        TopExp::MapShapes(this->_Shape, TopAbs_VERTEX, anIndices);
+        // To avoid a segmentation fault we have to check if container is empty
+        if (anIndices.IsEmpty())
+            Standard_Failure::Raise("This vertex is not a subshape of this shape");
+        _VertexIDs[anIndices.FindIndex(shape)] = id;
+    }
+
+    Standard_Failure::Raise("Not supported sub-shape type");
+}

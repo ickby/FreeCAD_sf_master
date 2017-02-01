@@ -46,6 +46,9 @@ public:
     void setValue(const std::string &sString);
     const std::string& getValue(void) const;
     static std::string createUuid(void);
+    
+    bool operator==(const Uuid& id);
+    bool operator!=(const Uuid& id) {return !operator==(id);};
 
 private:
     std::string _uuid;

@@ -24,6 +24,7 @@
 #define PART_IDENTIFIER_H
 
 #include <Base/Uuid.h>
+#include <Base/Persistence.h>
 #include <boost/bimap.hpp>
 #include <boost/assign/list_of.hpp>
 #include <boost/preprocessor.hpp>
@@ -42,12 +43,12 @@
         
 namespace Part {
 
-#define SHAPE_SEQ  (None)(Vertex)(Edge)(Face)
-#define OP_SEQ  (None)(Topology)(Box)(Sphere)
+#define SHAPE_SEQ  (None)(Geometry)(Vertex)(Edge)(Face)
+#define OP_SEQ  (None)(Topology)(Geometry)(Box)(Sphere)
 #define CTYPE_SEQ  (None)(New)(Generated)(Modified)
 #define CSUBTYPE_SEQ  (None)(Top)(Bottom)(Front)(Back)(Left)(Right)
     
-class PartExport Identifier {
+class PartExport Identifier : public Base::Persistence {
 
     ENUM(Shape, SHAPE_SEQ)
     ENUM(Operation, OP_SEQ)
@@ -57,29 +58,50 @@ class PartExport Identifier {
 public:
     bool isGeneratedFrom(std::size_t hash);
     bool isModificationOf(std::size_t hash);
-    bool isOperation(std::string op);
     
+    //compare subtypes
     bool operator==(CreationType type);
     bool operator!=(CreationType type) {return !operator==(type);};
     bool operator==(CreationSubType subtype);
     bool operator!=(CreationSubType subtype) {return !operator==(subtype);};
     bool operator==(Operation op);
     bool operator!=(Operation op) {return !operator==(op);};
+    bool operator==(Base::Uuid uid);
+    bool operator!=(Base::Uuid uid) {return !operator==(uid);};
+    
+    //compare the whole identifier
     bool operator==(std::size_t hash);
     bool operator!=(std::size_t hash) {return !operator==(hash);};
     
+    //access some important data
     std::string asString();
     std::size_t hash();
     std::string hashAsString();
     
-private:
+    //creation methods
+    static Identifier buildNew(Shape sh, Operation op, CreationSubType = CreationSubType::None);
+    static Identifier buildGenerated(Shape sh, Operation op, const Identifier& base, 
+                                     CreationSubType = CreationSubType::None);
+    static Identifier buildGenerated(Shape sh, Operation op, const std::vector<Identifier>& base, 
+                                     CreationSubType = CreationSubType::None);
+    
+    //methods for setting important properties
+    Identifier& setOperationID(const Base::Uuid& id);
+    
+    
+    //Persistence methods 
+    virtual void Save(Base::Writer&) const {};
+    virtual void Restore(Base::XMLReader&) {};
+    virtual unsigned int getMemSize(void) const {};
+    
+protected:
     std::vector<Identifier> m_baseIDs;
     Shape                   m_shape;
     Operation               m_operation;
     Base::Uuid              m_operationUuid;
     CreationType            m_type;
     CreationSubType         m_subtype;
-    unsigned int            m_counter = 1;
+    unsigned short int      m_counter = 1;
 };
 
 } //Part

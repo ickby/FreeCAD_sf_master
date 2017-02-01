@@ -29,6 +29,7 @@
 #include <TopoDS_Wire.hxx>
 #include <TopTools_ListOfShape.hxx>
 #include <App/ComplexGeoData.h>
+#include "Identifier.h"
 
 class gp_Ax1;
 class gp_Ax2;
@@ -246,8 +247,22 @@ public:
                   const std::vector<Facet> &faces, float Accuracy=1.0e-06);
     //@}
 
+    /** @name Identifier handling */
+    //@{   
+    const Identifier& identifier() const;
+    void setIdentifier(const Identifier& id);
+    const Identifier& subshapeIdentifier(const TopoShape& subshape);
+    void setSubshapeIdentifier(const TopoDS_Shape&, const Identifier& id);
+    void setSubshapeIdentifier(const TopoShape&, const Identifier& id);
+    
+    //void identifier() {return _ShapeID;};
+    //void subshapeIdentifier(const TopoShape& shape);
+    //@}
+    
 private:
-    TopoDS_Shape _Shape;
+    TopoDS_Shape                _Shape;
+    Identifier                  _ShapeID;
+    std::vector<Identifier>     _VertexIDs, _EdgeIDs, _FaceIDs;
 };
 
 } //namespace Part

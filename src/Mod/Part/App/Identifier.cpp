@@ -84,6 +84,11 @@ bool Identifier::operator==(CreationSubType subtype) {
     return m_subtype == subtype;
 }
 
+bool Identifier::operator==(Base::Uuid uid)
+{
+    return m_operationUuid == uid;
+}
+
 bool Identifier::isGeneratedFrom(std::size_t hash)
 {
 
@@ -93,5 +98,47 @@ bool Identifier::isModificationOf(std::size_t hash)
 {
 
 }
+
+Identifier Identifier::buildNew(Identifier::Shape sh, Identifier::Operation op, 
+                                Identifier::CreationSubType  sub)
+{
+    //new means no base identifiers
+    Identifier id;
+    id.m_shape = sh;
+    id.m_operation = op;
+    id.m_subtype = sub;
+    id.m_type = CreationType::New;
     
+    return id;
+}
+
+Identifier Identifier::buildGenerated(Identifier::Shape sh, Identifier::Operation op, 
+                                      const std::vector< Identifier >& base, Identifier::CreationSubType sub)
+{
+    Identifier id;
+    id.m_shape = sh;
+    id.m_operation = op;
+    id.m_subtype = sub;
+    id.m_type = CreationType::Generated;
+    id.m_baseIDs = base;
+    
+    return id;
+}
+
+Identifier Identifier::buildGenerated(Identifier::Shape sh, Identifier::Operation op, const Identifier& base, 
+                                      Identifier::CreationSubType sub)
+{
+
+    Identifier id;
+    id.m_shape = sh;
+    id.m_operation = op;
+    id.m_subtype = sub;
+    id.m_type = CreationType::Generated;
+    id.m_baseIDs.push_back(base);
+    
+    return id;
+}
+
+
+
 } //Part

@@ -97,3 +97,8 @@ const std::string& Uuid::getValue(void) const
 {
     return _uuid;
 }
+
+bool Uuid::operator==(const Uuid& id)
+{
+    return _uuid == id._uuid;
+}

@@ -58,6 +58,8 @@
 #include <vector>
 #include <Base/Persistence.h>
 #include <Base/Vector3D.h>
+#include "Identifier.h"
+#include "TopoShape.h"
 
 namespace Part {
 
@@ -67,7 +69,7 @@ class PartExport Geometry: public Base::Persistence
 public:
     virtual ~Geometry();
 
-    virtual TopoDS_Shape toShape() const = 0;
+    virtual TopoShape toShape() const = 0;
     virtual const Handle_Geom_Geometry& handle() const = 0;
     // Persistence implementer ---------------------
     virtual unsigned int getMemSize(void) const;
@@ -78,8 +80,12 @@ public:
     /// construction geometry (means no impact on a later built topo)
     bool Construction;
 
+    const Identifier& identifier() const;
+    void setIdentifier(const Identifier& id);
+    
 protected:
     Geometry();
+    Identifier myID;
 
 private:
     Geometry(const Geometry&);
@@ -95,7 +101,7 @@ public:
     GeomPoint(const Base::Vector3d&);
     virtual ~GeomPoint();
     virtual Geometry *clone(void) const;
-    virtual TopoDS_Shape toShape() const;
+    virtual TopoShape toShape() const;
 
    // Persistence implementer ---------------------
     virtual unsigned int getMemSize(void) const;
@@ -120,7 +126,7 @@ public:
     GeomCurve();
     virtual ~GeomCurve();
 
-    TopoDS_Shape toShape() const;
+    TopoShape toShape() const;
     bool tangent(double u, gp_Dir&) const;
     Base::Vector3d pointAtParameter(double u) const;
     Base::Vector3d firstDerivativeAtParameter(double u) const;
@@ -651,7 +657,7 @@ public:
     GeomSurface();
     virtual ~GeomSurface();
 
-    TopoDS_Shape toShape() const;
+    TopoShape toShape() const;
     bool tangentU(double u, double v, gp_Dir& dirU) const;
     bool tangentV(double u, double v, gp_Dir& dirV) const;
 };

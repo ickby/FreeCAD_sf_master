@@ -133,14 +133,14 @@ int TopoShapePy::PyInit(PyObject* args, PyObject*)
             bool first = true;
             for (Py::Sequence::iterator it = list.begin(); it != list.end(); ++it) {
                 if (PyObject_TypeCheck((*it).ptr(), &(Part::GeometryPy::Type))) {
-                    TopoDS_Shape sh = static_cast<GeometryPy*>((*it).ptr())->
+                    TopoShape sh = static_cast<GeometryPy*>((*it).ptr())->
                         getGeometryPtr()->toShape();
                     if (first) {
                         first = false;
-                        shape.setShape(sh);
+                        shape = sh;
                     }
                     else {
-                        shape.setShape(shape.fuse(sh));
+                        shape.setShape(shape.fuse(sh.getShape()));
                     }
                 }
             }

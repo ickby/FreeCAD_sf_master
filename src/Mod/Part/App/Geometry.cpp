@@ -180,6 +180,7 @@ TYPESYSTEM_SOURCE_ABSTRACT(Part::Geometry,Base::Persistence)
 Geometry::Geometry()
   : Construction(false)
 {
+    myID = Identifier::buildNew(Identifier::Shape::Geometry, Identifier::Operation::Geometry);
 }
 
 Geometry::~Geometry()
@@ -205,6 +206,17 @@ void Geometry::Restore(Base::XMLReader &reader)
     // get the value of my Attribute
     Construction = (int)reader.getAttributeAsInteger("value")==0?false:true;   
 }
+
+const Identifier& Geometry::identifier() const
+{
+    return myID;
+}
+
+void Geometry::setIdentifier(const Identifier& id)
+{
+    myID = id;
+}
+
 
 // -------------------------------------------------
 
@@ -238,12 +250,15 @@ Geometry *GeomPoint::clone(void) const
 {
     GeomPoint *newPoint = new GeomPoint(myPoint);
     newPoint->Construction = this->Construction;
+    newPoint->setIdentifier(identifier());
     return newPoint;
 }
 
-TopoDS_Shape GeomPoint::toShape() const
+TopoShape GeomPoint::toShape() const
 {
-    return BRepBuilderAPI_MakeVertex(myPoint->Pnt());
+    auto shape = TopoShape(BRepBuilderAPI_MakeVertex(myPoint->Pnt()));
+    shape.setIdentifier(Identifier::buildGenerated(Identifier::Shape::Vertex, Identifier::Operation::Topology, identifier()));
+    return shape;
 }
 
 Base::Vector3d GeomPoint::getPoint(void)const
@@ -311,7 +326,7 @@ GeomCurve::~GeomCurve()
 {
 }
 
-TopoDS_Shape GeomCurve::toShape() const
+TopoShape GeomCurve::toShape() const
 {
     Handle_Geom_Curve c = Handle_Geom_Curve::DownCast(handle());
     BRepBuilderAPI_MakeEdge mkBuilder(c, c->FirstParameter(), c->LastParameter());
@@ -3110,7 +3125,7 @@ GeomSurface::~GeomSurface()
 {
 }
 
-TopoDS_Shape GeomSurface::toShape() const
+TopoShape GeomSurface::toShape() const
 {
     Handle_Geom_Surface s = Handle_Geom_Surface::DownCast(handle());
     Standard_Real u1,u2,v1,v2;
