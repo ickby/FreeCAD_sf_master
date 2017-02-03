@@ -47,8 +47,8 @@ public:
     const std::string& getValue(void) const;
     static std::string createUuid(void);
     
-    bool operator==(const Uuid& id);
-    bool operator!=(const Uuid& id) {return !operator==(id);};
+    bool operator==(const Uuid& id) const;
+    bool operator!=(const Uuid& id) const {return !operator==(id);};
 
 private:
     std::string _uuid;

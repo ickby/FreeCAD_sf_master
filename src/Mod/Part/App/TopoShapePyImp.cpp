@@ -2419,6 +2419,14 @@ PyObject* TopoShapePy::distToShape(PyObject *args)
     return Py_BuildValue("dOO", minDist, solnPts,solnGeom);
 }
 
+
+PyObject* TopoShapePy::printHistory(PyObject *args)
+{
+    auto str = getTopoShapePtr()->reference().asString();
+    Base::Console().Message("%s\n", str.c_str());
+    return Py::new_reference_to(Py::String(str));
+}
+
 // End of Methods, Start of Attributes
 
 #if 0 // see ComplexGeoDataPy::Matrix which does the same
@@ -2597,7 +2605,9 @@ Py::List TopoShapePy::getVertexes(void) const
     for (Standard_Integer k = 1; k <= M.Extent(); k++)
     {
         const TopoDS_Shape& shape = M(k);
-        ret.append(Py::Object(new TopoShapeVertexPy(new TopoShape(shape)),true));
+        auto toposhape = new TopoShape(shape);
+        toposhape->setReference(getTopoShapePtr()->subshapeReference(shape));
+        ret.append(Py::Object(new TopoShapeVertexPy(toposhape),true));
     }
 
     return ret;
@@ -2757,6 +2767,18 @@ Py::Float TopoShapePy::getVolume(void) const
     GProp_GProps props;
     BRepGProp::VolumeProperties(shape, props);
     return Py::Float(props.Mass());
+}
+
+Py::String TopoShapePy::getReference(void) const
+{
+    const TopoDS_Shape& shape = getTopoShapePtr()->getShape();
+    if (shape.IsNull() || !( (shape.ShapeType() == TopAbs_VERTEX) || 
+                             (shape.ShapeType() == TopAbs_EDGE) || 
+                             (shape.ShapeType() == TopAbs_FACE) ))
+        throw Py::RuntimeError("No identification available for shape");
+    
+    std::string hash = getTopoShapePtr()->reference().hashAsString();
+    return Py::String(hash);
 }
 
 PyObject *TopoShapePy::getCustomAttributes(const char* attr) const

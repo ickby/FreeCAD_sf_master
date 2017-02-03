@@ -129,6 +129,27 @@ int TopoShapeEdgePy::PyInit(PyObject* args, PyObject* /*kwd*/)
         try {
             BRepBuilderAPI_MakeEdge mkEdge(curve, first, last);
             getTopoShapePtr()->setShape(mkEdge.Edge());
+            
+            //setup the references for the edge and two vertices
+            auto id = Reference::buildNew(Reference::Shape::Edge, Reference::Operation::Topology);
+            getTopoShapePtr()->setReference(id);
+            
+            auto v1 = getTopoShapePtr()->getSubShape("Vertex1");
+            auto p1 = BRep_Tool::Parameter(TopoDS::Vertex(v1), TopoDS::Edge(getTopoShapePtr()->getShape()));
+            auto v2 = getTopoShapePtr()->getSubShape("Vertex2");
+            auto p2 = BRep_Tool::Parameter(TopoDS::Vertex(v2), TopoDS::Edge(getTopoShapePtr()->getShape()));
+            
+            auto startID = Reference::buildNew(Reference::Shape::Vertex, Reference::Operation::Topology, 
+                                                    Reference::Name::Start);
+            startID.setOperationID(id.operationID());
+            
+            auto endID = Reference::buildNew(Reference::Shape::Vertex, Reference::Operation::Topology,
+                                                    Reference::Name::End);
+            endID.setOperationID(id.operationID());
+            
+            getTopoShapePtr()->setSubshapeReference(v1, (std::abs(first-p1) < Precision::PConfusion()) ? startID : endID);
+            getTopoShapePtr()->setSubshapeReference(v2, (std::abs(first-p2) < Precision::PConfusion()) ? startID : endID);
+    
             return 0;
         }
         catch (Standard_Failure) {
@@ -142,7 +163,7 @@ int TopoShapeEdgePy::PyInit(PyObject* args, PyObject* /*kwd*/)
     if (PyArg_ParseTuple(args, "O!", &(Part::TopoShapePy::Type), &pcObj)) {
         TopoShape* shape = static_cast<TopoShapePy*>(pcObj)->getTopoShapePtr();
         if (shape && !shape->getShape().IsNull() && shape->getShape().ShapeType() == TopAbs_EDGE) {
-            this->getTopoShapePtr()->setShape(shape->getShape());
+            this->getTopoShapePtr()->operator=(*shape);
             return 0;
         }
         else {
@@ -162,6 +183,15 @@ int TopoShapeEdgePy::PyInit(PyObject* args, PyObject* /*kwd*/)
         try {
             BRepBuilderAPI_MakeEdge mkEdge(v1, v2);
             getTopoShapePtr()->setShape(mkEdge.Edge());
+            std::vector<Reference> baseIDs;
+            baseIDs.push_back(shape1->reference());
+            baseIDs.push_back(shape2->reference());
+            getTopoShapePtr()->setReference(Reference::buildGenerated(Reference::Shape::Edge, 
+                                                                        Reference::Operation::Topology, baseIDs));
+            auto sub1 = getTopoShapePtr()->getSubShape("Vertex1");
+            auto sub2 = getTopoShapePtr()->getSubShape("Vertex2");
+            getTopoShapePtr()->setSubshapeReference(sub1, sub1.IsSame(v1) ? shape1->reference() : shape2->reference());
+            getTopoShapePtr()->setSubshapeReference(sub2, sub2.IsSame(v2) ? shape2->reference() : shape1->reference());
             return 0;
         }
         catch (Standard_Failure) {

@@ -58,7 +58,7 @@
 #include <vector>
 #include <Base/Persistence.h>
 #include <Base/Vector3D.h>
-#include "Identifier.h"
+#include "Reference.h"
 #include "TopoShape.h"
 
 namespace Part {
@@ -80,12 +80,12 @@ public:
     /// construction geometry (means no impact on a later built topo)
     bool Construction;
 
-    const Identifier& identifier() const;
-    void setIdentifier(const Identifier& id);
+    const Reference& reference() const;
+    void setReference(const Reference& id);
     
 protected:
     Geometry();
-    Identifier myID;
+    Reference myID;
 
 private:
     Geometry(const Geometry&);

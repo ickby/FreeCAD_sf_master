@@ -95,6 +95,8 @@
 # include <GC_MakeSegment.hxx>
 # include <Precision.hxx>
 # include <GeomAPI_ProjectPointOnCurve.hxx>
+#include <BRep_Tool.hxx>
+#include <TopoDS.hxx>
 
 #endif
 
@@ -180,7 +182,7 @@ TYPESYSTEM_SOURCE_ABSTRACT(Part::Geometry,Base::Persistence)
 Geometry::Geometry()
   : Construction(false)
 {
-    myID = Identifier::buildNew(Identifier::Shape::Geometry, Identifier::Operation::Geometry);
+    myID = Reference::buildNew(Reference::Shape::Geometry, Reference::Operation::Geometry);
 }
 
 Geometry::~Geometry()
@@ -207,12 +209,12 @@ void Geometry::Restore(Base::XMLReader &reader)
     Construction = (int)reader.getAttributeAsInteger("value")==0?false:true;   
 }
 
-const Identifier& Geometry::identifier() const
+const Reference& Geometry::reference() const
 {
     return myID;
 }
 
-void Geometry::setIdentifier(const Identifier& id)
+void Geometry::setReference(const Reference& id)
 {
     myID = id;
 }
@@ -250,14 +252,14 @@ Geometry *GeomPoint::clone(void) const
 {
     GeomPoint *newPoint = new GeomPoint(myPoint);
     newPoint->Construction = this->Construction;
-    newPoint->setIdentifier(identifier());
+    newPoint->setReference(reference());
     return newPoint;
 }
 
 TopoShape GeomPoint::toShape() const
 {
     auto shape = TopoShape(BRepBuilderAPI_MakeVertex(myPoint->Pnt()));
-    shape.setIdentifier(Identifier::buildGenerated(Identifier::Shape::Vertex, Identifier::Operation::Topology, identifier()));
+    shape.setReference(Reference::buildGenerated(Reference::Shape::Vertex, Reference::Operation::Topology, reference()));
     return shape;
 }
 
@@ -330,7 +332,23 @@ TopoShape GeomCurve::toShape() const
 {
     Handle_Geom_Curve c = Handle_Geom_Curve::DownCast(handle());
     BRepBuilderAPI_MakeEdge mkBuilder(c, c->FirstParameter(), c->LastParameter());
-    return mkBuilder.Shape();
+    TopoShape shape(mkBuilder.Shape());
+    
+    //setup the references for the two vertices
+    shape.setReference(Reference::buildGenerated(Reference::Shape::Edge, Reference::Operation::Topology, reference()));
+    auto v1 = shape.getSubShape("Vertex1");
+    auto p1 = BRep_Tool::Parameter(TopoDS::Vertex(v1), TopoDS::Edge(shape.getShape()));
+    auto v2 = shape.getSubShape("Vertex2");
+    auto p2 = BRep_Tool::Parameter(TopoDS::Vertex(v2), TopoDS::Edge(shape.getShape()));
+    
+    auto startID = Reference::buildGenerated(Reference::Shape::Vertex, Reference::Operation::Topology, reference(), 
+                                              Reference::Name::Start);
+    auto endID = Reference::buildGenerated(Reference::Shape::Vertex, Reference::Operation::Topology, reference(), 
+                                            Reference::Name::End);
+    shape.setSubshapeReference(v1, (std::abs(c->FirstParameter()-p1) < Precision::Confusion()) ? startID : endID);
+    shape.setSubshapeReference(v2, (std::abs(c->FirstParameter()-p2) < Precision::Confusion()) ? startID : endID);
+    
+    return shape;
 }
 
 bool GeomCurve::tangent(double u, gp_Dir& dir) const

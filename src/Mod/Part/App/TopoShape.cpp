@@ -346,6 +346,8 @@ void TopoShape::operator = (const TopoShape& sh)
 {
     if (this != &sh) {
         this->_Shape = sh._Shape;
+        this->_ShapeRef = sh._ShapeRef;
+        this->_SubShapeRef = sh._SubShapeRef;
     }
 }
 
@@ -3116,46 +3118,35 @@ void TopoShape::getFacesFromSubelement(const Data::Segment* element,
     }
 }
 
-const Identifier& TopoShape::identifier() const
+const Reference& TopoShape::reference() const
 {
-    return _ShapeID;
+    return _ShapeRef;
 }
 
 
-void TopoShape::setIdentifier(const Identifier& id)
+void TopoShape::setReference(const Reference& id)
 {
-    _ShapeID = id;
+    _ShapeRef = id;
 }
 
-void TopoShape::setSubshapeIdentifier(const TopoDS_Shape& shape, const Identifier& id)
+void TopoShape::setSubshapeReference(const TopoDS_Shape& shape, const Reference& id)
 {
-    if (this->_Shape.IsNull())
-        Standard_Failure::Raise("Cannot set sub-shape identifier in empty shape");
+    if ((shape.ShapeType() == TopAbs_FACE) ||
+        (shape.ShapeType() == TopAbs_EDGE) ||
+        (shape.ShapeType() == TopAbs_VERTEX)) {
+        
+        _SubShapeRef[shape] = id;
+    }
+}
 
-    if (shape.ShapeType() == TopAbs_FACE) {
-        TopTools_IndexedMapOfShape anIndices;
-        TopExp::MapShapes(this->_Shape, TopAbs_FACE, anIndices);
-        // To avoid a segmentation fault we have to check if container is empty
-        if (anIndices.IsEmpty())
-            Standard_Failure::Raise("This face is not a subshape of this shape");
-        _FaceIDs[anIndices.FindIndex(shape)] = id;
-    }
-    else if (shape.ShapeType() == TopAbs_EDGE) {
-        TopTools_IndexedMapOfShape anIndices;
-        TopExp::MapShapes(this->_Shape, TopAbs_EDGE, anIndices);
-        // To avoid a segmentation fault we have to check if container is empty
-        if (anIndices.IsEmpty())
-            Standard_Failure::Raise("This edge is not a subshape of this shape");
-        _EdgeIDs[anIndices.FindIndex(shape)] = id;
-    }
-    else if (shape.ShapeType() == TopAbs_VERTEX) {
-        TopTools_IndexedMapOfShape anIndices;
-        TopExp::MapShapes(this->_Shape, TopAbs_VERTEX, anIndices);
-        // To avoid a segmentation fault we have to check if container is empty
-        if (anIndices.IsEmpty())
-            Standard_Failure::Raise("This vertex is not a subshape of this shape");
-        _VertexIDs[anIndices.FindIndex(shape)] = id;
-    }
+const Reference& TopoShape::subshapeReference(const TopoShape& subshape) {
+    
+}
 
-    Standard_Failure::Raise("Not supported sub-shape type");
+const Reference& TopoShape::subshapeReference(const TopoDS_Shape& shape) {
+    
+    if(_SubShapeRef.find(shape) == _SubShapeRef.end())
+        return Reference();
+    
+    return _SubShapeRef[shape];
 }

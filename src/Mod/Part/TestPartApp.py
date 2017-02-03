@@ -36,6 +36,38 @@ class PartTestCases(unittest.TestCase):
 		self.Doc.recompute()
 		self.failUnless(len(self.Box.Shape.Faces)==6)
 		
+	def testBasicShapeReference(self):
+            
+            p = Part.Point(App.Vector(0,0,0))
+            v1 = Part.Vertex(1,1,1)
+            v2 = Part.Vertex(2,2,2)
+            v3 = Part.Vertex(p)
+            v4 = Part.Vertex(p)
+            v5 = Part.Vertex(v4)
+            
+            self.failUnless(v1.Reference != v2.Reference)
+            self.failUnless(v3.Reference != v4.Reference)
+            self.failUnless(v4.Reference == v5.Reference)
+            
+            l = Part.LineSegment(App.Vector(0,0,0), App.Vector(1,1,1))
+            e1 = Part.Edge(l)
+            e2 = Part.Edge(l)
+            e3 = Part.Edge(e2)
+            e4 = Part.Edge(v1, v2)
+            
+            self.failUnless(e1.Reference != e2.Reference)
+            self.failUnless(e1.Vertexes[0].Reference != e2.Vertexes[0].Reference)
+            self.failUnless(e1.Vertexes[0].Reference != e2.Vertexes[1].Reference)
+            self.failUnless(e1.Vertexes[1].Reference != e2.Vertexes[1].Reference)
+            self.failUnless(e3.Reference == e2.Reference)
+            self.failUnless(e3.Vertexes[0].Reference == e2.Vertexes[0].Reference)
+            self.failUnless(e3.Vertexes[0].Reference != e2.Vertexes[1].Reference)
+            self.failUnless(e3.Vertexes[1].Reference == e2.Vertexes[1].Reference)
+            self.failUnless(e4.Reference != v1.Reference)
+            self.failUnless(e4.Reference != v2.Reference)
+            self.failUnless(e4.Vertexes[0].Reference == v1.Reference)
+            self.failUnless(e4.Vertexes[1].Reference == v2.Reference)
+		
 	def tearDown(self):
 		#closing doc
 		FreeCAD.closeDocument("PartTest")

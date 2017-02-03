@@ -28,8 +28,9 @@
 #include <boost/bimap.hpp>
 #include <boost/assign/list_of.hpp>
 #include <boost/preprocessor.hpp>
+#include <BRepBuilderAPI_MakeShape.hxx>
 
-//some helpers to easily create and stringify the needed enums inside the Identifier class.
+//some helpers to easily create and stringify the needed enums inside the Reference class.
 //don't forget to use INIT_ENUM in the cpp file!
 #define ENUM(Name, seq) \
     public:\
@@ -43,51 +44,59 @@
         
 namespace Part {
 
+class TopoShape;
+
 #define SHAPE_SEQ  (None)(Geometry)(Vertex)(Edge)(Face)
 #define OP_SEQ  (None)(Topology)(Geometry)(Box)(Sphere)
-#define CTYPE_SEQ  (None)(New)(Generated)(Modified)
-#define CSUBTYPE_SEQ  (None)(Top)(Bottom)(Front)(Back)(Left)(Right)
+#define TYPE_SEQ  (None)(New)(Generated)(Modified)(Constructed)
+#define NAME_SEQ  (None)(Top)(Bottom)(Front)(Back)(Left)(Right)(Start)(End)
     
-class PartExport Identifier : public Base::Persistence {
+class PartExport Reference : public Base::Persistence {
 
     ENUM(Shape, SHAPE_SEQ)
     ENUM(Operation, OP_SEQ)
-    ENUM(CreationType, CTYPE_SEQ)
-    ENUM(CreationSubType, CSUBTYPE_SEQ)
+    ENUM(Type, TYPE_SEQ)
+    ENUM(Name, NAME_SEQ)
     
 public:
-    bool isGeneratedFrom(std::size_t hash);
-    bool isModificationOf(std::size_t hash);
+    bool isGeneratedFrom(std::size_t hash) const;
+    bool isModificationOf(std::size_t hash) const;
     
     //compare subtypes
-    bool operator==(CreationType type);
-    bool operator!=(CreationType type) {return !operator==(type);};
-    bool operator==(CreationSubType subtype);
-    bool operator!=(CreationSubType subtype) {return !operator==(subtype);};
-    bool operator==(Operation op);
-    bool operator!=(Operation op) {return !operator==(op);};
-    bool operator==(Base::Uuid uid);
-    bool operator!=(Base::Uuid uid) {return !operator==(uid);};
+    bool operator==(Type type) const;
+    bool operator!=(Type type) const {return !operator==(type);};
+    bool operator==(Name subtype) const;
+    bool operator!=(Name subtype) const {return !operator==(subtype);};
+    bool operator==(Operation op) const;
+    bool operator!=(Operation op) const {return !operator==(op);};
+    bool operator==(const Base::Uuid& uid) const;
+    bool operator!=(const Base::Uuid& uid) const {return !operator==(uid);};
     
     //compare the whole identifier
-    bool operator==(std::size_t hash);
-    bool operator!=(std::size_t hash) {return !operator==(hash);};
+    bool operator==(std::size_t hash) const;
+    bool operator!=(std::size_t hash) const {return !operator==(hash);};
     
     //access some important data
-    std::string asString();
-    std::size_t hash();
-    std::string hashAsString();
+    std::string asString() const;
+    std::size_t hash() const;
+    std::string hashAsString() const;
     
     //creation methods
-    static Identifier buildNew(Shape sh, Operation op, CreationSubType = CreationSubType::None);
-    static Identifier buildGenerated(Shape sh, Operation op, const Identifier& base, 
-                                     CreationSubType = CreationSubType::None);
-    static Identifier buildGenerated(Shape sh, Operation op, const std::vector<Identifier>& base, 
-                                     CreationSubType = CreationSubType::None);
+    static Reference buildNew(Shape sh, Operation op, Name = Name::None);
+    static Reference buildGenerated(Shape sh, Operation op, const Reference& base, 
+                                     Name = Name::None);
+    static Reference buildGenerated(Shape sh, Operation op, const std::vector<Reference>& base, 
+                                     Name = Name::None);
+    static Reference buildComplex(BRepBuilderAPI_MakeShape* builder, TopoShape* base,
+                                   TopoShape* created, Operation op);
     
     //methods for setting important properties
-    Identifier& setOperationID(const Base::Uuid& id);
+    Reference& setOperationID(const Base::Uuid& id);
+    const Base::Uuid& operationID();
     
+    //check validity
+    bool isValid() const;
+    operator bool() const {return isValid();};
     
     //Persistence methods 
     virtual void Save(Base::Writer&) const {};
@@ -95,13 +104,15 @@ public:
     virtual unsigned int getMemSize(void) const {};
     
 protected:
-    std::vector<Identifier> m_baseIDs;
-    Shape                   m_shape;
-    Operation               m_operation;
+    std::vector<Reference> m_baseIDs;
+    Shape                   m_shape = Shape::None;
+    Operation               m_operation = Operation::None;
     Base::Uuid              m_operationUuid;
-    CreationType            m_type;
-    CreationSubType         m_subtype;
+    Type                    m_type = Type::None;
+    Name                    m_subtype;
     unsigned short int      m_counter = 1;
+    
+    void asIndendetString(std::stringstream& stream, int level, bool recursive) const;
 };
 
 } //Part

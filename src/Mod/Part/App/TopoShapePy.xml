@@ -683,6 +683,14 @@ infos contains additional info on the solutions. It is a list of tuples:
         </UserDocu>
       </Documentation>
     </Methode>
+    <Methode Name="printHistory" Const="true">
+      <Documentation>
+        <UserDocu>
+        Prints a human readable creation history of this shape. Works only 
+        for Vertex, Edge and Face, all other shape types do not store their history.
+        </UserDocu>
+      </Documentation>
+    </Methode>
     <!--
     <Attribute Name="Location" ReadOnly="false">
       <Documentation>
@@ -768,6 +776,13 @@ infos contains additional info on the solutions. It is a list of tuples:
         <UserDocu>Total volume of the solids of the shape.</UserDocu>
       </Documentation>
       <Parameter Name="Volume" Type="Float"/>
+    </Attribute>
+    <Attribute Name="Reference" ReadOnly="true">
+      <Documentation>
+        <UserDocu>A hash which uniquely identifies the history of the shape. 
+                  Only available for Vertex, Edge and Face shapes.</UserDocu>
+      </Documentation>
+      <Parameter Name="Reference" Type="String"/>
     </Attribute>
   </PythonExport>
 </GenerateModel>

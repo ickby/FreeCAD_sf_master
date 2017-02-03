@@ -25,11 +25,13 @@
 #define PART_TOPOSHAPE_H
 
 #include <iostream>
+#include <unordered_map>
 #include <TopoDS_Compound.hxx>
 #include <TopoDS_Wire.hxx>
 #include <TopTools_ListOfShape.hxx>
 #include <App/ComplexGeoData.h>
-#include "Identifier.h"
+#include "Reference.h"
+#include <Base/Exception.h>
 
 class gp_Ax1;
 class gp_Ax2;
@@ -247,22 +249,36 @@ public:
                   const std::vector<Facet> &faces, float Accuracy=1.0e-06);
     //@}
 
-    /** @name Identifier handling */
+    /** @name Reference handling */
     //@{   
-    const Identifier& identifier() const;
-    void setIdentifier(const Identifier& id);
-    const Identifier& subshapeIdentifier(const TopoShape& subshape);
-    void setSubshapeIdentifier(const TopoDS_Shape&, const Identifier& id);
-    void setSubshapeIdentifier(const TopoShape&, const Identifier& id);
+    const Reference& reference() const;
+    void setReference(const Reference& id);
+    const Reference& subshapeReference(const TopoShape& subshape);
+    const Reference& subshapeReference(const TopoDS_Shape& subshape);
+    void setSubshapeReference(const TopoDS_Shape&, const Reference& id);
+    void setSubshapeReference(const TopoShape&, const Reference& id);
     
     //void identifier() {return _ShapeID;};
-    //void subshapeIdentifier(const TopoShape& shape);
+    //void subshapeReference(const TopoShape& shape);
     //@}
     
-private:
-    TopoDS_Shape                _Shape;
-    Identifier                  _ShapeID;
-    std::vector<Identifier>     _VertexIDs, _EdgeIDs, _FaceIDs;
+private:    
+    struct ShapeHash{
+        size_t operator()(const TopoDS_Shape& shape) const{
+            int hash;
+            if(shape.IsNull())
+                throw Base::Exception("empty shape can't be hashed in unordered map");
+            
+            shape.HashCode(hash);
+            return size_t(hash);
+        }
+    };
+    
+    typedef std::unordered_map<TopoDS_Shape, Reference, ShapeHash> ReferenceMap;
+    
+    TopoDS_Shape  _Shape;
+    Reference     _ShapeRef;
+    ReferenceMap  _SubShapeRef;
 };
 
 } //namespace Part
