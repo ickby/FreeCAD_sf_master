@@ -131,7 +131,7 @@ int TopoShapeEdgePy::PyInit(PyObject* args, PyObject* /*kwd*/)
             getTopoShapePtr()->setShape(mkEdge.Edge());
             
             //setup the references for the edge and two vertices
-            auto id = Reference::buildNew(Reference::Shape::Edge, Reference::Operation::Topology);
+            auto id = Reference::buildConstructed(Reference::Shape::Edge, Reference::Operation::Topology, geom->reference());
             getTopoShapePtr()->setReference(id);
             
             auto v1 = getTopoShapePtr()->getSubShape("Vertex1");
@@ -186,16 +186,10 @@ int TopoShapeEdgePy::PyInit(PyObject* args, PyObject* /*kwd*/)
 
         try {
             BRepBuilderAPI_MakeEdge mkEdge(v1, v2);
-            getTopoShapePtr()->setShape(mkEdge.Edge());
-            std::vector<Reference> baseIDs;
-            baseIDs.push_back(shape1->reference());
-            baseIDs.push_back(shape2->reference());
-            getTopoShapePtr()->setReference(Reference::buildGenerated(Reference::Shape::Edge, 
-                                                                        Reference::Operation::Topology, baseIDs));
-            auto sub1 = getTopoShapePtr()->getSubShape("Vertex1");
-            auto sub2 = getTopoShapePtr()->getSubShape("Vertex2");
-            getTopoShapePtr()->setSubshapeReference(sub1, sub1.IsSame(v1) ? shape1->reference() : shape2->reference());
-            getTopoShapePtr()->setSubshapeReference(sub2, sub2.IsSame(v2) ? shape2->reference() : shape1->reference());
+            TopoShape shape(mkEdge.Edge());
+            std::vector<TopoShape*> bases = {shape1, shape2};
+            Reference::populateOperation(&mkEdge, bases, &shape, Reference::Operation::Topology);
+            getTopoShapePtr()->operator=(shape);
             return 0;
         }
         catch (Standard_Failure) {

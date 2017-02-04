@@ -31,16 +31,16 @@ class PartTestCases(unittest.TestCase):
 	def setUp(self):
 		self.Doc = FreeCAD.newDocument("PartTest")
 
-	def testBoxCase(self):
-		self.Box = App.ActiveDocument.addObject("Part::Box","Box")
-		self.Doc.recompute()
-		self.failUnless(len(self.Box.Shape.Faces)==6)
+#	def testBoxCase(self):
+#		self.Box = App.ActiveDocument.addObject("Part::Box","Box")
+#		self.Doc.recompute()
+#		self.failUnless(len(self.Box.Shape.Faces)==6)
 		
 	def testBasicShapeReference(self):
             
             p = Part.Point(App.Vector(0,0,0))
-            v1 = Part.Vertex(1,1,1)
-            v2 = Part.Vertex(2,2,2)
+            v1 = Part.Vertex(1,1,0)
+            v2 = Part.Vertex(2,2,0)
             v3 = Part.Vertex(p)
             v4 = Part.Vertex(p)
             v5 = Part.Vertex(v4)
@@ -68,7 +68,7 @@ class PartTestCases(unittest.TestCase):
             self.failUnless(e4.Vertexes[0].Reference == v1.Reference)
             self.failUnless(e4.Vertexes[1].Reference == v2.Reference)
             
-            l2 = Part.LineSegment(App.Vector(2,2,2), App.Vector(1,0,1))
+            l2 = Part.LineSegment(App.Vector(2,2,0), App.Vector(2,0,0))
             e5 = Part.Edge(l2)
             w1 = Part.Wire(e1)
             w2 = Part.Wire([e4,e5])
@@ -81,6 +81,25 @@ class PartTestCases(unittest.TestCase):
             self.failUnless(w2.Edges[0].Vertexes[0].Reference == e4.Vertexes[0].Reference)
             self.failUnless(w2.Vertexes[0].Reference == v1.Reference)
             self.failUnless(w2.Vertexes[2].Reference == e5.Vertexes[1].Reference)
+            
+            v6 = Part.Vertex(2,0,0)
+            e6 = Part.Edge(v6, v1)
+            w3 = Part.Wire([w2, e6])
+            self.failUnless(w3.isClosed())
+            self.failUnless(w3.Edges[0].Reference == w2.Edges[0].Reference)
+            self.failUnless(w3.Edges[1].Reference == w2.Edges[1].Reference)
+            self.failUnless(w3.Edges[2].Reference == e6.Reference)
+            
+            f1 = Part.Face(w3)
+            self.failUnless(f1.Edges[0].Reference == w3.Edges[0].Reference)
+            self.failUnless(f1.Edges[1].Reference == w3.Edges[1].Reference)
+            self.failUnless(f1.Edges[2].Reference == w3.Edges[2].Reference)   
+            
+            plane = Part.Plane()
+            f2 = Part.Face(plane, w3)
+            self.failUnless(f2.Edges[0].Reference == w3.Edges[0].Reference)
+            self.failUnless(f2.Edges[1].Reference == w3.Edges[1].Reference)
+            self.failUnless(f2.Edges[2].Reference == w3.Edges[2].Reference)
             
 		
 	def tearDown(self):

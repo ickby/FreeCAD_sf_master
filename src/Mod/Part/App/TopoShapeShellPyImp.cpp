@@ -86,13 +86,14 @@ int TopoShapeShellPy::PyInit(PyObject* args, PyObject* /*kwd*/)
     TopoDS_Shell shell;
     //BRepOffsetAPI_Sewing mkShell;
     builder.MakeShell(shell);
+    std::vector<TopoShape*> bases;
     
     try {
         Py::Sequence list(obj);
         for (Py::Sequence::iterator it = list.begin(); it != list.end(); ++it) {
             if (PyObject_TypeCheck((*it).ptr(), &(Part::TopoShapeFacePy::Type))) {
-                const TopoDS_Shape& sh = static_cast<TopoShapeFacePy*>((*it).ptr())->
-                    getTopoShapePtr()->getShape();
+                bases.push_back(static_cast<TopoShapeFacePy*>((*it).ptr())->getTopoShapePtr());
+                const TopoDS_Shape& sh = bases.back()->getShape();
                 if (!sh.IsNull())
                     builder.Add(shell, sh);
             }
@@ -117,7 +118,10 @@ int TopoShapeShellPy::PyInit(PyObject* args, PyObject* /*kwd*/)
         return -1;
     }
 
-    getTopoShapePtr()->setShape(shape);
+    //as we have no special information we must use a primitive reference creation
+    TopoShape topo(shape);
+    Reference::populateOperation(bases, &topo, Reference::Operation::Topology);
+    getTopoShapePtr()->operator=(topo);
     return 0;
 }
 

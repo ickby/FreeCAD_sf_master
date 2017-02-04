@@ -48,8 +48,8 @@ namespace Part {
 class TopoShape;
 
 #define SHAPE_SEQ  (None)(Geometry)(Vertex)(Edge)(Face)
-#define OP_SEQ  (None)(Topology)(Geometry)(Box)(Sphere)
-#define TYPE_SEQ  (None)(New)(Generated)(Modified)(Constructed)
+#define OP_SEQ  (None)(Repair)(Topology)(Geometry)(Box)(Sphere)
+#define TYPE_SEQ  (None)(New)(Generated)(Modified)(Constructed)(Merged)
 #define NAME_SEQ  (None)(Top)(Bottom)(Front)(Back)(Left)(Right)(Start)(End)
     
 class PartExport Reference : public Base::Persistence {
@@ -77,6 +77,17 @@ public:
     bool operator==(std::size_t hash) const;
     bool operator!=(std::size_t hash) const {return !operator==(hash);};
     
+    bool operator==(const Reference& ref) const;
+    bool operator!=(const Reference& ref) const {return !operator==(ref);};
+    bool operator<(const Reference& ref) const;
+    bool operator>(const Reference& ref) const;
+    
+    //allow duplication count 
+    Reference& operator++();
+    Reference  operator++(int);
+    unsigned short int count();
+    void setCount(unsigned short int count);
+    
     //access some important data
     std::string asString() const;
     std::size_t hash() const;
@@ -86,11 +97,18 @@ public:
     static Reference buildNew(Shape sh, Operation op, Name = Name::None);
     static Reference buildGenerated(Shape sh, Operation op, const Reference& base, 
                                      Name = Name::None);
-    static Reference buildGenerated(Shape sh, Operation op, const std::vector<Reference>& base, 
+    static Reference buildMerged(Shape sh, Operation op, const std::vector<Reference>& base, 
                                      Name = Name::None);
     static Reference buildModified(Shape sh, Operation op, const Reference& base, Name = Name::None);
+    static Reference buildConstructed(Shape sh, Operation op, const Reference& base);
+    static Reference buildConstructed(Shape sh, Operation op, const std::vector<Reference>& bases);
     
+    static void      populateNew(TopoShape* shape, Operation op, Base::Uuid opID = Base::Uuid());
     static void      populateSubshape(TopoShape* base, TopoShape* subshape);
+    static void      populateOperation(TopoShape* base, TopoShape* created, Operation op,
+                                       Base::Uuid opID = Base::Uuid());
+    static void      populateOperation(std::vector<TopoShape*> bases, TopoShape* created, Operation op,
+                                       Base::Uuid opID = Base::Uuid());
     static void      populateOperation(BRepBuilderAPI_MakeShape* builder, TopoShape* base,
                                   TopoShape* created, Operation op, Base::Uuid opID = Base::Uuid());
     static void      populateOperation(BRepBuilderAPI_MakeShape* builder, std::vector<TopoShape*> bases,
@@ -98,7 +116,7 @@ public:
     
     //methods for setting important properties
     Reference& setOperationID(const Base::Uuid& id);
-    const Base::Uuid& operationID();
+    const Base::Uuid& operationID() const ;
     
     //check validity
     bool isValid() const;
@@ -115,7 +133,7 @@ protected:
     Operation               m_operation = Operation::None;
     Base::Uuid              m_operationUuid;
     Type                    m_type = Type::None;
-    Name                    m_name;
+    Name                    m_name = Name::None;
     unsigned short int      m_counter = 1;
     
     void asIndendetString(std::stringstream& stream, int level, bool recursive) const;

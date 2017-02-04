@@ -80,7 +80,6 @@ int TopoShapeVertexPy::PyInit(PyObject* args, PyObject* /*kwd*/)
             z = ptr->z;
             success = true;
         }
-        id = Reference::buildNew(Reference::Shape::Vertex, Reference::Operation::Topology);
     }
     if (!success) {
         PyErr_Clear(); // set by PyArg_ParseTuple()
@@ -106,8 +105,8 @@ int TopoShapeVertexPy::PyInit(PyObject* args, PyObject* /*kwd*/)
             x = pnt.X();
             y = pnt.Y();
             z = pnt.Z();
-            id = Reference::buildGenerated(Reference::Shape::Vertex, Reference::Operation::Topology, 
-                                            static_cast<PointPy*>(object)->getGeomPointPtr()->reference());
+            id = Reference::buildConstructed(Reference::Shape::Vertex, Reference::Operation::Topology, 
+                                             static_cast<PointPy*>(object)->getGeomPointPtr()->reference());
             success = true;
         }
     }
