@@ -63,6 +63,7 @@ int TopoShapeCompoundPy::PyInit(PyObject* args, PyObject* /*kwd*/)
     BRep_Builder builder;
     TopoDS_Compound Comp;
     builder.MakeCompound(Comp);
+    std::vector<TopoShape*> bases;
     
     try {
         Py::Sequence list(pcObj);
@@ -70,8 +71,10 @@ int TopoShapeCompoundPy::PyInit(PyObject* args, PyObject* /*kwd*/)
             if (PyObject_TypeCheck((*it).ptr(), &(Part::TopoShapePy::Type))) {
                 const TopoDS_Shape& sh = static_cast<TopoShapePy*>((*it).ptr())->
                     getTopoShapePtr()->getShape();
-                if (!sh.IsNull())
+                if (!sh.IsNull()) {
                     builder.Add(Comp, sh);
+                    bases.push_back(static_cast<TopoShapePy*>((*it).ptr())->getTopoShapePtr());
+                }
             }
         }
     }
@@ -81,7 +84,9 @@ int TopoShapeCompoundPy::PyInit(PyObject* args, PyObject* /*kwd*/)
         return -1;
     }
 
-    getTopoShapePtr()->setShape(Comp);
+    TopoShape shape(Comp);
+    Reference::populateOperation(bases, &shape, Reference::Operation::Topology);
+    getTopoShapePtr()->operator=(shape);
     return 0;
 }
 

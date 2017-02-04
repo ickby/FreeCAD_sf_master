@@ -247,9 +247,13 @@ void Reference::asIndendetString(std::stringstream& stream, int level, bool recu
     ++level;
     if(isValid()) {
         stream << asString(m_type) << " " 
-            << asString(m_shape) << " from operation " << asString(m_operation)
-            << " (" << m_operationUuid.getValue() << ") created as subtype " << asString(m_name) 
-            <<" with count: "<< m_counter;
+            << asString(m_shape) << " build from operation " << asString(m_operation)
+            << " (" << m_operationUuid.getValue() << ")";
+        
+        if(m_name  != Name::None)
+            stream << " named as " << asString(m_name);
+        if(m_counter > 1)
+            stream <<" with "<< m_counter << " occurances";
         
         if(!m_baseIDs.empty()) {
             stream << " based on\n";
@@ -511,6 +515,10 @@ void Reference::populateOperation(TopoShape* base, TopoShape* created, Reference
 
 void Reference::populateOperation(std::vector< TopoShape* > bases, TopoShape* created, Reference::Operation op, Base::Uuid opID)
 {
+    //we get into trouble if we want access non-existing references
+    for(auto base : bases)
+        ensureFullyNamed(*base);
+        
     //this build type has absolutely no special information, it is the most primitive mapping...
     //we just search every subshape for a direct copy/merge and if not found it is handled as new 
     //to make sure that we handle absolutely all subshapes we need a collection first

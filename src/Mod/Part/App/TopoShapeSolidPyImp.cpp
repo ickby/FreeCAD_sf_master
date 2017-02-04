@@ -96,6 +96,7 @@ int TopoShapeSolidPy::PyInit(PyObject* args, PyObject* /*kwd*/)
         }
         if (count == 0) {
             //no compsolids. Get shells...
+            std::vector<TopoShape*> bases;
             BRepBuilderAPI_MakeSolid mkSolid;
             TopExp_Explorer anExp (shape, TopAbs_SHELL);
             count=0;
@@ -109,11 +110,15 @@ int TopoShapeSolidPy::PyInit(PyObject* args, PyObject* /*kwd*/)
 
             TopoDS_Solid solid = mkSolid.Solid();
             BRepLib::OrientClosedSolid(solid);
-            getTopoShapePtr()->setShape(solid);
+            TopoShape shape(solid);
+            Reference::populateOperation(&mkSolid, bases, &shape, Reference::Operation::Topology);
+            getTopoShapePtr()->operator=(shape);
         } else if (count == 1) {
             BRepBuilderAPI_MakeSolid mkSolid(compsolid);
-            TopoDS_Solid solid = mkSolid.Solid();
-            getTopoShapePtr()->setShape(solid);
+            TopoShape solid(mkSolid.Solid());
+            Reference::populateOperation(&mkSolid, static_cast<TopoShapePy*>(obj)->getTopoShapePtr(), &solid, 
+                                         Reference::Operation::Topology);
+            getTopoShapePtr()->operator=(solid);
         } else if (count > 1) {
             Standard_Failure::Raise("Only one compsolid can be accepted. Provided shape has more than one compsolid.");
         }

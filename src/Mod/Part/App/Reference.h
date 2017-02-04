@@ -93,6 +93,20 @@ public:
     std::size_t hash() const;
     std::string hashAsString() const;
     
+    //methods for setting important properties
+    Reference& setOperationID(const Base::Uuid& id);
+    const Base::Uuid& operationID() const ;
+    
+    //check validity
+    bool isValid() const;
+    operator bool() const {return isValid();};
+    
+    //Persistence methods 
+    virtual void Save(Base::Writer&) const {};
+    virtual void Restore(Base::XMLReader&) {};
+    virtual unsigned int getMemSize(void) const {};
+    
+    
     //creation methods
     static Reference buildNew(Shape sh, Operation op, Name = Name::None);
     static Reference buildGenerated(Shape sh, Operation op, const Reference& base, 
@@ -113,19 +127,6 @@ public:
                                   TopoShape* created, Operation op, Base::Uuid opID = Base::Uuid());
     static void      populateOperation(BRepBuilderAPI_MakeShape* builder, std::vector<TopoShape*> bases,
                                   TopoShape* created, Operation op, Base::Uuid opID = Base::Uuid());
-    
-    //methods for setting important properties
-    Reference& setOperationID(const Base::Uuid& id);
-    const Base::Uuid& operationID() const ;
-    
-    //check validity
-    bool isValid() const;
-    operator bool() const {return isValid();};
-    
-    //Persistence methods 
-    virtual void Save(Base::Writer&) const {};
-    virtual void Restore(Base::XMLReader&) {};
-    virtual unsigned int getMemSize(void) const {};
     
 protected:
     std::vector<Reference>  m_baseIDs;
