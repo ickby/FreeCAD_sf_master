@@ -3134,19 +3134,48 @@ void TopoShape::setSubshapeReference(const TopoDS_Shape& shape, const Reference&
     if ((shape.ShapeType() == TopAbs_FACE) ||
         (shape.ShapeType() == TopAbs_EDGE) ||
         (shape.ShapeType() == TopAbs_VERTEX)) {
-        
-        _SubShapeRef[shape] = id;
+
+        //it could be that the subshape is acually this shape. That can happen as TopExp_Explorer
+        //finds all shapes within a shape 
+        if(shape == _Shape)
+            return setReference(id);
+        else
+            _SubShapeRef[shape] = id;
     }
 }
 
+void TopoShape::setSubshapeReference(const TopoShape& shape, const Reference& id)
+{
+    setSubshapeReference(shape.getShape(), id);
+}
+
+bool TopoShape::hasSubshapeReference(const TopoDS_Shape& subshape)
+{
+    return (_SubShapeRef.find(subshape) != _SubShapeRef.end()) || (subshape == _Shape);
+}
+
+bool TopoShape::hasSubshapeReference(const TopoShape& subshape)
+{
+    return hasSubshapeReference(subshape.getShape());
+}
+
+
 const Reference& TopoShape::subshapeReference(const TopoShape& subshape) {
     
+    return subshapeReference(subshape.getShape());
 }
 
 const Reference& TopoShape::subshapeReference(const TopoDS_Shape& shape) {
     
-    if(_SubShapeRef.find(shape) == _SubShapeRef.end())
-        return Reference();
+    if(_SubShapeRef.find(shape) == _SubShapeRef.end()) {
+        
+        //it could be that the subshape is acually this shape. That can happen as TopExp_Explorer
+        //finds all shapes within a shape 
+        if(shape == _Shape)
+            return reference();
+        
+        throw Base::Exception("Subshape has no reference in this shape, are you sure belongs to this base shape?");
+    }
     
     return _SubShapeRef[shape];
 }

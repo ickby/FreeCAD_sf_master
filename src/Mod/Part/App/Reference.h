@@ -25,6 +25,7 @@
 
 #include <Base/Uuid.h>
 #include <Base/Persistence.h>
+#include <Base/Exception.h>
 #include <boost/bimap.hpp>
 #include <boost/assign/list_of.hpp>
 #include <boost/preprocessor.hpp>
@@ -43,7 +44,7 @@
    
         
 namespace Part {
-
+   
 class TopoShape;
 
 #define SHAPE_SEQ  (None)(Geometry)(Vertex)(Edge)(Face)
@@ -87,8 +88,13 @@ public:
                                      Name = Name::None);
     static Reference buildGenerated(Shape sh, Operation op, const std::vector<Reference>& base, 
                                      Name = Name::None);
-    static Reference buildComplex(BRepBuilderAPI_MakeShape* builder, TopoShape* base,
-                                   TopoShape* created, Operation op);
+    static Reference buildModified(Shape sh, Operation op, const Reference& base, Name = Name::None);
+    
+    static void      populateSubshape(TopoShape* base, TopoShape* subshape);
+    static void      populateOperation(BRepBuilderAPI_MakeShape* builder, TopoShape* base,
+                                  TopoShape* created, Operation op, Base::Uuid opID = Base::Uuid());
+    static void      populateOperation(BRepBuilderAPI_MakeShape* builder, std::vector<TopoShape*> bases,
+                                  TopoShape* created, Operation op, Base::Uuid opID = Base::Uuid());
     
     //methods for setting important properties
     Reference& setOperationID(const Base::Uuid& id);
@@ -104,15 +110,36 @@ public:
     virtual unsigned int getMemSize(void) const {};
     
 protected:
-    std::vector<Reference> m_baseIDs;
+    std::vector<Reference>  m_baseIDs;
     Shape                   m_shape = Shape::None;
     Operation               m_operation = Operation::None;
     Base::Uuid              m_operationUuid;
     Type                    m_type = Type::None;
-    Name                    m_subtype;
+    Name                    m_name;
     unsigned short int      m_counter = 1;
     
     void asIndendetString(std::stringstream& stream, int level, bool recursive) const;
+};
+
+class PartExport ReferenceException : public Base::Exception {
+    
+public:
+    /// With massage and Reference
+    ReferenceException(std::string sMessage, const Reference& ref);
+    /// With massage and file name
+    ReferenceException(std::string sMessage);
+    /// Construction
+    ReferenceException(const Reference& ref);
+    /// With massage and file name
+    ReferenceException();
+    /// Destruction
+    virtual ~ReferenceException() throw() {}
+  
+    /// Description of the exception
+    virtual const char* what() const throw();
+protected:
+    Reference m_ref;
+  
 };
 
 } //Part

@@ -2583,8 +2583,9 @@ Py::List TopoShapePy::getFaces(void) const
 
     for (Standard_Integer k = 1; k <= M.Extent(); k++)
     {
-        const TopoDS_Shape& shape = M(k);
-        ret.append(Py::Object(new TopoShapeFacePy(new TopoShape(shape)),true));
+        auto shape = new TopoShape(M(k));
+        Reference::populateSubshape(getTopoShapePtr(), shape);
+        ret.append(Py::Object(new TopoShapeFacePy(shape),true));
     }
 
     return ret;
@@ -2604,10 +2605,9 @@ Py::List TopoShapePy::getVertexes(void) const
 
     for (Standard_Integer k = 1; k <= M.Extent(); k++)
     {
-        const TopoDS_Shape& shape = M(k);
-        auto toposhape = new TopoShape(shape);
-        toposhape->setReference(getTopoShapePtr()->subshapeReference(shape));
-        ret.append(Py::Object(new TopoShapeVertexPy(toposhape),true));
+        auto shape = new TopoShape(M(k));
+        Reference::populateSubshape(getTopoShapePtr(), shape);
+        ret.append(Py::Object(new TopoShapeVertexPy(shape),true));
     }
 
     return ret;
@@ -2627,8 +2627,9 @@ Py::List TopoShapePy::getShells(void) const
 
     for (Standard_Integer k = 1; k <= M.Extent(); k++)
     {
-        const TopoDS_Shape& shape = M(k);
-        ret.append(Py::Object(new TopoShapeShellPy(new TopoShape(shape)),true));
+        auto shape = new TopoShape(M(k));
+        Reference::populateSubshape(getTopoShapePtr(), shape);
+        ret.append(Py::Object(new TopoShapeShellPy(shape),true));
     }
 
     return ret;
@@ -2648,8 +2649,9 @@ Py::List TopoShapePy::getSolids(void) const
 
     for (Standard_Integer k = 1; k <= M.Extent(); k++)
     {
-        const TopoDS_Shape& shape = M(k);
-        ret.append(Py::Object(new TopoShapeSolidPy(new TopoShape(shape)),true));
+        auto shape = new TopoShape(M(k));
+        Reference::populateSubshape(getTopoShapePtr(), shape);
+        ret.append(Py::Object(new TopoShapeSolidPy(shape),true));
     }
 
     return ret;
@@ -2669,8 +2671,9 @@ Py::List TopoShapePy::getCompSolids(void) const
 
     for (Standard_Integer k = 1; k <= M.Extent(); k++)
     {
-        const TopoDS_Shape& shape = M(k);
-        ret.append(Py::Object(new TopoShapeCompSolidPy(new TopoShape(shape)),true));
+        auto shape = new TopoShape(M(k));
+        Reference::populateSubshape(getTopoShapePtr(), shape);
+        ret.append(Py::Object(new TopoShapeCompSolidPy(shape),true));
     }
 
     return ret;
@@ -2690,8 +2693,9 @@ Py::List TopoShapePy::getEdges(void) const
 
     for (Standard_Integer k = 1; k <= M.Extent(); k++)
     {
-        const TopoDS_Shape& shape = M(k);
-        ret.append(Py::Object(new TopoShapeEdgePy(new TopoShape(shape)),true));
+        auto shape = new TopoShape(M(k));
+        Reference::populateSubshape(getTopoShapePtr(), shape);
+        ret.append(Py::Object(new TopoShapeEdgePy(shape),true));
     }
 
     return ret;
@@ -2711,8 +2715,9 @@ Py::List TopoShapePy::getWires(void) const
 
     for (Standard_Integer k = 1; k <= M.Extent(); k++)
     {
-        const TopoDS_Shape& shape = M(k);
-        ret.append(Py::Object(new TopoShapeWirePy(new TopoShape(shape)),true));
+        auto shape = new TopoShape(M(k));
+        Reference::populateSubshape(getTopoShapePtr(), shape);
+        ret.append(Py::Object(new TopoShapeWirePy(shape),true));
     }
 
     return ret;
@@ -2732,8 +2737,9 @@ Py::List TopoShapePy::getCompounds(void) const
 
     for (Standard_Integer k = 1; k <= M.Extent(); k++)
     {
-        const TopoDS_Shape& shape = M(k);
-        ret.append(Py::Object(new TopoShapeCompoundPy(new TopoShape(shape)),true));
+        auto shape = new TopoShape(M(k));
+        Reference::populateSubshape(getTopoShapePtr(), shape);
+        ret.append(Py::Object(new TopoShapeCompoundPy(shape),true));
     }
 
     return ret;
@@ -2775,7 +2781,7 @@ Py::String TopoShapePy::getReference(void) const
     if (shape.IsNull() || !( (shape.ShapeType() == TopAbs_VERTEX) || 
                              (shape.ShapeType() == TopAbs_EDGE) || 
                              (shape.ShapeType() == TopAbs_FACE) ))
-        throw Py::RuntimeError("No identification available for shape");
+        throw Py::RuntimeError("No reference available for this shape type");
     
     std::string hash = getTopoShapePtr()->reference().hashAsString();
     return Py::String(hash);

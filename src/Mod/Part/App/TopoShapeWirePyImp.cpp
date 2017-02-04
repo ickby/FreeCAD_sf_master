@@ -98,7 +98,10 @@ int TopoShapeWirePy::PyInit(PyObject* args, PyObject* /*kwd*/)
         }
 
         try {
-            getTopoShapePtr()->setShape(mkWire.Wire());
+            TopoShape shape(mkWire.Wire());
+            Reference::populateOperation(&mkWire, static_cast<Part::TopoShapePy*>(pcObj)->getTopoShapePtr(),
+                                         &shape, Reference::Operation::Topology);
+            getTopoShapePtr()->operator=(shape);
             return 0;
         }
         catch (Standard_Failure) {
@@ -117,6 +120,7 @@ int TopoShapeWirePy::PyInit(PyObject* args, PyObject* /*kwd*/)
 
         BRepBuilderAPI_MakeWire mkWire;
         Py::Sequence list(pcObj);
+        std::vector<TopoShape*> bases;
         for (Py::Sequence::iterator it = list.begin(); it != list.end(); ++it) {
             PyObject* item = (*it).ptr();
             if (PyObject_TypeCheck(item, &(Part::TopoShapePy::Type))) {
@@ -133,6 +137,7 @@ int TopoShapeWirePy::PyInit(PyObject* args, PyObject* /*kwd*/)
                     PyErr_SetString(PyExc_TypeError, "shape is neither edge nor wire");
                     return -1;
                 }
+                bases.push_back(static_cast<Part::TopoShapePy*>(item)->getTopoShapePtr());
             }
             else {
                 PyErr_SetString(PyExc_TypeError, "item is not a shape");
@@ -141,12 +146,18 @@ int TopoShapeWirePy::PyInit(PyObject* args, PyObject* /*kwd*/)
         }
 
         try {
-            getTopoShapePtr()->setShape(mkWire.Wire());
+            TopoShape shape(mkWire.Wire());
+            Reference::populateOperation(&mkWire, bases, &shape, Reference::Operation::Topology);
+            getTopoShapePtr()->operator=(shape);
             return 0;
         }
         catch (Standard_Failure) {
             Handle_Standard_Failure e = Standard_Failure::Caught();
             PyErr_SetString(PartExceptionOCCError, e->GetMessageString());
+            return -1;
+        }
+        catch (Base::Exception& e) {
+            PyErr_SetString(PartExceptionOCCError, e.what());
             return -1;
         }
     }

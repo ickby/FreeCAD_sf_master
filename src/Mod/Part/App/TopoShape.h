@@ -253,6 +253,8 @@ public:
     //@{   
     const Reference& reference() const;
     void setReference(const Reference& id);
+    bool hasSubshapeReference(const TopoDS_Shape& subshape);
+    bool hasSubshapeReference(const TopoShape& subshape);
     const Reference& subshapeReference(const TopoShape& subshape);
     const Reference& subshapeReference(const TopoDS_Shape& subshape);
     void setSubshapeReference(const TopoDS_Shape&, const Reference& id);

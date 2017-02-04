@@ -157,6 +157,10 @@ int TopoShapeEdgePy::PyInit(PyObject* args, PyObject* /*kwd*/)
             PyErr_SetString(PartExceptionOCCError, e->GetMessageString());
             return -1;
         }
+        catch (Base::Exception& e) {
+            PyErr_SetString(PartExceptionOCCError, e.what());
+            return -1;
+        }
     }
 
     PyErr_Clear();
@@ -197,6 +201,10 @@ int TopoShapeEdgePy::PyInit(PyObject* args, PyObject* /*kwd*/)
         catch (Standard_Failure) {
             Handle_Standard_Failure e = Standard_Failure::Caught();
             PyErr_SetString(PartExceptionOCCError, e->GetMessageString());
+            return -1;
+        }
+        catch (Base::Exception& e) {
+            PyErr_SetString(PartExceptionOCCError, e.what());
             return -1;
         }
     }
