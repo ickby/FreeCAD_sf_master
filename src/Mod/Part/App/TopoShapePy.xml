@@ -439,22 +439,34 @@ As a result, this shape becomes null.</UserDocu>
     </Methode>
     <Methode Name="isPartner" Const="true">
       <Documentation>
-        <UserDocu>Checks if both shapes share the same geometry.
-        Placement and orientation may differ.
+        <UserDocu>Checks if both shapes share the same topological shape.
+        Placement and orientation may differ. Note that this is no geometric comparison, the 
+        function is used to analyse the topological structure.
         </UserDocu>
       </Documentation>
     </Methode>
     <Methode Name="isSame" Const="true">
       <Documentation>
-        <UserDocu>Checks if both shapes share the same geometry
-        and placement. Orientation may differ.
+        <UserDocu>Checks if both shapes share the same topological shape
+        and placement. Orientation may differ. Note that this is no geometric comparison, the 
+        function is used to analyse the topological structure.
         </UserDocu>
       </Documentation>
     </Methode>
     <Methode Name="isEqual" Const="true">
       <Documentation>
-        <UserDocu>Checks if both shapes are equal.
-        This means geometry, placement and orientation are equal.
+        <UserDocu>Checks if both shapes are equal. This means topological shape, placement and 
+        orientation are equal. Note that this is no geometric comparison, the 
+        function is used to analyse the topological structure.
+        </UserDocu>
+      </Documentation>
+    </Methode>
+    <Methode Name="isGeometricalEqual" Const="true">
+      <Documentation>
+        <UserDocu>Checks if both shapes are equal in their gemometry type and the exact value. This 
+        does ignore all topological relations and only checks if both shapes occupy the exact same 
+        3D space. Note: Geometry Curve/Surface types must match, e.g. a line and a linear bspline will not 
+        compare as equal, even thought they may look exactly the same. Works for Vertex/Edge/Face only.
         </UserDocu>
       </Documentation>
     </Methode>

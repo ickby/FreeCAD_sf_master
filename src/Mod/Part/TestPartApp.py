@@ -67,6 +67,21 @@ class PartTestCases(unittest.TestCase):
             self.failUnless(e4.Reference != v2.Reference)
             self.failUnless(e4.Vertexes[0].Reference == v1.Reference)
             self.failUnless(e4.Vertexes[1].Reference == v2.Reference)
+            
+            l2 = Part.LineSegment(App.Vector(2,2,2), App.Vector(1,0,1))
+            e5 = Part.Edge(l2)
+            w1 = Part.Wire(e1)
+            w2 = Part.Wire([e4,e5])
+            
+            self.failUnless(w1.Edges[0].Reference == e1.Reference)
+            self.failUnless(w1.Vertexes[0].Reference == e1.Vertexes[0].Reference)
+            self.failUnless(w1.Vertexes[1].Reference == e1.Vertexes[1].Reference)
+            self.failUnless(w2.Edges[0].Reference == e4.Reference)
+            self.failUnless(w2.Edges[1].Reference == e5.Reference)
+            self.failUnless(w2.Edges[0].Vertexes[0].Reference == e4.Vertexes[0].Reference)
+            self.failUnless(w2.Vertexes[0].Reference == v1.Reference)
+            self.failUnless(w2.Vertexes[2].Reference == e5.Vertexes[1].Reference)
+            
 		
 	def tearDown(self):
 		#closing doc

@@ -3118,6 +3118,11 @@ void TopoShape::getFacesFromSubelement(const Data::Segment* element,
     }
 }
 
+bool TopoShape::isGeometricalEqual(const TopoDS_Shape& s) const
+{
+    return compareShapes(getShape(), s);
+}
+
 const Reference& TopoShape::reference() const
 {
     return _ShapeRef;
@@ -3174,8 +3179,121 @@ const Reference& TopoShape::subshapeReference(const TopoDS_Shape& shape) {
         if(shape == _Shape)
             return reference();
         
-        throw Base::Exception("Subshape has no reference in this shape, are you sure belongs to this base shape?");
+        throw Base::Exception("Subshape has no reference in base, are you sure belongs to this shape?");
     }
     
     return _SubShapeRef[shape];
+}
+
+namespace Part {
+    
+const bool compareShapes(const TopoDS_Shape& s1, const TopoDS_Shape& s2) {
+
+    auto shapeType = s1.ShapeType();
+    
+    //it could be that easy
+    if(shapeType != s2.ShapeType())
+        return false;
+    
+    //this may work, but if it returns false, we are not yet sure that the two shapes are not equal.
+    if (s1.IsSame(s2))
+        return true;
+
+    if (shapeType == TopAbs_VERTEX) {
+        //vertices are trival to compare, hence no optimisation needed
+        gp_Pnt p1 = BRep_Tool::Pnt(TopoDS::Vertex(s1));
+        gp_Pnt p2 = BRep_Tool::Pnt(TopoDS::Vertex(s2));      
+        return p1.IsEqual(p2, Precision::Confusion());
+    } 
+    else if (shapeType == TopAbs_EDGE) {
+        
+        auto curve1 = BRepAdaptor_Curve(TopoDS::Edge(s1));
+        auto curve2 = BRepAdaptor_Curve(TopoDS::Edge(s2));
+        
+        //trival checks first
+        if(curve1.GetType() != curve2.GetType())
+            return false;
+        
+        if(curve1.IsClosed() != curve2.IsClosed())
+            return false;
+        
+        //if the types are bspline comparison gets hard. However, for this type occ 
+        //luckily provides a comparison method. Unfortunately not for bezier curves...
+        if(curve1.GetType() == GeomAbs_BSplineCurve) {
+            auto bspline1 = Handle(Geom_BSplineCurve)::DownCast(curve1.Curve().Curve());
+            return bspline1->IsEqual(Handle(Geom_BSplineCurve)::DownCast(curve2.Curve().Curve()), Precision::Confusion());
+        }
+                
+        //In the parameter range of the two curves the points and derivatives need to match. This is a 
+        //universal way of comparing geometries, however, not 100% fail save. Their is a small chance
+        //that a high-poles beziers may match point and derivatives at the control uv parameter while 
+        //being different to to curve everywhere else. Hence we enlarge the amount of control points 
+        //for bezier curves         
+        int controlPoints = (curve1.GetType() == GeomAbs_BezierCurve) ? 10 : 4;
+        for(int i=0; i< (!curve1.IsClosed() ? controlPoints : (controlPoints-1)); ++i) {
+            Standard_Real u1 = curve1.FirstParameter() + (curve1.LastParameter() - curve1.FirstParameter())/controlPoints * i;
+            Standard_Real u2 = curve2.FirstParameter() + (curve2.LastParameter() - curve2.FirstParameter())/controlPoints * i;
+            gp_Pnt p1, p2;
+            gp_Vec dp1, dp2, ddp1, ddp2;
+            curve1.D2(u1, p1, dp1, ddp1);
+            curve2.D2(u2, p2, dp2, ddp2);
+            
+            if(!p1.IsEqual(p2, Precision::Confusion()) ||
+               !dp1.IsEqual(dp2, Precision::Confusion(), Precision::Angular()) ||
+               !ddp1.IsEqual(ddp2, Precision::Confusion(), Precision::Angular())) {
+                
+                return false;
+            }
+        }
+        return true;
+        
+    } else if (shapeType == TopAbs_FACE) {
+        auto surface1 = BRepAdaptor_Surface(TopoDS::Face(s1));
+        auto surface2 = BRepAdaptor_Surface(TopoDS::Face(s2));
+        
+        //trival checks first
+        if(surface1.GetType() != surface2.GetType())
+            return false;
+        
+        if(surface1.IsUClosed() != surface2.IsUClosed())
+            return false;
+        
+        if(surface1.IsVClosed() != surface2.IsVClosed())
+            return false;
+                      
+        //In the parameter range of the two curves the points and derivatives need to match. This is a 
+        //universal way of comparing geometries, however, not 100% fail save. Their is a small chance
+        //that a high-poles beziers may match point and derivatives at the control uv parameter while 
+        //being different to to curve everywhere else. Hence we enlarge the amount of control points 
+        //for bezier curves         
+        int controlPoints = (surface1.GetType() <= GeomAbs_Torus) ? 4 : 10;
+        for(int i=0; i< (!surface1.IsUClosed() ? controlPoints : (controlPoints-1)); ++i) {
+            Standard_Real u1 = surface1.FirstUParameter() + (surface1.LastUParameter() - surface1.FirstUParameter())/controlPoints * i;
+            Standard_Real u2 = surface2.FirstUParameter() + (surface2.LastUParameter() - surface2.FirstUParameter())/controlPoints * i;
+            
+            for(int j=0; j< (!surface1.IsVClosed() ? controlPoints : (controlPoints-1)); ++i) {
+            
+                Standard_Real v1 = surface1.FirstVParameter() + (surface1.LastVParameter() - surface1.FirstVParameter())/controlPoints * i;
+                Standard_Real v2 = surface2.FirstVParameter() + (surface2.LastVParameter() - surface2.FirstVParameter())/controlPoints * i;
+                
+                gp_Pnt p1, p2;
+                gp_Vec dp1U, dp1V, dp2U, dp2V, ddp1U, ddp1V, ddp2U, ddp2V, ddp1UV, ddp2UV;
+                surface1.D2(u1, v1, p1, dp1U, dp1V, ddp1U, ddp1V, ddp1UV);
+                surface1.D2(u2, v2, p2, dp2U, dp2V, ddp2U, ddp2V, ddp2UV);
+                
+                if(!p1.IsEqual(p2, Precision::Confusion()) ||
+                   !dp1U.IsEqual(dp2U, Precision::Confusion(), Precision::Angular()) ||
+                   !dp1V.IsEqual(dp2V, Precision::Confusion(), Precision::Angular()) ||
+                   !ddp1U.IsEqual(ddp2U, Precision::Confusion(), Precision::Angular()) ||
+                   !ddp1V.IsEqual(ddp2V, Precision::Confusion(), Precision::Angular()) ||
+                   !ddp1UV.IsEqual(ddp2UV, Precision::Confusion(), Precision::Angular())) {
+                    
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+    return false;
+}   
 }

@@ -152,6 +152,7 @@ public:
     bool isValid() const;
     bool analyze(std::ostream&) const;
     bool isClosed() const;
+    bool isGeometricalEqual(const TopoDS_Shape&) const;
     //@}
 
     /** @name Boolean operation*/
@@ -282,6 +283,9 @@ private:
     Reference     _ShapeRef;
     ReferenceMap  _SubShapeRef;
 };
+
+//compares shapes on geomerical level: occupy they the same space?
+const bool compareShapes(const TopoDS_Shape& s1, const TopoDS_Shape& s2);
 
 } //namespace Part
 

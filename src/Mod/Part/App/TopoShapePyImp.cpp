@@ -1676,6 +1676,18 @@ PyObject*  TopoShapePy::isEqual(PyObject *args)
     return Py_BuildValue("O", (test ? Py_True : Py_False));
 }
 
+PyObject*  TopoShapePy::isGeometricalEqual(PyObject *args)
+{
+    PyObject *pcObj;
+    if (!PyArg_ParseTuple(args, "O!", &(TopoShapePy::Type), &pcObj))
+        return NULL;
+    
+    TopoDS_Shape shape = static_cast<TopoShapePy*>(pcObj)->getTopoShapePtr()->getShape();
+    Standard_Boolean test = (getTopoShapePtr()->isGeometricalEqual(shape));
+    return Py_BuildValue("O", (test ? Py_True : Py_False));
+}
+
+
 PyObject*  TopoShapePy::isSame(PyObject *args)
 {
     PyObject *pcObj;
