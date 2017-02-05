@@ -301,6 +301,11 @@ bool Reference::operator==(Type type) const {
     return m_type == type;
 }
 
+bool Reference::operator==(Reference::Shape type) const
+{
+    return m_shape == type;
+}
+
 bool Reference::operator==(Operation op) const {
 
     return m_operation == op;
@@ -353,15 +358,94 @@ void Reference::setCount(short unsigned int count)
 {
     m_counter = count;
 }
-
-bool Reference::isGeneratedFrom(std::size_t hash) const
+bool Reference::isBasedOn(std::size_t hash) const
 {
-
+    //we iteraterecursively through all base references and check if any of them is the searched hash
+    for(auto base : m_baseIDs) {
+        if( (base.hash() == hash) || base.isBasedOn(hash) )
+            return true;
+    }
+    return false;    
 }
 
-bool Reference::isModificationOf(std::size_t hash) const
+bool Reference::isBasedOn(std::vector< std::size_t > hashes) const
 {
+    for(auto hash : hashes) {
+        if(!isBasedOn(hash))
+            return false;
+    }
+    
+    return true;
+}
 
+bool Reference::isConstructedFrom(std::size_t hash) {
+
+    if(*this != Type::Constructed)
+        return false;
+    for(auto base : m_baseIDs) {
+        if(base == hash)
+            return true;
+        else if(base == Type::Constructed)
+            return base.isConstructedFrom(hash);
+    }
+    return false;
+}
+
+bool Reference::isConstructedFrom(std::vector< std::size_t > hash) {
+
+    for(auto item : hash) {
+        if(!isConstructedFrom(item))
+            return false;
+    }
+    return true;
+}
+
+
+bool Reference::isGeneratedFrom(std::size_t hash) {
+
+    if(*this != Type::Generated)
+        return false;
+    for(auto base : m_baseIDs) {
+        if(base == hash)
+            return true;
+    }
+    return false;
+}
+
+bool Reference::isMergedFrom(std::size_t hash) {
+
+    if(*this != Type::Merged)
+        return false;
+    for(auto base : m_baseIDs) {
+        if(base == hash)
+            return true;
+        else if(base == Type::Merged)
+            return base.isMergedFrom(hash);
+    }
+    return false;
+}
+
+bool Reference::isMergedFrom(std::vector< std::size_t > hash)
+{
+    for(auto item : hash) {
+        if(!isMergedFrom(item))
+            return false;
+    }
+    return true;
+}
+
+
+bool Reference::isModificationOf(std::size_t hash) {
+
+    if(*this != Type::Modified)
+        return false;
+    for(auto base : m_baseIDs) {
+        if(base == hash)
+            return true;
+        else if(base == Type::Modified)
+            return base.isModificationOf(hash);
+    }
+    return false;
 }
 
 const Base::Uuid& Reference::operationID() const

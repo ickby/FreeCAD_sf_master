@@ -703,6 +703,103 @@ infos contains additional info on the solutions. It is a list of tuples:
         </UserDocu>
       </Documentation>
     </Methode>
+    <Methode Name="findSubshapes" Const="true" Keyword="true">
+      <Documentation>
+        <UserDocu>
+        findSubshapes(Shape=\"shape\", Type=\"type\", Strict=True, Operation=\"op\", Base=base, Name=\"name\")
+        
+        Searches subshapes based on their creation history. If called without arguments, all subshapes 
+        are returned. With additional named parameter the list of subshapes can be filtered:
+     
+        Shape     = Vertex/Edge/Face: return only shapes of given type
+        Type      = New/Generated/Modified/Constructed/Merged: filter shapes by their construction method
+        Strict    = True/False (default is False): Sets how Type is handled, fully recursive or logical. For example 
+                    Type=\"Generated\", if strict is False all generated shapes somehow based on Base are returnd, e.g. also 
+                    the face generated from the edge that is constructed from the vertex. If strict is True, ony 
+                    edges directly generated from the vertex would be returned. 
+                    Annother example is Type=\"Modified\". If strict is false, a modification of a generated shape 
+                    from Base would also be returned. If Strict=True, only real modifications of Base are returned.
+        Operation = Geometry/Topology/Box/Sphere... : filter shapes by the operation they were created with
+        Base      = item or list of Shape/Geometry/Reference: returns shapes that are based on given items. Note that for 
+                    Strict=True a list does not always make sense, for example \"Generated\" can only have 1 base and returns 
+                    no shape if a list is given. Also Modified.
+        Name      = Top/Bottom/Start/End... : fitler items with special names given
+        
+        Examples:
+        findSubshapes(shape=\"Vertex\", base=myPoint)  -> returns all vertices that are created from myPoint in any way,
+                                                        like a new Vertex if myPoint is a geometry, or a merged vertex.
+        findSubshapes(shape=\"Vertex\", name=\"Start\")  -> returns all vertices that are named \"Start\", that are the ones 
+                                                        created at where the edges parameter is smallest.
+        findSubshapes(type=\"Generated\", base=myVert,
+                      shape=\"Face\")                  -> returns all generated Faces that are based on the given Vertex. As Strict
+                                                        is False, this returns all Faces that are generated of any edge that is 
+                                                        based on vertex myVert, no matter if constructed, merged or modified.
+        findSubshapes(type=\"Generated\", base=myVert,
+                      Strict=False)                  -> returns all shapes that are generated from the given edge. As Strict
+                                                        is True, only edges can be returned, as those are the only shapes that 
+                                                        are directly generated from a vertex
+        </UserDocu>
+      </Documentation>
+    </Methode>
+    <Methode Name="subshape" Const="true">
+      <Documentation>
+        <UserDocu>
+        subshape(Reference)
+        
+        Returns the subshape based on the given reference or None if not available in this shape.
+        Reference: String
+        </UserDocu>
+      </Documentation>
+    </Methode>
+    <Methode Name="getModificationsOf" Const="true">
+      <Documentation>
+        <UserDocu>
+        getModificationsOf(item)
+        
+        Returns a list of subshapes that are modifications of given shape. Note that this equal 
+        findSubshapes(type=\"Modified\", base=item, Strict=True) and this is only a shortcut for this function.
+        
+        item: Shape or Reference
+        </UserDocu>
+      </Documentation>
+    </Methode>
+    <Methode Name="getGeneratedFrom" Const="true">
+      <Documentation>
+        <UserDocu>
+        getGeneratedFrom(item)
+        
+        Returns a list of subshapes that are generated from given shape. Note that this equals 
+        findSubshapes(type=\"Generated\", base=item, Strict=True) and is only a shortcut for this function.
+        
+        item: Shape or Reference
+        </UserDocu>
+      </Documentation>
+    </Methode>
+    <Methode Name="getMergedFrom" Const="true">
+      <Documentation>
+        <UserDocu>
+        getMergedFrom(item)
+        
+        Returns a list of subshapes that are merged from the given item. Note that this equals 
+        findSubshapes(type=\"Merged\", base=item, Strict=True) and is only a shortcut for this function.
+        
+        item: single object or list of Shape or Reference
+        </UserDocu>
+      </Documentation>
+    </Methode>
+    <Methode Name="getConstructedFrom" Const="true">
+      <Documentation>
+        <UserDocu>
+        getMergedFrom(item)
+        
+        Returns a list of subshapes that are constructed from the given item. This can be used to get 
+        subshapes that are constructed from geometry. Note that this equals 
+        findSubshapes(type=\"Constructed\", base=item, Strict=True) and is only a shortcut for this function.
+        
+        item: single object or list of Shape, Geometry or Reference
+        </UserDocu>
+      </Documentation>
+    </Methode>
     <!--
     <Attribute Name="Location" ReadOnly="false">
       <Documentation>

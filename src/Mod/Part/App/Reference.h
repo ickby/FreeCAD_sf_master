@@ -39,8 +39,17 @@
     private:\
         typedef boost::bimaps::bimap< Name, std::string > BOOST_PP_CAT(Name, Map); \
         static const BOOST_PP_CAT(Name, Map) BOOST_PP_CAT(Name, map); \
+    public: \
         static std::string asString(const Name& name) { return BOOST_PP_CAT(Name, map).left.find(name)->second;}; \
-        static Name BOOST_PP_CAT(stringAs, Name)(const std::string& string) {return BOOST_PP_CAT(Name, map).right.find(string)->second;}; \
+        static Name BOOST_PP_CAT(stringAs, Name)(const std::string& string) { \
+            auto res = BOOST_PP_CAT(Name, map).right.find(string); \
+            if(res == BOOST_PP_CAT(Name, map).right.end()) {\
+                std::stringstream stream;\
+                stream << string << " is not a valid input for " << BOOST_PP_STRINGIZE(Name) << " parameter";\
+                throw Base::Exception(stream.str().c_str());\
+            }\
+            return res->second;\
+        };
    
         
 namespace Part {
@@ -60,14 +69,26 @@ class PartExport Reference : public Base::Persistence {
     ENUM(Name, NAME_SEQ)
     
 public:
-    bool isGeneratedFrom(std::size_t hash) const;
-    bool isModificationOf(std::size_t hash) const;
+    //return if reference has hash as base, recursive search. 
+    bool isBasedOn(std::size_t hash) const;
+    bool isBasedOn(std::vector<std::size_t> hashes) const;
+    
+    //special searches, not fully recursive. Those functions results depend on the order of 
+    //references
+    bool isGeneratedFrom(std::size_t hash);
+    bool isModificationOf(std::size_t hash);
+    bool isMergedFrom(std::size_t hash);
+    bool isMergedFrom(std::vector<std::size_t> hash);
+    bool isConstructedFrom(std::size_t hash);
+    bool isConstructedFrom(std::vector<std::size_t> hash);
     
     //compare subtypes
     bool operator==(Type type) const;
     bool operator!=(Type type) const {return !operator==(type);};
-    bool operator==(Name subtype) const;
-    bool operator!=(Name subtype) const {return !operator==(subtype);};
+    bool operator==(Shape type) const;
+    bool operator!=(Shape type) const {return !operator==(type);};
+    bool operator==(Name name) const;
+    bool operator!=(Name name) const {return !operator==(name);};
     bool operator==(Operation op) const;
     bool operator!=(Operation op) const {return !operator==(op);};
     bool operator==(const Base::Uuid& uid) const;

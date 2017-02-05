@@ -236,7 +236,7 @@ TopoShape::TopoShape(const TopoDS_Shape& shape)
 }
 
 TopoShape::TopoShape(const TopoShape& shape)
-  : _Shape(shape._Shape)
+  : _Shape(shape._Shape), _ShapeRef(shape._ShapeRef), _SubShapeRef(shape._SubShapeRef)
 {
 }
 
@@ -3184,6 +3184,157 @@ const Reference& TopoShape::subshapeReference(const TopoDS_Shape& shape) {
     
     return _SubShapeRef[shape];
 }
+
+TopoShape TopoShape::subshape(const Reference& ref){
+    return subshape(ref.hash());
+}
+
+TopoShape TopoShape::subshape(size_t hash) {
+    
+    if(hash == _ShapeRef.hash())
+        return *this;
+    
+    for(auto it : _SubShapeRef) {
+        
+        if(it.second == hash) {
+            auto shape = TopoShape(it.first);
+            Reference::populateSubshape(this, &shape);
+            return shape;
+        }
+    }
+    
+    throw ReferenceException("No subshape with given hash available");
+}
+
+std::vector< TopoShape > TopoShape::subshapesBasedOn(std::vector< size_t > bases) {
+    
+    std::vector< TopoShape > result;
+    if(_ShapeRef.isBasedOn(bases))
+        result.push_back(*this);
+    
+    for(auto it : _SubShapeRef) {
+        
+        if(it.second.isBasedOn(bases)) {
+            auto shape = TopoShape(it.first);
+            Reference::populateSubshape(this, &shape);
+            result.push_back(shape);
+        }
+    }
+    
+    return result;
+}
+
+std::vector< TopoShape > TopoShape::subshapesBasedOn(size_t base) {
+    
+    std::vector<size_t> vec = {base};
+    return subshapesBasedOn(vec);
+}
+
+template<typename Functor>
+std::vector< TopoShape > TopoShape::filteredSubshapes(const Functor& functor) {
+    
+    std::vector< TopoShape > result;
+    if(functor(_ShapeRef))
+        result.push_back(*this);
+    
+    for(auto it : _SubShapeRef) {
+        
+        if(functor(it.second)) {
+            auto shape = TopoShape(it.first);
+            Reference::populateSubshape(this, &shape);
+            result.push_back(shape);
+        }
+    }
+    
+    return result;
+}
+
+std::vector< TopoShape > TopoShape::subshapesConstructedFrom(std::size_t hash) {
+
+    std::vector<size_t> vec = {hash};
+    return subshapesConstructedFrom(vec);
+}
+
+std::vector< TopoShape > TopoShape::subshapesConstructedFrom(std::vector< std::size_t > hash) {
+
+    std::vector< TopoShape > result;
+    if(_ShapeRef.isConstructedFrom(hash))
+        result.push_back(*this);
+    
+    for(auto it : _SubShapeRef) {
+        
+        if(it.second.isConstructedFrom(hash)) {
+            auto shape = TopoShape(it.first);
+            Reference::populateSubshape(this, &shape);
+            result.push_back(shape);
+        }
+    }
+    
+    return result;
+}
+
+
+std::vector< TopoShape > TopoShape::subshapesGeneratedFrom(std::size_t hash) {
+
+    std::vector< TopoShape > result;
+    if(_ShapeRef.isGeneratedFrom(hash))
+        result.push_back(*this);
+    
+    for(auto it : _SubShapeRef) {
+        
+        if(it.second.isGeneratedFrom(hash)) {
+            auto shape = TopoShape(it.first);
+            Reference::populateSubshape(this, &shape);
+            result.push_back(shape);
+        }
+    }
+    
+    return result;
+}
+
+std::vector< TopoShape > TopoShape::subshapesMergedFrom(std::size_t hash) {
+
+    std::vector<size_t> vec = {hash};
+    return subshapesMergedFrom(vec);
+}
+
+std::vector< TopoShape > TopoShape::subshapesMergedFrom(std::vector< std::size_t > hash) {
+
+    std::vector< TopoShape > result;
+    if(_ShapeRef.isMergedFrom(hash))
+        result.push_back(*this);
+    
+    for(auto it : _SubShapeRef) {
+        
+        if(it.second.isMergedFrom(hash)) {
+            auto shape = TopoShape(it.first);
+            Reference::populateSubshape(this, &shape);
+            result.push_back(shape);
+        }
+    }
+    
+    return result;
+}
+
+
+std::vector< TopoShape > TopoShape::subshapesModificationsOf(std::size_t hash) {
+
+    std::vector< TopoShape > result;
+    if(_ShapeRef.isModificationOf(hash))
+        result.push_back(*this);
+    
+    for(auto it : _SubShapeRef) {
+        
+        if(it.second.isModificationOf(hash)) {
+            auto shape = TopoShape(it.first);
+            Reference::populateSubshape(this, &shape);
+            result.push_back(shape);
+        }
+    }
+    
+    return result;
+}
+
 
 namespace Part {
     

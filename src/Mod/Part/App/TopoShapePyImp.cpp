@@ -24,6 +24,7 @@
 #include "PreCompiled.h"
 #ifndef _PreComp_
 # include <sstream>
+# include <cctype>
 # include <BRepMesh_IncrementalMesh.hxx>
 # include <BRepBuilderAPI_Copy.hxx>
 # include <BRepBuilderAPI_Sewing.hxx>
@@ -2437,6 +2438,211 @@ PyObject* TopoShapePy::printHistory(PyObject *args)
     auto str = getTopoShapePtr()->reference().asString();
     Base::Console().Message("%s\n", str.c_str());
     return Py::new_reference_to(Py::String(str));
+}
+
+PyObject* TopoShapePy::subshape(PyObject *args) {
+    
+    const char* _hash;
+    if (!PyArg_ParseTuple(args, "et", "utf-8", &_hash))
+        return 0;
+    
+    std::string hash(_hash);
+    if(!std::all_of(hash.begin(), hash.end(), ::isdigit)) {
+        PyErr_SetString(PyExc_TypeError, "string is not a valid reference");
+        return 0;
+    }              
+    
+    try {
+        auto shape = getTopoShapePtr()->subshape(std::stoi(hash));
+        if(shape.getShape().ShapeType()  == TopAbs_VERTEX)
+            return new TopoShapeVertexPy(new TopoShape(shape));
+        else if(shape.getShape().ShapeType()  == TopAbs_EDGE)
+            return new TopoShapeEdgePy(new TopoShape(shape));
+        else if(shape.getShape().ShapeType()  == TopAbs_FACE)
+            return new TopoShapeFacePy(new TopoShape(shape));
+    }
+    catch(ReferenceException e) {
+        PyErr_SetString(PartExceptionOCCError, e.what());
+        return 0;
+    }
+    
+    return 0;
+}
+
+PyObject* TopoShapePy::findSubshapes(PyObject *args, PyObject *keywds)
+{
+    static char *kwlist[] = {"Shape", "Type", "Strict", "Operation", "Base", "Name", NULL};
+    const char* _shape = "None";
+    const char* _type = "None";
+    const char* _operation = "None";
+    PyObject* _base = nullptr;
+    char* _name = "None";
+    int strict = 0;
+
+    if (!PyArg_ParseTupleAndKeywords(args, keywds, "|etetpetOet", kwlist,
+        "utf-8", &_shape, "utf-8", &_type, &strict, "utf-8", &_operation, &_base, "utf-8", &_name)) {
+        
+        return 0;
+    }
+    
+    std::string shape(_shape);
+    std::string type(_type);
+    std::string operation(_operation);
+    std::string name(_name);
+    
+    if(strict && type == "None") {
+        PyErr_SetString(PyExc_TypeError, "Strict is only possible when Type is given");
+        return 0; 
+    }
+       
+    try{
+        std::vector<std::size_t> bases;
+        if(_base) {
+            
+            auto handleItem = [&](PyObject* item) {
+                if (PyObject_TypeCheck(item, &(Part::TopoShapePy::Type))) {
+                    auto shape = static_cast<Part::TopoShapePy*>(item)->getTopoShapePtr();
+                    auto type = shape->getShape().ShapeType();
+                    if( (type != TopAbs_VERTEX) &&
+                        (type != TopAbs_EDGE)   &&
+                        (type != TopAbs_FACE)) {
+                        
+                        PyErr_SetString(PyExc_TypeError, "only vertex, edge or face can be used as base");
+                        return 0;  
+                    }
+                    bases.push_back(shape->reference().hash());
+                }
+                else if (PyObject_TypeCheck(item, &(Part::GeometryPy::Type))) {
+                    auto geom = static_cast<Part::GeometryPy*>(item)->getGeometryPtr();
+                    bases.push_back(geom->reference().hash());
+                }
+                else if (PyObject_TypeCheck(item, &PyBaseString_Type)) {
+                    const char* _hash = PyString_AsString(item);
+                    std::string hash(_hash);
+                    
+                    if(!std::all_of(hash.begin(), hash.end(), ::isdigit)) {
+                        PyErr_SetString(PyExc_TypeError, "string is not a valid reference");
+                        return 0;
+                    }
+                    
+                    bases.push_back(std::stoi(hash));                
+                }
+                else {
+                    PyErr_SetString(PyExc_TypeError, "base must contain geometries, shapes (vertex/edge/face) or references (string)");
+                    return 0;
+                }
+            };
+            
+            if(PySequence_Check(_base)) {
+                Py::Sequence list(_base);
+                for (Py::Sequence::iterator it = list.begin(); it != list.end(); ++it) {
+                    PyObject* item = (*it).ptr();
+                    handleItem(item);
+                }
+            }
+            else 
+                handleItem(_base);
+        }
+        
+        //get the correct subshapes to strt filtering
+        std::vector<TopoShape> subshapes;
+        if(strict) {
+            auto value = Reference::stringAsType(type);
+            switch(value) {
+                case Reference::Type::Generated: 
+                    if(bases.size()!=1) {
+                        PyErr_SetString(PyExc_TypeError, "Strict for Type=Generated works with exactly 1 base item");
+                        return 0;   
+                    }                        
+                    subshapes = getTopoShapePtr()->subshapesGeneratedFrom(bases.front());
+                    break;
+                case Reference::Type::Modified: 
+                    if(bases.size()!=1) {
+                        PyErr_SetString(PyExc_TypeError, "Strict for Type=Modified works with exactly 1 base item");
+                        return 0;   
+                    }                        
+                    subshapes = getTopoShapePtr()->subshapesModificationsOf(bases.front());
+                    break;
+               case Reference::Type::Merged:                      
+                    subshapes = getTopoShapePtr()->subshapesMergedFrom(bases);
+                    break;
+               default:
+                   subshapes = getTopoShapePtr()->subshapesBasedOn(bases);
+            }
+        }            
+        else
+            subshapes = getTopoShapePtr()->subshapesBasedOn(bases);
+        
+        if(shape != "None") {
+            auto value = Reference::stringAsShape(shape);
+            subshapes.erase(std::remove_if(subshapes.begin(), subshapes.end(), [&](const TopoShape& shape)->bool {
+                return shape.reference() != value;
+            }), subshapes.end());
+        }
+        
+        if((strict==0) && (type != "None")) {
+            auto value = Reference::stringAsType(type);
+            subshapes.erase(std::remove_if(subshapes.begin(), subshapes.end(), [&](const TopoShape& shape)->bool {
+                return shape.reference() != value;
+            }), subshapes.end());
+        }
+        
+        if(operation != "None") {
+            auto value = Reference::stringAsOperation(operation);
+            subshapes.erase(std::remove_if(subshapes.begin(), subshapes.end(), [&](const TopoShape& shape)->bool {
+                return shape.reference() != value;
+            }), subshapes.end());
+        }
+        
+        if(name != "None") {
+            auto value = Reference::stringAsName(name);
+            subshapes.erase(std::remove_if(subshapes.begin(), subshapes.end(), [&](const TopoShape& shape)->bool {
+                return shape.reference() != value;
+            }), subshapes.end());
+        }
+        
+        //build the result list 
+        Py::List result;
+        for(auto& shape : subshapes) {
+            if(shape.getShape().ShapeType()  == TopAbs_VERTEX)
+                result.append(Py::Object(new TopoShapeVertexPy(new TopoShape(shape)),true));
+            else if(shape.getShape().ShapeType()  == TopAbs_EDGE)
+                result.append(Py::Object(new TopoShapeEdgePy(new TopoShape(shape)),true));
+            else if(shape.getShape().ShapeType()  == TopAbs_FACE)
+                result.append(Py::Object(new TopoShapeFacePy(new TopoShape(shape)),true));
+        }
+        
+        return Py::new_reference_to(result);         
+    }
+    catch (Standard_Failure) {
+        Handle_Standard_Failure e = Standard_Failure::Caught();
+        PyErr_SetString(PartExceptionOCCError, e->GetMessageString());
+        return 0;
+    }
+    catch (ReferenceException e) {
+        PyErr_SetString(PartExceptionOCCError, e.what());
+        return 0;
+    }
+    catch(std::exception e) {
+        PyErr_SetString(PartExceptionOCCError, e.what());
+        return 0;
+    }
+}
+
+PyObject* TopoShapePy::getGeneratedFrom(PyObject *args) {
+    
+}
+
+PyObject* TopoShapePy::getModificationsOf(PyObject *args) {
+    
+}
+
+PyObject* TopoShapePy::getMergedFrom(PyObject *args) {
+    
+}
+
+PyObject* TopoShapePy::getConstructedFrom(PyObject *args) {
+    
 }
 
 // End of Methods, Start of Attributes

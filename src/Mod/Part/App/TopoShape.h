@@ -260,9 +260,25 @@ public:
     const Reference& subshapeReference(const TopoDS_Shape& subshape);
     void setSubshapeReference(const TopoDS_Shape&, const Reference& id);
     void setSubshapeReference(const TopoShape&, const Reference& id);
+
+    //get the subshape with the exact representation
+    TopoShape subshape(const Reference& ref);
+    TopoShape subshape(size_t hash);
     
-    //void identifier() {return _ShapeID;};
-    //void subshapeReference(const TopoShape& shape);
+    //get subshape determined by a fiter functor with operator(const Reference& ref)->bool
+    template<typename Functor>
+    std::vector<TopoShape> filteredSubshapes(const Functor& functor);
+    
+    //get subshapes by references
+    std::vector<TopoShape> subshapesBasedOn(size_t base);
+    std::vector<TopoShape> subshapesBasedOn(std::vector<size_t> bases);
+    std::vector<TopoShape> subshapesGeneratedFrom(std::size_t hash);
+    std::vector<TopoShape> subshapesModificationsOf(std::size_t hash);
+    std::vector<TopoShape> subshapesMergedFrom(std::size_t hash);
+    std::vector<TopoShape> subshapesMergedFrom(std::vector<std::size_t> hash);
+    std::vector<TopoShape> subshapesConstructedFrom(std::size_t hash);
+    std::vector<TopoShape> subshapesConstructedFrom(std::vector<std::size_t> hash);
+
     //@}
     
 private:    
@@ -272,7 +288,7 @@ private:
             if(shape.IsNull())
                 throw Base::Exception("empty shape can't be hashed in unordered map");
             
-            shape.HashCode(hash);
+            hash = shape.HashCode(std::numeric_limits< int >::max());
             return size_t(hash);
         }
     };
