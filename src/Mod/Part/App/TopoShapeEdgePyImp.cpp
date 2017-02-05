@@ -189,6 +189,11 @@ int TopoShapeEdgePy::PyInit(PyObject* args, PyObject* /*kwd*/)
             TopoShape shape(mkEdge.Edge());
             std::vector<TopoShape*> bases = {shape1, shape2};
             Reference::populateOperation(&mkEdge, bases, &shape, Reference::Operation::Topology);
+            //the shape is build as new, as it don't have 2 names faces. But in reality is it created 
+            //from the two vertices, this was just not known ti populateOperation
+            std::vector<Reference> refs = {shape1->reference(), shape2->reference()};
+            shape.setReference(Reference::buildConstructed(Reference::Shape::Edge, 
+                                                           Reference::Operation::Topology, refs));
             getTopoShapePtr()->operator=(shape);
             return 0;
         }

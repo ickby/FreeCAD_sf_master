@@ -45,6 +45,8 @@ class PartTestCases(unittest.TestCase):
             v4 = Part.Vertex(p)
             v5 = Part.Vertex(v4)
             
+            self.failUnless(v1.getConstructedFrom(p)[0].Reference == v1.Reference)
+            self.failUnless(v1.getConstructedFrom(p)[0].isGeometricalEqual(v1))
             self.failUnless(v1.Reference != v2.Reference)
             self.failUnless(v3.Reference != v4.Reference)
             self.failUnless(v4.Reference == v5.Reference)
@@ -67,6 +69,11 @@ class PartTestCases(unittest.TestCase):
             self.failUnless(e4.Reference != v2.Reference)
             self.failUnless(e4.Vertexes[0].Reference == v1.Reference)
             self.failUnless(e4.Vertexes[1].Reference == v2.Reference)
+            self.failUnless(e4.subshape(v1.Reference).Reference == v1.Reference)
+            self.failUnless(e3.subshape(e2.Vertexes[0].Reference).Reference == e2.Vertexes[0].Reference)
+            self.failUnless(e4.getConstructedFrom(v1)[0].isSame(e4.getConstructedFrom(v2)[0]))
+            self.failUnless(e4.getConstructedFrom(v1)[0].isGeometricalEqual(e4.getConstructedFrom(v2)[0]))
+            self.failUnless(e4.getConstructedFrom(v1)[0].Reference == e4.Reference)
             
             l2 = Part.LineSegment(App.Vector(2,2,0), App.Vector(2,0,0))
             e5 = Part.Edge(l2)
@@ -81,6 +88,11 @@ class PartTestCases(unittest.TestCase):
             self.failUnless(w2.Edges[0].Vertexes[0].Reference == e4.Vertexes[0].Reference)
             self.failUnless(w2.Vertexes[0].Reference == v1.Reference)
             self.failUnless(w2.Vertexes[2].Reference == e5.Vertexes[1].Reference)
+            self.failUnless(w2.subshape(v1.Reference).isGeometricalEqual(v1))
+            self.failUnless(w2.getConstructedFrom(v1)[0].Reference == w2.Edges[0].Reference)
+            self.failUnless(w2.findSubshapes(Base=v1, Type="Constructed", Strict=True)[0].Reference == w2.Edges[0].Reference)
+            self.failUnless(w2.getMergedFrom(v2.Reference)[0].Reference == w2.Vertexes[1].Reference)
+            self.failUnless(w2.getMergedFrom(v2)[0].Reference == w2.getMergedFrom(e5.Vertexes[0])[0].Reference)
             
             v6 = Part.Vertex(2,0,0)
             e6 = Part.Edge(v6, v1)
@@ -95,11 +107,17 @@ class PartTestCases(unittest.TestCase):
             self.failUnless(f1.Edges[1].Reference == w3.Edges[1].Reference)
             self.failUnless(f1.Edges[2].Reference == w3.Edges[2].Reference)   
             
+            f1v2 = f1.getMergedFrom(v2)[0]
+            self.failUnless(f1v2.Reference == f1.findSubshapes(Base=v2, Shape="Vertex", Type="Merged", Strict=True)[0].Reference)
+            
             plane = Part.Plane()
             f2 = Part.Face(plane, w3)
             self.failUnless(f2.Edges[0].Reference == w3.Edges[0].Reference)
             self.failUnless(f2.Edges[1].Reference == w3.Edges[1].Reference)
             self.failUnless(f2.Edges[2].Reference == w3.Edges[2].Reference)
+            f2v2 = f2.getMergedFrom(v2)[0]
+            self.failUnless(f2v2.Reference == f2.findSubshapes(Base=v2, Shape="Vertex", Type="Merged", Strict=True)[0].Reference)
+            self.failUnless(f2v2.Reference == f1v2.Reference)
             
 		
 	def tearDown(self):
