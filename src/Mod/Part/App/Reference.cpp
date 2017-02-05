@@ -349,7 +349,7 @@ Reference& Reference::operator++()
     return *this;
 }
 
-short unsigned int Reference::count()
+short unsigned int Reference::count() const
 {
     return m_counter;
 }
@@ -378,7 +378,7 @@ bool Reference::isBasedOn(std::vector< std::size_t > hashes) const
     return true;
 }
 
-bool Reference::isConstructedFrom(std::size_t hash) {
+bool Reference::isConstructedFrom(std::size_t hash) const{
 
     if(*this != Type::Constructed)
         return false;
@@ -391,7 +391,7 @@ bool Reference::isConstructedFrom(std::size_t hash) {
     return false;
 }
 
-bool Reference::isConstructedFrom(std::vector< std::size_t > hash) {
+bool Reference::isConstructedFrom(std::vector< std::size_t > hash) const {
 
     for(auto item : hash) {
         if(!isConstructedFrom(item))
@@ -401,7 +401,7 @@ bool Reference::isConstructedFrom(std::vector< std::size_t > hash) {
 }
 
 
-bool Reference::isGeneratedFrom(std::size_t hash) {
+bool Reference::isGeneratedFrom(std::size_t hash) const {
 
     if(*this != Type::Generated)
         return false;
@@ -412,7 +412,7 @@ bool Reference::isGeneratedFrom(std::size_t hash) {
     return false;
 }
 
-bool Reference::isMergedFrom(std::size_t hash) {
+bool Reference::isMergedFrom(std::size_t hash) const {
 
     if(*this != Type::Merged)
         return false;
@@ -425,8 +425,7 @@ bool Reference::isMergedFrom(std::size_t hash) {
     return false;
 }
 
-bool Reference::isMergedFrom(std::vector< std::size_t > hash)
-{
+bool Reference::isMergedFrom(std::vector< std::size_t > hash) const {
     for(auto item : hash) {
         if(!isMergedFrom(item))
             return false;
@@ -435,7 +434,7 @@ bool Reference::isMergedFrom(std::vector< std::size_t > hash)
 }
 
 
-bool Reference::isModificationOf(std::size_t hash) {
+bool Reference::isModificationOf(std::size_t hash) const {
 
     if(*this != Type::Modified)
         return false;
@@ -642,9 +641,8 @@ void Reference::populateNew(TopoShape* shape, Reference::Operation op, Base::Uui
 }
 
 
-void Reference::populateSubshape(TopoShape* base, TopoShape* subshape)
+void Reference::populateSubshape(const TopoShape* base, TopoShape* subshape)
 {
-    ensureFullyNamed(*base);
     for_each_subshape(subshape->getShape(), [&](const TopoDS_Shape& subsubshape, Reference::Shape) {
         if(base->hasSubshapeReference(subsubshape))
             subshape->setSubshapeReference(subsubshape, base->subshapeReference(subsubshape));
@@ -660,6 +658,13 @@ void Reference::populateSubshape(TopoShape* base, TopoShape* subshape)
         }
     });
 }
+
+void Reference::populateSubshape(TopoShape* base, TopoShape* subshape) {
+
+    ensureFullyNamed(*base);
+    populateSubshape(static_cast<const TopoShape*>(base), subshape);
+}
+
 
 
 

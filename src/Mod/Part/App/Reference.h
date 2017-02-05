@@ -75,12 +75,12 @@ public:
     
     //special searches, not fully recursive. Those functions results depend on the order of 
     //references
-    bool isGeneratedFrom(std::size_t hash);
-    bool isModificationOf(std::size_t hash);
-    bool isMergedFrom(std::size_t hash);
-    bool isMergedFrom(std::vector<std::size_t> hash);
-    bool isConstructedFrom(std::size_t hash);
-    bool isConstructedFrom(std::vector<std::size_t> hash);
+    bool isGeneratedFrom(std::size_t hash) const;
+    bool isModificationOf(std::size_t hash) const;
+    bool isMergedFrom(std::size_t hash) const;
+    bool isMergedFrom(std::vector<std::size_t> hash) const;
+    bool isConstructedFrom(std::size_t hash) const;
+    bool isConstructedFrom(std::vector<std::size_t> hash) const;
     
     //compare subtypes
     bool operator==(Type type) const;
@@ -106,7 +106,7 @@ public:
     //allow duplication count 
     Reference& operator++();
     Reference  operator++(int);
-    unsigned short int count();
+    unsigned short int count() const;
     void setCount(unsigned short int count);
     
     //access some important data
@@ -140,6 +140,7 @@ public:
     
     static void      populateNew(TopoShape* shape, Operation op, Base::Uuid opID = Base::Uuid());
     static void      populateSubshape(TopoShape* base, TopoShape* subshape);
+    static void      populateSubshape(const TopoShape* base, TopoShape* subshape);
     static void      populateOperation(TopoShape* base, TopoShape* created, Operation op,
                                        Base::Uuid opID = Base::Uuid());
     static void      populateOperation(std::vector<TopoShape*> bases, TopoShape* created, Operation op,

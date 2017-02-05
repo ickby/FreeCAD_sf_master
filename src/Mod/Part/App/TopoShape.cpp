@@ -260,7 +260,7 @@ Data::Segment* TopoShape::getSubElement(const char* Type, unsigned long n) const
     std::stringstream str;
     str << Type << n;
     std::string temp = str.str();
-    return new ShapeSegment(getSubShape(temp.c_str()));
+    return new ShapeSegment(getNamedSubShape(temp.c_str()));
 }
 
 TopoDS_Shape TopoShape::getSubShape(const char* Type) const
@@ -303,6 +303,14 @@ TopoDS_Shape TopoShape::getSubShape(const char* Type) const
     return TopoDS_Shape(); // avoid compiler warning
 }
 
+TopoShape TopoShape::getNamedSubShape(const char* Type) const
+{
+    auto sub = TopoShape(getSubShape(Type));
+    Reference::populateSubshape(this, &sub);
+    return sub;
+}
+
+
 unsigned long TopoShape::countSubShapes(const char* Type) const
 {
     std::string shapetype(Type);
@@ -328,7 +336,7 @@ unsigned long TopoShape::countSubShapes(const char* Type) const
 PyObject * TopoShape::getPySubShape(const char* Type) const
 {
     // get the shape
-    TopoDS_Shape Shape = getSubShape(Type);
+    TopoShape Shape = getNamedSubShape(Type);
     // destinquish the return type
     std::string shapetype(Type);
     if (shapetype.size() > 4 && shapetype.substr(0,4) == "Face") 
@@ -3042,7 +3050,7 @@ void TopoShape::getFacesFromSubelement(const Data::Segment* element,
                                        std::vector<Facet> &faces) const
 {
     if (element->getTypeId() == ShapeSegment::getClassTypeId()) {
-        const TopoDS_Shape& shape = static_cast<const ShapeSegment*>(element)->Shape;
+        const TopoDS_Shape& shape = static_cast<const ShapeSegment*>(element)->Shape.getShape();
         if (shape.IsNull() || shape.ShapeType() != TopAbs_FACE)
             return;
         std::set<MeshVertex> vertices;
@@ -3154,23 +3162,23 @@ void TopoShape::setSubshapeReference(const TopoShape& shape, const Reference& id
     setSubshapeReference(shape.getShape(), id);
 }
 
-bool TopoShape::hasSubshapeReference(const TopoDS_Shape& subshape)
+bool TopoShape::hasSubshapeReference(const TopoDS_Shape& subshape) const
 {
     return (_SubShapeRef.find(subshape) != _SubShapeRef.end()) || (subshape == _Shape);
 }
 
-bool TopoShape::hasSubshapeReference(const TopoShape& subshape)
+bool TopoShape::hasSubshapeReference(const TopoShape& subshape) const
 {
     return hasSubshapeReference(subshape.getShape());
 }
 
 
-const Reference& TopoShape::subshapeReference(const TopoShape& subshape) {
+const Reference& TopoShape::subshapeReference(const TopoShape& subshape) const {
     
     return subshapeReference(subshape.getShape());
 }
 
-const Reference& TopoShape::subshapeReference(const TopoDS_Shape& shape) {
+const Reference& TopoShape::subshapeReference(const TopoDS_Shape& shape) const {
     
     if(_SubShapeRef.find(shape) == _SubShapeRef.end()) {
         
@@ -3182,14 +3190,14 @@ const Reference& TopoShape::subshapeReference(const TopoDS_Shape& shape) {
         throw Base::Exception("Subshape has no reference in base, are you sure belongs to this shape?");
     }
     
-    return _SubShapeRef[shape];
+    return _SubShapeRef.at(shape);
 }
 
-TopoShape TopoShape::subshape(const Reference& ref){
+TopoShape TopoShape::subshape(const Reference& ref) const{
     return subshape(ref.hash());
 }
 
-TopoShape TopoShape::subshape(size_t hash) {
+TopoShape TopoShape::subshape(size_t hash) const {
     
     if(hash == _ShapeRef.hash())
         return *this;
@@ -3206,7 +3214,7 @@ TopoShape TopoShape::subshape(size_t hash) {
     throw ReferenceException("No subshape with given hash available");
 }
 
-std::vector< TopoShape > TopoShape::subshapesBasedOn(std::vector< size_t > bases) {
+std::vector< TopoShape > TopoShape::subshapesBasedOn(std::vector< size_t > bases) const{
     
     std::vector< TopoShape > result;
     if(_ShapeRef.isBasedOn(bases))
@@ -3224,14 +3232,14 @@ std::vector< TopoShape > TopoShape::subshapesBasedOn(std::vector< size_t > bases
     return result;
 }
 
-std::vector< TopoShape > TopoShape::subshapesBasedOn(size_t base) {
+std::vector< TopoShape > TopoShape::subshapesBasedOn(size_t base) const{
     
     std::vector<size_t> vec = {base};
     return subshapesBasedOn(vec);
 }
 
 template<typename Functor>
-std::vector< TopoShape > TopoShape::filteredSubshapes(const Functor& functor) {
+std::vector< TopoShape > TopoShape::filteredSubshapes(const Functor& functor) const {
     
     std::vector< TopoShape > result;
     if(functor(_ShapeRef))
@@ -3249,13 +3257,13 @@ std::vector< TopoShape > TopoShape::filteredSubshapes(const Functor& functor) {
     return result;
 }
 
-std::vector< TopoShape > TopoShape::subshapesConstructedFrom(std::size_t hash) {
+std::vector< TopoShape > TopoShape::subshapesConstructedFrom(std::size_t hash) const {
 
     std::vector<size_t> vec = {hash};
     return subshapesConstructedFrom(vec);
 }
 
-std::vector< TopoShape > TopoShape::subshapesConstructedFrom(std::vector< std::size_t > hash) {
+std::vector< TopoShape > TopoShape::subshapesConstructedFrom(std::vector< std::size_t > hash) const{
 
     std::vector< TopoShape > result;
     if(_ShapeRef.isConstructedFrom(hash))
@@ -3274,7 +3282,7 @@ std::vector< TopoShape > TopoShape::subshapesConstructedFrom(std::vector< std::s
 }
 
 
-std::vector< TopoShape > TopoShape::subshapesGeneratedFrom(std::size_t hash) {
+std::vector< TopoShape > TopoShape::subshapesGeneratedFrom(std::size_t hash) const {
 
     std::vector< TopoShape > result;
     if(_ShapeRef.isGeneratedFrom(hash))
@@ -3292,13 +3300,13 @@ std::vector< TopoShape > TopoShape::subshapesGeneratedFrom(std::size_t hash) {
     return result;
 }
 
-std::vector< TopoShape > TopoShape::subshapesMergedFrom(std::size_t hash) {
+std::vector< TopoShape > TopoShape::subshapesMergedFrom(std::size_t hash) const {
 
     std::vector<size_t> vec = {hash};
     return subshapesMergedFrom(vec);
 }
 
-std::vector< TopoShape > TopoShape::subshapesMergedFrom(std::vector< std::size_t > hash) {
+std::vector< TopoShape > TopoShape::subshapesMergedFrom(std::vector< std::size_t > hash) const {
 
     std::vector< TopoShape > result;
     if(_ShapeRef.isMergedFrom(hash))
@@ -3317,7 +3325,7 @@ std::vector< TopoShape > TopoShape::subshapesMergedFrom(std::vector< std::size_t
 }
 
 
-std::vector< TopoShape > TopoShape::subshapesModificationsOf(std::size_t hash) {
+std::vector< TopoShape > TopoShape::subshapesModificationsOf(std::size_t hash) const {
 
     std::vector< TopoShape > result;
     if(_ShapeRef.isModificationOf(hash))

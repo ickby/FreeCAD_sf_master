@@ -40,20 +40,6 @@ class gp_Vec;
 namespace Part
 {
 
-class PartExport ShapeSegment : public Data::Segment
-{
-    TYPESYSTEM_HEADER();
-
-public:
-    ShapeSegment(const TopoDS_Shape &ShapeIn):Shape(ShapeIn){}
-    ShapeSegment(){}
-    virtual std::string getName() const;
-
-    TopoDS_Shape Shape;
-};
-
-
-
 /** The representation for a CAD Shape
  */
 class PartExport TopoShape : public Data::ComplexGeoData
@@ -112,6 +98,7 @@ public:
     //@}
     /// get the Topo"sub"Shape with the given name
     TopoDS_Shape getSubShape(const char* Type) const;
+    TopoShape getNamedSubShape(const char* Type) const;
     unsigned long countSubShapes(const char* Type) const;
     /// get the Topo"sub"Shape with the given name
     PyObject * getPySubShape(const char* Type) const;
@@ -254,30 +241,30 @@ public:
     //@{   
     const Reference& reference() const;
     void setReference(const Reference& id);
-    bool hasSubshapeReference(const TopoDS_Shape& subshape);
-    bool hasSubshapeReference(const TopoShape& subshape);
-    const Reference& subshapeReference(const TopoShape& subshape);
-    const Reference& subshapeReference(const TopoDS_Shape& subshape);
+    bool hasSubshapeReference(const TopoDS_Shape& subshape) const;
+    bool hasSubshapeReference(const TopoShape& subshape) const;
+    const Reference& subshapeReference(const TopoShape& subshape) const;
+    const Reference& subshapeReference(const TopoDS_Shape& subshape) const;
     void setSubshapeReference(const TopoDS_Shape&, const Reference& id);
     void setSubshapeReference(const TopoShape&, const Reference& id);
 
     //get the subshape with the exact representation
-    TopoShape subshape(const Reference& ref);
-    TopoShape subshape(size_t hash);
+    TopoShape subshape(const Reference& ref) const;
+    TopoShape subshape(size_t hash) const;
     
     //get subshape determined by a fiter functor with operator(const Reference& ref)->bool
     template<typename Functor>
-    std::vector<TopoShape> filteredSubshapes(const Functor& functor);
+    std::vector<TopoShape> filteredSubshapes(const Functor& functor) const;
     
     //get subshapes by references
-    std::vector<TopoShape> subshapesBasedOn(size_t base);
-    std::vector<TopoShape> subshapesBasedOn(std::vector<size_t> bases);
-    std::vector<TopoShape> subshapesGeneratedFrom(std::size_t hash);
-    std::vector<TopoShape> subshapesModificationsOf(std::size_t hash);
-    std::vector<TopoShape> subshapesMergedFrom(std::size_t hash);
-    std::vector<TopoShape> subshapesMergedFrom(std::vector<std::size_t> hash);
-    std::vector<TopoShape> subshapesConstructedFrom(std::size_t hash);
-    std::vector<TopoShape> subshapesConstructedFrom(std::vector<std::size_t> hash);
+    std::vector<TopoShape> subshapesBasedOn(size_t base) const;
+    std::vector<TopoShape> subshapesBasedOn(std::vector<size_t> bases) const;
+    std::vector<TopoShape> subshapesGeneratedFrom(std::size_t hash) const;
+    std::vector<TopoShape> subshapesModificationsOf(std::size_t hash) const;
+    std::vector<TopoShape> subshapesMergedFrom(std::size_t hash) const;
+    std::vector<TopoShape> subshapesMergedFrom(std::vector<std::size_t> hash) const;
+    std::vector<TopoShape> subshapesConstructedFrom(std::size_t hash) const;
+    std::vector<TopoShape> subshapesConstructedFrom(std::vector<std::size_t> hash) const;
 
     //@}
     
@@ -298,6 +285,18 @@ private:
     TopoDS_Shape  _Shape;
     Reference     _ShapeRef;
     ReferenceMap  _SubShapeRef;
+};
+
+class PartExport ShapeSegment : public Data::Segment
+{
+    TYPESYSTEM_HEADER();
+
+public:
+    ShapeSegment(const TopoShape &ShapeIn):Shape(ShapeIn){}
+    ShapeSegment(){}
+    virtual std::string getName() const;
+
+    TopoShape Shape;
 };
 
 //compares shapes on geomerical level: occupy they the same space?
