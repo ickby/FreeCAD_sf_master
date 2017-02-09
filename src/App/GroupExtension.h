@@ -50,16 +50,16 @@ public:
      * append it to this group as well.
      */
     virtual DocumentObject *addObject(const char* sType, const char* pObjectName);
-    /* Adds the object \a obj to this group.
+    /* Adds the object \a obj to this group. Returns all objects that have been added.
      */
-    virtual void addObject(DocumentObject* obj);
+    virtual std::vector<DocumentObject*> addObject(DocumentObject* obj);
     /*override this function if you want only special objects
      */
     virtual bool allowObject(DocumentObject* ) {return true;};
     
-    /** Removes an object from this group.
+    /** Removes an object from this group. Returns all objects that have been removed.
      */
-    virtual void removeObject(DocumentObject* obj);
+    virtual std::vector<DocumentObject*> removeObject(DocumentObject* obj);
     /** Removes all children objects from this group and the document.
      */
     virtual void removeObjectsFromDocument();
