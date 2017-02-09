@@ -609,6 +609,8 @@ void TreeWidget::dropEvent(QDropEvent *event)
         dropObjects.reserve(idxs.size());
 
         // Open command
+        Gui::Document* gui = vp->getDocument();
+        gui->openCommand("Move object");
         for (QList<QTreeWidgetItem*>::Iterator it = items.begin(); it != items.end(); ++it) {
             Gui::ViewProviderDocumentObject* vpc = static_cast<DocumentObjectItem*>(*it)->object();
             App::DocumentObject* obj = vpc->getObject();
@@ -625,6 +627,7 @@ void TreeWidget::dropEvent(QDropEvent *event)
             // now add the object to the target object
             vp->dropObject(obj);
         }
+        gui->commitCommand();
     }
     else if (targetitem->type() == TreeWidget::DocumentType) {
         // Open command
