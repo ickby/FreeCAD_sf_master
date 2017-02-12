@@ -282,6 +282,9 @@ std::vector<App::DocumentObject*> Body::addObject(App::DocumentObject *feature)
     if (isSolidFeature(feature)) {
         Tip.setValue (feature);
     }
+    
+    std::vector<App::DocumentObject*> result = {feature};
+    return result;
 }
 
 
@@ -377,6 +380,9 @@ std::vector<App::DocumentObject*> Body::removeObject(App::DocumentObject* featur
     // Erase feature from Group
     model.erase(it);
     Group.setValues(model);
+    
+    std::vector<App::DocumentObject*> result = {feature};
+    return result;
 }
 
 
