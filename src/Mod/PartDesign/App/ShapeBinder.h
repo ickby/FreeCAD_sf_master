@@ -47,7 +47,7 @@ public:
     ShapeBinder();
     virtual ~ShapeBinder();
 
-    App::PropertyLinkSubList    Support;
+    App::CrossCoordinateSystemPropertyLinkSubList    Support;
 
     static void getFilteredReferences(App::PropertyLinkSubList* prop, Part::Feature*& object, std::vector< std::string >& subobjects);
     static Part::TopoShape buildShapeFromReferences(Feature* obj, std::vector< std::string > subs);
