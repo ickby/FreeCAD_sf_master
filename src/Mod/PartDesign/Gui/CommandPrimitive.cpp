@@ -260,7 +260,7 @@ void CmdPrimtiveCompSubtractive::activated(int iMsg)
         FeatName = getUniqueObjectName("Box");
 
         Gui::Command::openCommand("Make subtractive box");
-        Gui::Command::doCommand(Gui::Command::Doc,"App.ActiveDocument.newObject(\'PartDesign::SubtractiveBox\',\'%s\')",
+        Gui::Command::doCommand(Gui::Command::Doc,"App.ActiveDocument.%s.newObject(\'PartDesign::SubtractiveBox\',\'%s\')",
             pcActiveBody->getNameInDocument(), FeatName.c_str());
     }
     else if(iMsg == 1) {
@@ -268,7 +268,7 @@ void CmdPrimtiveCompSubtractive::activated(int iMsg)
         FeatName = getUniqueObjectName("Cylinder");
 
         Gui::Command::openCommand("Make subtractive cylinder");
-        Gui::Command::doCommand(Gui::Command::Doc,"App.ActiveDocument.newObject(\'PartDesign::SubtractiveCylinder\',\'%s\')",
+        Gui::Command::doCommand(Gui::Command::Doc,"App.ActiveDocument.%s.newObject(\'PartDesign::SubtractiveCylinder\',\'%s\')",
             pcActiveBody->getNameInDocument(), FeatName.c_str());
     }
     else if(iMsg == 2) {
@@ -276,7 +276,7 @@ void CmdPrimtiveCompSubtractive::activated(int iMsg)
         FeatName = getUniqueObjectName("Sphere");
 
         Gui::Command::openCommand("Make subtractive sphere");
-        Gui::Command::doCommand(Gui::Command::Doc,"App.ActiveDocument.newObject(\'PartDesign::SubtractiveSphere\',\'%s\')",
+        Gui::Command::doCommand(Gui::Command::Doc,"App.ActiveDocument.%s.newObject(\'PartDesign::SubtractiveSphere\',\'%s\')",
             pcActiveBody->getNameInDocument(), FeatName.c_str());
     }
     else if(iMsg == 3) {
@@ -284,7 +284,7 @@ void CmdPrimtiveCompSubtractive::activated(int iMsg)
         FeatName = getUniqueObjectName("Cone");
 
         Gui::Command::openCommand("Make subtractive cone");
-        Gui::Command::doCommand(Gui::Command::Doc,"App.ActiveDocument.newObject(\'PartDesign::SubtractiveCone\',\'%s\')",
+        Gui::Command::doCommand(Gui::Command::Doc,"App.ActiveDocument.%s.newObject(\'PartDesign::SubtractiveCone\',\'%s\')",
             pcActiveBody->getNameInDocument(), FeatName.c_str());
     }
     else if(iMsg == 4) {
@@ -292,7 +292,7 @@ void CmdPrimtiveCompSubtractive::activated(int iMsg)
         FeatName = getUniqueObjectName("Ellipsoid");
 
         Gui::Command::openCommand("Make subtractive ellipsoid");
-        Gui::Command::doCommand(Gui::Command::Doc,"App.ActiveDocument.newObject(\'PartDesign::SubtractiveEllipsoid\',\'%s\')",
+        Gui::Command::doCommand(Gui::Command::Doc,"App.ActiveDocument.%s.newObject(\'PartDesign::SubtractiveEllipsoid\',\'%s\')",
             pcActiveBody->getNameInDocument(), FeatName.c_str());
     }
     else if(iMsg == 5) {
@@ -300,7 +300,7 @@ void CmdPrimtiveCompSubtractive::activated(int iMsg)
         FeatName = getUniqueObjectName("Torus");
 
         Gui::Command::openCommand("Make subtractive torus");
-        Gui::Command::doCommand(Gui::Command::Doc,"App.ActiveDocument.newObject(\'PartDesign::SubtractiveTorus\',\'%s\')",
+        Gui::Command::doCommand(Gui::Command::Doc,"App.ActiveDocument.%s.newObject(\'PartDesign::SubtractiveTorus\',\'%s\')",
             pcActiveBody->getNameInDocument(), FeatName.c_str());
     }
     else if(iMsg == 6) {
@@ -308,7 +308,7 @@ void CmdPrimtiveCompSubtractive::activated(int iMsg)
         FeatName = getUniqueObjectName("Prism");
 
         Gui::Command::openCommand("Make subtractive prism");
-        Gui::Command::doCommand(Gui::Command::Doc,"App.ActiveDocument.newObject(\'PartDesign::SubtractivePrism\',\'%s\')",
+        Gui::Command::doCommand(Gui::Command::Doc,"App.ActiveDocument.%s.newObject(\'PartDesign::SubtractivePrism\',\'%s\')",
             pcActiveBody->getNameInDocument(), FeatName.c_str());
     }
     else if(iMsg == 7) {
@@ -316,7 +316,7 @@ void CmdPrimtiveCompSubtractive::activated(int iMsg)
         FeatName = getUniqueObjectName("Wedge");
 
         Gui::Command::openCommand("Make subtractive wedge");
-        Gui::Command::doCommand(Gui::Command::Doc,"App.ActiveDocument.newObject(\'PartDesign::SubtractiveWedge\',\'%s\')",
+        Gui::Command::doCommand(Gui::Command::Doc,"App.ActiveDocument.%s.newObject(\'PartDesign::SubtractiveWedge\',\'%s\')",
             pcActiveBody->getNameInDocument(), FeatName.c_str());
     }
 
