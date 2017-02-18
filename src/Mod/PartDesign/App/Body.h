@@ -86,6 +86,7 @@ public:
 
     /// Remove the feature from the body
     virtual std::vector<DocumentObject*> removeObject(DocumentObject* obj) override;
+    virtual std::vector<DocumentObject*> removeObjects(std::vector<DocumentObject*> obj) override;
 
     /**
      * Checks if the given document object lays after the current insert point

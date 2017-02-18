@@ -394,6 +394,13 @@ std::vector<App::DocumentObject*> Body::removeObject(App::DocumentObject* featur
     return result;
 }
 
+std::vector< App::DocumentObject* > Body::removeObjects(std::vector< App::DocumentObject* > objs) {
+    
+    for(auto obj : objs)
+        removeObject(obj);
+    
+    return objs;
+}
 
 App::DocumentObjectExecReturn *Body::execute(void)
 {
