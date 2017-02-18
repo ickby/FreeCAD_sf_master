@@ -92,6 +92,10 @@ void PropertyLinkBase::ensureCorrectGroups(PropertyContainer* container, App::Do
     if(!container->isDerivedFrom(App::DocumentObject::getClassTypeId()))
         return;
     
+    //links to non-geo feature objects are allowed, as those don't have the placement issues 
+    if(!object->isDerivedFrom(GeoFeature::getClassTypeId()))
+        return;
+    
     //links to origin feature can go over CS borders, as they are the same everywere anyway. This is 
     //a workaround to allow moving of objects between GeoFeatureGroups that link to origin features. 
     //During movement there is always a link into the wrong CS and an error would occure. If we 
