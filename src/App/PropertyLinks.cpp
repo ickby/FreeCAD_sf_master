@@ -87,10 +87,30 @@ void PropertyLinkBase::ensureCorrectGroups(PropertyContainer* container, App::Do
     //on object creation the container may be null, and linked objects may be null anyhow
     if(!container || !object)
         return;
+            
+    //undo and redo do not need to be handled as they can only go to already checked stated (the link
+    //state during those actions can get messed up, we really don't want to check for that)
+    if(object->getDocument()->performsTransactionOperation())
+        return;
     
-    //document containers and other non-object things don't need to be handled
+    //document containers and other non-object things don't need to be handled at all
     if(!container->isDerivedFrom(App::DocumentObject::getClassTypeId()))
         return;
+    
+    auto cont = static_cast<App::DocumentObject*>(container);
+    
+    //on restore we don't need to do anything
+    if(cont->isRestoring() || object->isRestoring())
+        return;
+    
+    //ensure the object is in a single GeoFeatureGroup. That restriction is true for every kind of 
+    //document object
+    if(cont->hasExtension(App::GeoFeatureGroupExtension::getExtensionClassTypeId())) {
+            
+        auto grp = GeoFeatureGroupExtension::getGroupOfObject(object);
+        if(grp && (grp != cont))
+            throw Base::Exception("Objects can only be in a single GeoFeateGroup");
+    }
     
     //links to non-geo feature objects are allowed, as those don't have the placement issues 
     if(!object->isDerivedFrom(GeoFeature::getClassTypeId()))
@@ -102,17 +122,6 @@ void PropertyLinkBase::ensureCorrectGroups(PropertyContainer* container, App::Do
     //surpress the error at least the origin links can be fixed afterwards
     //TODO: Find a more elegant solution
     if(object->isDerivedFrom(App::OriginFeature::getClassTypeId()))
-        return;
-    
-    //undo and redo do not need to be handled as they can only go to already checked stated (the link
-    //state during those actions can get messed up, we really don't want to check for that)
-    if(object->getDocument()->performsTransactionOperation())
-        return;
-    
-    auto cont = static_cast<App::DocumentObject*>(container);
-    
-    //on restore we don't need to do anything
-    if(cont->isRestoring() || object->isRestoring())
         return;
     
     auto objs = GeoFeatureGroupExtension::getCSRelevantLinks(object);
