@@ -34,6 +34,7 @@
 #include "PropertyLinks.h"
 #include "PropertyExpressionEngine.h"
 #include "DocumentObjectExtension.h"
+#include "GeoFeatureGroupExtension.h"
 #include <App/DocumentObjectPy.h>
 #include <boost/signals/connection.hpp>
 #include <boost/bind.hpp>
@@ -264,9 +265,14 @@ std::vector<App::DocumentObject*> DocumentObject::getOutListRecursive(void) cons
     return result;
 }
 
-DocumentObjectGroup* DocumentObject::getGroup() const
+DocumentObject* DocumentObject::getGroup() const
 {
-    return dynamic_cast<DocumentObjectGroup*>(GroupExtension::getGroupOfObject(this));
+    return GroupExtension::getGroupOfObject(this);
+}
+
+DocumentObject* DocumentObject::getGeoFeatureGroup() const
+{
+    return GeoFeatureGroupExtension::getGroupOfObject(this);
 }
 
 bool DocumentObject::testIfLinkDAGCompatible(DocumentObject *linkTo) const

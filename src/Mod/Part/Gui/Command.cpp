@@ -308,10 +308,10 @@ void CmdPartCut::activated(int iMsg)
     doCommand(Doc,"App.activeDocument().%s.Tool = App.activeDocument().%s",FeatName.c_str(),Sel[1].getFeatName());
 
     // hide the input objects and remove them from the parent group
-    App::DocumentObjectGroup* targetGroup = 0;
+    App::DocumentObject* targetGroup = 0;
     for (std::vector<Gui::SelectionObject>::iterator it = Sel.begin(); it != Sel.end(); ++it) {
         doCommand(Gui,"Gui.activeDocument().%s.Visibility=False",it->getFeatName());
-        App::DocumentObjectGroup* group = it->getObject()->getGroup();
+        App::DocumentObject* group = it->getObject()->getGroup();
         if (group) {
             targetGroup = group;
             doCommand(Doc, "App.activeDocument().%s.removeObject(App.activeDocument().%s)",
@@ -410,10 +410,10 @@ void CmdPartCommon::activated(int iMsg)
     runCommand(Doc,str.str().c_str());
 
     // hide the input objects and remove them from the parent group
-    App::DocumentObjectGroup* targetGroup = 0;
+    App::DocumentObject* targetGroup = 0;
     for (std::vector<Gui::SelectionObject>::iterator it = partObjects.begin(); it != partObjects.end(); ++it) {
         doCommand(Gui,"Gui.activeDocument().%s.Visibility=False",it->getFeatName());
-        App::DocumentObjectGroup* group = it->getObject()->getGroup();
+        App::DocumentObject* group = it->getObject()->getGroup();
         if (group) {
             targetGroup = group;
             doCommand(Doc, "App.activeDocument().%s.removeObject(App.activeDocument().%s)",
@@ -512,10 +512,10 @@ void CmdPartFuse::activated(int iMsg)
     runCommand(Doc,str.str().c_str());
 
     // hide the input objects and remove them from the parent group
-    App::DocumentObjectGroup* targetGroup = 0;
+    App::DocumentObject* targetGroup = 0;
     for (std::vector<Gui::SelectionObject>::iterator it = partObjects.begin(); it != partObjects.end(); ++it) {
         doCommand(Gui,"Gui.activeDocument().%s.Visibility=False",it->getFeatName());
-        App::DocumentObjectGroup* group = it->getObject()->getGroup();
+        App::DocumentObject* group = it->getObject()->getGroup();
         if (group) {
             targetGroup = group;
             doCommand(Doc, "App.activeDocument().%s.removeObject(App.activeDocument().%s)",

@@ -141,7 +141,9 @@ public:
     /// get all objects link directly or indirectly to this object 
     std::vector<App::DocumentObject*> getInListRecursive(void) const;
     /// get group if object is part of a group, otherwise 0 is returned
-    DocumentObjectGroup* getGroup() const;
+    DocumentObject* getGroup() const;
+    /// get getGeoFeatureGroup of the object if any, otherwise 0 
+    DocumentObject* getGeoFeatureGroup() const;
 
     /// test if this object is in the InList and recursive further down
     bool isInInListRecursive(DocumentObject* objToTest) const;
