@@ -47,7 +47,7 @@ using namespace Base;
 using namespace std;
 
 
-void ensureDAG(PropertyContainer* container, App::DocumentObject* object) {
+void PropertyLinkBase::ensureDAG(PropertyContainer* container, App::DocumentObject* object) {
     
     if(!container || !object)
         return;
@@ -79,7 +79,10 @@ void ensureDAG(PropertyContainer* container, App::DocumentObject* object) {
 
 //helper functions to ensure correct geofeaturegroups. Each object is only allowed to be in a 
 //single geofeatueregroup, and links are not allowed to cross GeoFeatureGroup borders
-void ensureCorrectGroups(PropertyContainer* container, App::DocumentObject* object) {
+void PropertyLinkBase::ensureCorrectGroups(PropertyContainer* container, App::DocumentObject* object) {
+    
+    if(_crossCSlinks)
+        return; 
     
     //on object creation the container may be null, and linked objects may be null anyhow
     if(!container || !object)
@@ -91,7 +94,7 @@ void ensureCorrectGroups(PropertyContainer* container, App::DocumentObject* obje
     
     //links to origin feature can go over CS borders, as they are the same everywere anyway. This is 
     //a workaround to allow moving of objects between GeoFeatureGroups that link to origin features. 
-    //During movement there is always a link in to the wron CS and the error would occure. If we 
+    //During movement there is always a link into the wrong CS and an error would occure. If we 
     //surpress the error at least the origin links can be fixed afterwards
     //TODO: Find a more elegant solution
     if(object->isDerivedFrom(App::OriginFeature::getClassTypeId()))
@@ -120,12 +123,12 @@ void ensureCorrectGroups(PropertyContainer* container, App::DocumentObject* obje
         if(cont->hasExtension(App::GeoFeatureGroupExtension::getExtensionClassTypeId())) {
             
             if(!grp || (grp == cont))      
-                return;
+                continue;
         }
         //if the container is a normal object there is only a single allowed possibility:
-        //1. The object has the exact same GeoFeatureGrou as the container (null included)
+        //1. The object has the exact same GeoFeatureGroup as the container (null included)
         else if(grp == GeoFeatureGroupExtension::getGroupOfObject(cont)) {
-                return;
+            continue;
         }
             
         //if we arrive here the container and the object don't have compatible GeoFeatureGroups
@@ -263,6 +266,16 @@ void PropertyLink::Paste(const Property &from)
 
     setValue(static_cast<const PropertyLink&>(from)._pcLink);
 }
+
+// Cross coordinate system version
+TYPESYSTEM_SOURCE(App::CrossCoordinateSystemPropertyLink, App::PropertyLink)
+
+CrossCoordinateSystemPropertyLink::CrossCoordinateSystemPropertyLink() 
+{ 
+    _crossCSlinks = true;
+}
+
+CrossCoordinateSystemPropertyLink::~CrossCoordinateSystemPropertyLink() {}
 
 //**************************************************************************
 // PropertyLinkList
@@ -451,6 +464,16 @@ unsigned int PropertyLinkList::getMemSize(void) const
 {
     return static_cast<unsigned int>(_lValueList.size() * sizeof(App::DocumentObject *));
 }
+
+// Cross coordinate system version
+TYPESYSTEM_SOURCE(App::CrossCoordinateSystemPropertyLinkList, App::PropertyLinkList)
+
+CrossCoordinateSystemPropertyLinkList::CrossCoordinateSystemPropertyLinkList() 
+{
+    _crossCSlinks = true;
+}
+
+CrossCoordinateSystemPropertyLinkList::~CrossCoordinateSystemPropertyLinkList() {}
 
 //**************************************************************************
 // PropertyLinkSub
@@ -644,6 +667,16 @@ void PropertyLinkSub::Paste(const Property &from)
 {
     setValue(dynamic_cast<const PropertyLinkSub&>(from)._pcLinkSub, dynamic_cast<const PropertyLinkSub&>(from)._cSubList);
 }
+
+// Cross coordinate system version
+TYPESYSTEM_SOURCE(App::CrossCoordinateSystemPropertyLinkSub, App::PropertyLinkSub)
+
+CrossCoordinateSystemPropertyLinkSub::CrossCoordinateSystemPropertyLinkSub() 
+{
+    _crossCSlinks = true;
+}
+
+CrossCoordinateSystemPropertyLinkSub::~CrossCoordinateSystemPropertyLinkSub() {}
 
 //**************************************************************************
 // PropertyLinkSubList
@@ -1057,3 +1090,13 @@ unsigned int PropertyLinkSubList::getMemSize (void) const
 
    return size;
 }
+
+// Cross coordinate system version
+TYPESYSTEM_SOURCE(App::CrossCoordinateSystemPropertyLinkSubList, App::PropertyLinkSubList)
+
+CrossCoordinateSystemPropertyLinkSubList::CrossCoordinateSystemPropertyLinkSubList() 
+{
+    _crossCSlinks = true;
+}
+
+CrossCoordinateSystemPropertyLinkSubList::~CrossCoordinateSystemPropertyLinkSubList() {}

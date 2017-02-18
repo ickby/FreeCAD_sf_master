@@ -38,12 +38,35 @@ class Writer;
 namespace App
 {
 class DocumentObject;
+class PropertyContainer;
 
+/**
+ * @brief Base class for all link properties 
+ * 
+ * This class handles some common checks for links, like to ensure a uncyclic graph. It also 
+ * enables checks for coordinate system and to forbid cross cs links. A member variable is 
+ * introduced which states if cross cs links are allowed. This is intended to be used by subclasses,
+ * to override the default check behavior. This enables an easy creation of new properties, that 
+ * behave exactly the same like the link one but allow cs links, with a simple change of this 
+ * variable
+ * @Note This class does not derive from Property as it shall also be used inside PropertyList derived 
+ *       properties
+ * 
+ * @author Stefan Tröger
+ */
+class AppExport PropertyLinkBase {
+    
+protected:
+    bool _crossCSlinks = false;
+    
+    void ensureDAG(App::PropertyContainer* container, App::DocumentObject* object);
+    void ensureCorrectGroups(App::PropertyContainer* container, App::DocumentObject* object);
+};
 
 /** the general Link Poperty
  *  Main Purpose of this property is to Link Objects and Feautures in a document.
  */
-class AppExport PropertyLink : public Property
+class AppExport PropertyLink : public Property, public PropertyLinkBase
 {
     TYPESYSTEM_HEADER();
 
@@ -98,7 +121,18 @@ protected:
     App::DocumentObject *_pcLink;
 };
 
-class AppExport PropertyLinkList : public PropertyLists
+/** the general cross cs Link Poperty
+ *  Same as ProeprtyLink but allows cross CS links
+ */
+class AppExport CrossCoordinateSystemPropertyLink : public PropertyLink
+{
+    TYPESYSTEM_HEADER();
+public:
+    CrossCoordinateSystemPropertyLink();
+    virtual ~CrossCoordinateSystemPropertyLink();
+};
+
+class AppExport PropertyLinkList : public PropertyLists, public PropertyLinkBase
 {
     TYPESYSTEM_HEADER();
 
@@ -152,13 +186,24 @@ private:
     std::vector<DocumentObject*> _lValueList;
 };
 
+/** the general cross cs link list poperty
+ *  Same as ProeprtyLinkList but allows cross CS links
+ */
+class AppExport CrossCoordinateSystemPropertyLinkList : public PropertyLinkList
+{
+    TYPESYSTEM_HEADER();
+public:
+    CrossCoordinateSystemPropertyLinkList();
+    virtual ~CrossCoordinateSystemPropertyLinkList();
+};
+
 /** the Link Poperty with sub elements
  *  This property links a object and a defined sequence of
  *  sub elements. This subelemts (like Edges of a Shape)
  *  are stored as names, which can be resolved by the 
  *  ComplexGeoDataType interface to concrete sub objects.
  */
-class AppExport PropertyLinkSub: public Property
+class AppExport PropertyLinkSub: public Property, public PropertyLinkBase
 {
     TYPESYSTEM_HEADER();
 
@@ -219,7 +264,18 @@ protected:
 
 };
 
-class AppExport PropertyLinkSubList: public PropertyLists
+/** the general cross cs link sub property
+ *  Same as ProeprtyLinkSub but allows cross CS links
+ */
+class AppExport CrossCoordinateSystemPropertyLinkSub : public PropertyLinkSub
+{
+    TYPESYSTEM_HEADER();
+public:
+    CrossCoordinateSystemPropertyLinkSub();
+    virtual ~CrossCoordinateSystemPropertyLinkSub();
+};
+
+class AppExport PropertyLinkSubList: public PropertyLists, public PropertyLinkBase
 {
     TYPESYSTEM_HEADER();
 
@@ -289,6 +345,17 @@ private:
     //FIXME: Do not make two independent lists because this will lead to some inconsistencies!
     std::vector<DocumentObject*> _lValueList;
     std::vector<std::string>     _lSubList;
+};
+
+/** the general cross cs link sub list property
+ *  Same as ProeprtyLinkSubList but allows cross CS links
+ */
+class AppExport CrossCoordinateSystemPropertyLinkSubList : public PropertyLinkSubList
+{
+    TYPESYSTEM_HEADER();
+public:
+    CrossCoordinateSystemPropertyLinkSubList();
+    virtual ~CrossCoordinateSystemPropertyLinkSubList();
 };
 
 } // namespace App
