@@ -42,6 +42,7 @@
 #include <vtkXMLUnstructuredGridReader.h>
 #include <vtkXMLRectilinearGridReader.h>
 #include <vtkXMLImageDataReader.h>
+#include "vtkPythonUtil.h"
 #include "PropertyPostDataObject.h"
 
 #ifndef _PreComp_
@@ -101,12 +102,27 @@ int PropertyPostDataObject::getDataType() {
 
 PyObject *PropertyPostDataObject::getPyObject(void)
 {
-    //TODO: fetch the vtk python object from the data set and return it
-    return new PyObject();
+    PyImport_ImportModule("vtk");
+    return vtkPythonUtil::GetObjectFromPointer(m_dataObject.Get());
 }
 
-void PropertyPostDataObject::setPyObject(PyObject * /*value*/)
+void PropertyPostDataObject::setPyObject(PyObject *pyobj)
 {
+    PyImport_ImportModule("vtk");
+    vtkObjectBase *obj = vtkPythonUtil::GetPointerFromObject(pyobj, "vtkDataObject");
+    if (!obj) {
+        //vtkPythonUtil does set the python error, nothing to do here
+        return;
+    }
+    
+    vtkDataObject* dataObj = vtkDataObject::SafeDownCast(obj);
+    if (!dataObj) {
+        PyErr_SetString(PyExc_TypeError, "Not a vtkDataObject, but is required.");
+        return;
+    }
+    
+    createDataObjectByExternalType(dataObj);
+    m_dataObject->DeepCopy(dataObj);
 }
 
 App::Property *PropertyPostDataObject::Copy(void) const

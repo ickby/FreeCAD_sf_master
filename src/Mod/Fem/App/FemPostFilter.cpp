@@ -540,7 +540,7 @@ DocumentObjectExecReturn* FemPostWarpVectorFilter::execute(void) {
     App::Enumeration empty;
     Vector.setValue(empty);
     m_vectorFields.setEnums(array);
-    Vector.setValue(m_vectorFields);
+    Vector.setValue(m_vectorFields);  
 
     std::vector<std::string>::iterator it = std::find(array.begin(), array.end(), val);
     if(!val.empty() && it != array.end())

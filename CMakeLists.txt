@@ -683,6 +683,7 @@ endif()
             vtkFiltersExtraction
             vtkFiltersSources
             vtkFiltersGeometry
+            vtkWrappingPythonCore
         )
 
         # check which modules are available
