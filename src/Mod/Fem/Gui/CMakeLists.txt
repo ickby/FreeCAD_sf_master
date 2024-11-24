@@ -97,6 +97,7 @@ if(BUILD_FEM_VTK)
         TaskPostDisplay.ui
         TaskPostScalarClip.ui
         TaskPostWarpVector.ui
+        TaskPostSteps.ui
     )
 endif(BUILD_FEM_VTK)
 

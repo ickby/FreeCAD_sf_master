@@ -59,6 +59,8 @@
 #include "ui_TaskPostDisplay.h"
 #include "ui_TaskPostScalarClip.h"
 #include "ui_TaskPostWarpVector.h"
+#include "ui_TaskPostSteps.h"
+
 
 #include "FemSettings.h"
 #include "TaskPostBoxes.h"
@@ -471,6 +473,44 @@ void TaskPostFunction::applyPythonCode()
 {
     // we apply the views widgets python code
 }
+
+
+// ***************************************************************************
+// Steps
+TaskPostSteps::TaskPostSteps(ViewProviderFemPostObject* view, QWidget* parent)
+    : TaskPostBox(view,
+                  Gui::BitmapFactory().pixmap("FEM_PostSteps"),
+                  tr("Result Steps"),
+                  parent), ui(new Ui_TaskPostSteps)
+{
+    // we load the views widget
+    proxy = new QWidget(this);
+    ui->setupUi(proxy);
+    this->groupLayout()->addWidget(proxy);
+}
+
+TaskPostSteps::~TaskPostSteps() = default;
+
+void TaskPostSteps::setupConnections()
+{
+    connect(ui->StepTable,
+            qOverload<>(&QTableWidget::itemSelectionChanged),
+            this,
+            &TaskPostSteps::onSelectionChanged);
+}
+
+void TaskPostSteps::onSelectionChanged()
+{
+
+}
+
+
+
+void TaskPostSteps::applyPythonCode()
+{
+    // we apply the views widgets python code
+}
+
 
 
 // ***************************************************************************

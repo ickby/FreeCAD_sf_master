@@ -37,6 +37,7 @@
 #include "ViewProviderFemPostFunction.h"
 #include "ViewProviderFemPostPipeline.h"
 #include "ViewProviderFemPostPipelinePy.h"
+#include "TaskPostBoxes.h"
 
 
 using namespace FemGui;
@@ -45,6 +46,7 @@ PROPERTY_SOURCE(FemGui::ViewProviderFemPostPipeline, FemGui::ViewProviderFemPost
 
 ViewProviderFemPostPipeline::ViewProviderFemPostPipeline()
 {
+    ViewProviderGroupExtension::initExtension(this);
     sPixmap = "FEM_PostPipelineFromResult";
 }
 
@@ -54,21 +56,17 @@ std::vector<App::DocumentObject*> ViewProviderFemPostPipeline::claimChildren() c
 {
 
     Fem::FemPostPipeline* pipeline = getObject<Fem::FemPostPipeline>();
-    std::vector<App::DocumentObject*> children;
+    std::vector<App::DocumentObject*> children = FemGui::ViewProviderFemPostObject::claimChildren();
 
     if (pipeline->Functions.getValue()) {
-        children.push_back(pipeline->Functions.getValue());
+        children.insert(children.begin(), pipeline->Functions.getValue());
     }
 
-    children.insert(children.end(),
-                    pipeline->Filter.getValues().begin(),
-                    pipeline->Filter.getValues().end());
     return children;
 }
 
 std::vector<App::DocumentObject*> ViewProviderFemPostPipeline::claimChildren3D() const
 {
-
     return claimChildren();
 }
 
@@ -237,6 +235,16 @@ void ViewProviderFemPostPipeline::scaleField(vtkDataSet* dset,
         }
     }
 }
+
+void ViewProviderFemPostPipeline::setupTaskDialog(TaskDlgPost* dlg)
+{
+    // add the function box
+    assert(dlg->getView() == this);
+    dlg->appendBox(new TaskPostSteps(this));
+
+    ViewProviderFemPostObject::setupTaskDialog(dlg);
+}
+
 
 PyObject* ViewProviderFemPostPipeline::getPyObject()
 {

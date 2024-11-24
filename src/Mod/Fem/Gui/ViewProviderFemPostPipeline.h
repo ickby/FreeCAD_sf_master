@@ -26,16 +26,17 @@
 #include <Gui/ViewProviderFeaturePython.h>
 #include <Mod/Fem/FemGlobal.h>
 
+#include "Gui/ViewProviderGroupExtension.h"
 #include "ViewProviderFemPostObject.h"
 
 
 namespace FemGui
 {
 
-class FemGuiExport ViewProviderFemPostPipeline: public ViewProviderFemPostObject
+class FemGuiExport ViewProviderFemPostPipeline: public ViewProviderFemPostObject, public Gui::ViewProviderGroupExtension
 {
 
-    PROPERTY_HEADER_WITH_OVERRIDE(FemGui::ViewProviderFemPostPipeline);
+    PROPERTY_HEADER_WITH_EXTENSIONS(FemGui::ViewProviderFemPostPipeline);
 
 public:
     /// constructor.
@@ -54,6 +55,7 @@ public:
 
 protected:
     void updateFunctionSize();
+    virtual void setupTaskDialog(TaskDlgPost* dlg);
 };
 
 }  // namespace FemGui
