@@ -49,17 +49,9 @@ class FemExport FemPostFilter: public Fem::FemPostObject
 {
     PROPERTY_HEADER_WITH_OVERRIDE(Fem::FemPostFilter);
 
-public:
-    /// Constructor
-    FemPostFilter();
-    ~FemPostFilter() override;
-
-    App::PropertyLink Input;
-
-    App::DocumentObjectExecReturn* execute() override;
-
 protected:
-    vtkDataObject* getInputData();
+    std::vector<std::string> getInputVectorFields();
+    std::vector<std::string> getInputScalarFields();
 
     // pipeline handling for derived filter
     struct FilterPipeline
@@ -72,6 +64,16 @@ protected:
     void addFilterPipeline(const FilterPipeline& p, std::string name);
     void setActiveFilterPipeline(std::string name);
     FilterPipeline& getFilterPipeline(std::string name);
+
+public:
+    /// Constructor
+    FemPostFilter();
+    ~FemPostFilter() override;
+
+    void onChanged(const App::Property* prop) override;
+    App::DocumentObjectExecReturn* execute() override;
+
+    FilterPipeline& getActiveFilterPipeline();
 
 private:
     // handling of multiple pipelines which can be the filter

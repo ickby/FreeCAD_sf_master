@@ -26,12 +26,16 @@
 #include <Python.h>
 #include <vtkDoubleArray.h>
 #include <vtkPointData.h>
+#include <vtkAlgorithm.h>
+#include <vtkAlgorithmOutput.h>
 #endif
 
 #include <App/Document.h>
+#include <Base/Console.h>
 
 #include "FemPostFilter.h"
 #include "FemPostPipeline.h"
+#include "FemPostBranch.h"
 
 
 using namespace Fem;
@@ -42,7 +46,7 @@ PROPERTY_SOURCE(Fem::FemPostFilter, Fem::FemPostObject)
 
 FemPostFilter::FemPostFilter()
 {
-    ADD_PROPERTY(Input, (nullptr));
+
 }
 
 FemPostFilter::~FemPostFilter() = default;
@@ -60,26 +64,76 @@ FemPostFilter::FilterPipeline& FemPostFilter::getFilterPipeline(std::string name
 void FemPostFilter::setActiveFilterPipeline(std::string name)
 {
     if (m_activePipeline != name && isValid()) {
+
+        // disable all inputs of current pipeline
+        if (m_activePipeline != "" and m_pipelines.find( m_activePipeline ) != m_pipelines.end()) {
+            m_pipelines[m_activePipeline].source->RemoveAllInputConnections(0);
+        }
+
+        //set the new pipeline active
         m_activePipeline = name;
+
+        //inform our parent, that we need to be connected a new
+        App::DocumentObject* group = App::GroupExtension::getGroupOfObject(this);
+        if (!group) {
+            return;
+        }
+
+        if (group->isDerivedFrom(Fem::FemPostPipeline::getClassTypeId())) {
+            auto pipe = dynamic_cast<Fem::FemPostPipeline*>(group);
+            pipe->pipelineChanged(this);
+        }
+        else if (group->isDerivedFrom(Fem::FemPostBranch::getClassTypeId())) {
+            auto branch = dynamic_cast<Fem::FemPostBranch*>(group);
+            branch->pipelineChanged(this);
+        }
     }
 }
 
+FemPostFilter::FilterPipeline& FemPostFilter::getActiveFilterPipeline()
+{
+    return m_pipelines[m_activePipeline];
+}
+
+void FemPostFilter::onChanged(const App::Property* prop)
+{
+    //make sure we inform our parent object that we changed, it then can inform others if needed
+    App::DocumentObject* group = App::GroupExtension::getGroupOfObject(this);
+    if (!group) {
+        return FemPostObject::onChanged(prop);
+    }
+
+    if (group->isDerivedFrom(Fem::FemPostPipeline::getClassTypeId())) {
+        auto pipe = dynamic_cast<Fem::FemPostPipeline*>(group);
+        pipe->filterChanged(this);
+    }
+    else if (group->isDerivedFrom(Fem::FemPostBranch::getClassTypeId())) {
+        auto branch = dynamic_cast<Fem::FemPostBranch*>(group);
+        branch->filterChanged(this);
+    }
+
+    return FemPostObject::onChanged(prop);
+}
+
+
 DocumentObjectExecReturn* FemPostFilter::execute()
 {
+
+    // the pipelines are setup correctly, all we need to do is to update and take out the data.
     if (!m_pipelines.empty() && !m_activePipeline.empty()) {
         FemPostFilter::FilterPipeline& pipe = m_pipelines[m_activePipeline];
-        vtkSmartPointer<vtkDataObject> data = getInputData();
-        if (!data || !data->IsA("vtkDataSet")) {
+
+        if (pipe.source->GetNumberOfInputConnections(0) == 0) {
             return StdReturn;
         }
 
         if ((m_activePipeline == "DataAlongLine") || (m_activePipeline == "DataAtPoint")) {
-            pipe.filterSource->SetSourceData(getInputData());
-            pipe.filterTarget->Update();
-            Data.setValue(pipe.filterTarget->GetOutputDataObject(0));
+            //TODO:  this is broken now
+            //pipe.filterSource->SetSourceData();
+            //pipe.filterTarget->Update();
+            //Data.setValue(pipe.filterTarget->GetOutputDataObject(0));
         }
         else {
-            pipe.source->SetInputDataObject(data);
             pipe.target->Update();
             Data.setValue(pipe.target->GetOutputDataObject(0));
         }
@@ -88,30 +142,58 @@ DocumentObjectExecReturn* FemPostFilter::execute()
     return StdReturn;
 }
 
-vtkDataObject* FemPostFilter::getInputData()
+std::vector<std::string> FemPostFilter::getInputVectorFields()
 {
-    if (Input.getValue()) {
-        if (Input.getValue()->getTypeId().isDerivedFrom(
-                Base::Type::fromName("Fem::FemPostObject"))) {
-            return Input.getValue<FemPostObject*>()->Data.getValue();
-        }
-        else {
-            throw std::runtime_error(
-                "The filter's Input object is not a 'Fem::FemPostObject' object!");
-        }
+    if (getActiveFilterPipeline().source->GetNumberOfInputConnections(0) == 0) {
+        return std::vector<std::string>();
     }
-    else {
-        // get the pipeline and use the pipelinedata
-        std::vector<App::DocumentObject*> objs =
-            getDocument()->getObjectsOfType(FemPostPipeline::getClassTypeId());
-        for (auto it : objs) {
-            if (static_cast<FemPostPipeline*>(it)->holdsPostObject(this)) {
-                return static_cast<FemPostObject*>(it)->Data.getValue();
-            }
+
+    vtkAlgorithmOutput* output = getActiveFilterPipeline().source->GetInputConnection(0,0);
+    vtkAlgorithm* algo = output->GetProducer();
+    algo->Update();
+
+    vtkDataSet* dset = vtkDataSet::SafeDownCast(algo->GetOutputDataObject(0));
+    if (!dset) {
+        return std::vector<std::string>();
+    }
+    vtkPointData* pd = dset->GetPointData();
+
+    // get all vector fields
+    std::vector<std::string> VectorArray;
+    for (int i = 0; i < pd->GetNumberOfArrays(); ++i) {
+        if (pd->GetArray(i)->GetNumberOfComponents() == 3) {
+            VectorArray.emplace_back(pd->GetArrayName(i));
         }
     }
 
-    return nullptr;
+    return VectorArray;
+}
+
+std::vector<std::string> FemPostFilter::getInputScalarFields()
+{
+    if (getActiveFilterPipeline().source->GetNumberOfInputConnections(0) == 0) {
+        return std::vector<std::string>();
+    }
+
+    vtkAlgorithmOutput* output = getActiveFilterPipeline().source->GetInputConnection(0,0);
+    vtkAlgorithm* algo = output->GetProducer();
+    algo->Update();
+
+    vtkDataSet* dset = vtkDataSet::SafeDownCast(algo->GetOutputDataObject(0));
+    if (!dset) {
+        return std::vector<std::string>();
+    }
+    vtkPointData* pd = dset->GetPointData();
+
+    // get all scalar fields
+    std::vector<std::string> ScalarArray;
+    for (int i = 0; i < pd->GetNumberOfArrays(); ++i) {
+        if (pd->GetArray(i)->GetNumberOfComponents() == 1) {
+            ScalarArray.emplace_back(pd->GetArrayName(i));
+        }
+    }
+
+    return ScalarArray;
 }
 
 // ***************************************************************************
@@ -653,16 +735,16 @@ FemPostContoursFilter::FemPostContoursFilter()
 FemPostContoursFilter::~FemPostContoursFilter() = default;
 
 DocumentObjectExecReturn* FemPostContoursFilter::execute()
-{
+{ /*TODO: Fix
     // update list of available fields and their vectors
     if (!m_blockPropertyChanges) {
         refreshFields();
         refreshVectors();
     }
-
+*/
     // recalculate the filter
     auto returnObject = Fem::FemPostFilter::execute();
-
+/*
     // delete contour field
     vtkSmartPointer<vtkDataObject> data = getInputData();
     vtkDataSet* dset = vtkDataSet::SafeDownCast(data);
@@ -674,12 +756,12 @@ DocumentObjectExecReturn* FemPostContoursFilter::execute()
     if (!m_blockPropertyChanges) {
         refreshFields();
     }
-
+*/
     return returnObject;
 }
 
 void FemPostContoursFilter::onChanged(const Property* prop)
-{
+{/*TODO: Fix
     if (m_blockPropertyChanges) {
         return;
     }
@@ -775,7 +857,7 @@ void FemPostContoursFilter::onChanged(const Property* prop)
                 m_blockPropertyChanges = false;
             }
         }
-    }
+    }*/
 
     Fem::FemPostFilter::onChanged(prop);
 }
@@ -801,7 +883,7 @@ void FemPostContoursFilter::recalculateContours(double min, double max)
 }
 
 void FemPostContoursFilter::refreshFields()
-{
+{/*TODO: Fix
     m_blockPropertyChanges = true;
 
     std::string fieldName;
@@ -843,10 +925,11 @@ void FemPostContoursFilter::refreshFields()
     }
 
     m_blockPropertyChanges = false;
+    */
 }
 
 void FemPostContoursFilter::refreshVectors()
-{
+{/*TODO: Fix
     // refreshes the list of available vectors for the current Field
     m_blockPropertyChanges = true;
 
@@ -894,6 +977,7 @@ void FemPostContoursFilter::refreshVectors()
     }
 
     m_blockPropertyChanges = false;
+    */
 }
 
 
@@ -988,21 +1072,7 @@ DocumentObjectExecReturn* FemPostScalarClipFilter::execute()
         val = Scalars.getValueAsString();
     }
 
-    std::vector<std::string> ScalarsArray;
-
-    vtkSmartPointer<vtkDataObject> data = getInputData();
-    vtkDataSet* dset = vtkDataSet::SafeDownCast(data);
-    if (!dset) {
-        return StdReturn;
-    }
-    vtkPointData* pd = dset->GetPointData();
-
-    // get all scalar fields
-    for (int i = 0; i < pd->GetNumberOfArrays(); ++i) {
-        if (pd->GetArray(i)->GetNumberOfComponents() == 1) {
-            ScalarsArray.emplace_back(pd->GetArrayName(i));
-        }
-    }
+    std::vector<std::string> ScalarsArray = getInputScalarFields();
 
     App::Enumeration empty;
     Scalars.setValue(empty);
@@ -1051,7 +1121,8 @@ short int FemPostScalarClipFilter::mustExecute() const
 }
 
 void FemPostScalarClipFilter::setConstraintForField()
-{
+{/*
+    TODO: Fix
     vtkSmartPointer<vtkDataObject> data = getInputData();
     vtkDataSet* dset = vtkDataSet::SafeDownCast(data);
     if (!dset) {
@@ -1069,6 +1140,7 @@ void FemPostScalarClipFilter::setConstraintForField()
     m_constraints.LowerBound = p[0];
     m_constraints.UpperBound = p[1];
     m_constraints.StepSize = (p[1] - p[0]) / 100.;
+    */
 }
 
 
@@ -1102,26 +1174,14 @@ FemPostWarpVectorFilter::~FemPostWarpVectorFilter() = default;
 
 DocumentObjectExecReturn* FemPostWarpVectorFilter::execute()
 {
+    Base::Console().Message("Warp Execute\n");
+
     std::string val;
     if (Vector.getValue() >= 0) {
         val = Vector.getValueAsString();
     }
 
-    std::vector<std::string> VectorArray;
-
-    vtkSmartPointer<vtkDataObject> data = getInputData();
-    vtkDataSet* dset = vtkDataSet::SafeDownCast(data);
-    if (!dset) {
-        return StdReturn;
-    }
-    vtkPointData* pd = dset->GetPointData();
-
-    // get all vector fields
-    for (int i = 0; i < pd->GetNumberOfArrays(); ++i) {
-        if (pd->GetArray(i)->GetNumberOfComponents() == 3) {
-            VectorArray.emplace_back(pd->GetArrayName(i));
-        }
-    }
+    std::vector<std::string> VectorArray = getInputVectorFields();
 
     App::Enumeration empty;
     Vector.setValue(empty);

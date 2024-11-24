@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (c) 2015 Stefan Tröger <stefantroeger@gmx.net>              *
+ *   Copyright (c) 2024 Stefan Tröger <stefantroeger@gmx.net>              *
  *                                                                         *
  *   This file is part of the FreeCAD CAx development system.              *
  *                                                                         *
@@ -20,9 +20,8 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef Fem_FemPostPipeline_H
-#define Fem_FemPostPipeline_H
-
+#ifndef Fem_FemPostBranch_H
+#define Fem_FemPostBranch_H
 
 #include "App/GroupExtension.h"
 
@@ -32,52 +31,32 @@
 #include "FemResultObject.h"
 
 #include <vtkSmartPointer.h>
-#include <vtkUnstructuredGridAlgorithm.h>
-#include <vtkInformation.h>
-#include <vtkInformationVector.h>
+#include <vtkAppendFilter.h>
+#include <vtkPassThrough.h>
 
 
 namespace Fem
 {
 
-// algorithm that allows multi step handling: if data is stored in MultiBlock dataset
-// this source enables the downstream filters to query the blocks as different time steps
-class FemStepSourceAlgorithm : public vtkUnstructuredGridAlgorithm
+class FemExport FemPostBranch: public Fem::FemPostFilter, public App::GroupExtension
 {
-public:
-  static FemStepSourceAlgorithm* New();
-  vtkTypeMacro(FemStepSourceAlgorithm, vtkUnstructuredGridAlgorithm);
-
-
-protected:
-  FemStepSourceAlgorithm();
-  ~FemStepSourceAlgorithm() override;
-
-  int RequestInformation(vtkInformation* reqInfo, vtkInformationVector** inVector, vtkInformationVector* outVector) override;
-  int RequestData(vtkInformation* reqInfo, vtkInformationVector** inVector, vtkInformationVector* outVector) override;
-};
-
-
-class FemExport FemPostPipeline: public Fem::FemPostObject, public App::GroupExtension
-{
-    PROPERTY_HEADER_WITH_EXTENSIONS(Fem::FemPostPipeline);
+    PROPERTY_HEADER_WITH_EXTENSIONS(Fem::FemPostBranch);
 
 public:
     /// Constructor
-    FemPostPipeline();
-    ~FemPostPipeline() override;
+    FemPostBranch();
+    ~FemPostBranch() override;
 
-    App::PropertyLinkList Filter;
-    App::PropertyLink Functions;
     App::PropertyEnumeration Mode;
-    App::PropertyInteger Step;
+    App::PropertyEnumeration Output;
+
 
     short mustExecute() const override;
     PyObject* getPyObject() override;
 
     const char* getViewProviderName() const override
     {
-        return "FemGui::ViewProviderFemPostPipeline";
+        return "FemGui::ViewProviderFemPostBranch";
     }
 
     // load data from files
@@ -88,7 +67,7 @@ public:
     // load from results
     void load(FemResultObject* res);
 
-    // Pipeline handling
+    // Branch handling
     void filterChanged(FemPostFilter* filter);
     void pipelineChanged(FemPostFilter* filter);
     void recomputeChildren();
@@ -100,7 +79,10 @@ protected:
 
 private:
     static const char* ModeEnums[];
-    vtkSmartPointer<FemStepSourceAlgorithm> m_source_algorithm;
+    static const char* OutputEnums[];
+
+    vtkSmartPointer<vtkAppendFilter> m_append;
+    vtkSmartPointer<vtkPassThrough>  m_passthrough;
 
     template<class TReader>
     void readXMLFile(std::string file)
@@ -116,4 +98,4 @@ private:
 }  // namespace Fem
 
 
-#endif  // Fem_FemPostPipeline_H
+#endif  // Fem_FemPostBranch_H

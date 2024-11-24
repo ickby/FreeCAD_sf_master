@@ -36,9 +36,12 @@
 #include <vtkXMLRectilinearGridReader.h>
 #include <vtkXMLStructuredGridReader.h>
 #include <vtkXMLUnstructuredGridReader.h>
+#include <vtkMultiBlockDataSet.h>
+#include <vtkStreamingDemandDrivenPipeline.h>
 #endif
 
 #include <Base/Console.h>
+#include <cmath>
 
 #include "FemMesh.h"
 #include "FemMeshObject.h"
@@ -51,46 +54,147 @@
 using namespace Fem;
 using namespace App;
 
-PROPERTY_SOURCE(Fem::FemPostPipeline, Fem::FemPostObject)
-const char* FemPostPipeline::ModeEnums[] = {"Serial", "Parallel", "Custom", nullptr};
 
-FemPostPipeline::FemPostPipeline()
+vtkStandardNewMacro(FemStepSourceAlgorithm);
+
+FemStepSourceAlgorithm::FemStepSourceAlgorithm::FemStepSourceAlgorithm()
 {
-    ADD_PROPERTY_TYPE(Filter,
-                      (nullptr),
-                      "Pipeline",
-                      App::Prop_None,
-                      "The filter used in this pipeline");
+
+}
+
+
+FemStepSourceAlgorithm::FemStepSourceAlgorithm::~FemStepSourceAlgorithm()
+{
+}
+
+int FemStepSourceAlgorithm::RequestInformation(vtkInformation*reqInfo, vtkInformationVector **inVector, vtkInformationVector* outVector)
+{
+    Base::Console().Message("RequestInformation\n");
+
+    if (!this->Superclass::RequestInformation(reqInfo, inVector, outVector))
+    {
+        Base::Console().Message("Superclass return\n");
+        return 0;
+    }
+
+    vtkInformation* info = outVector->GetInformationObject(0);
+
+    // check if we have step data
+    auto input = GetInput();
+    if (!input) {
+        Base::Console().Message("No Input data");
+        return 1;
+    }
+
+    if (!input->IsA("vtkMultiBlockDataSet")) {
+        Base::Console().Message("No Multistep\n");
+        return 1;
+    }
+
+    // we have multiple steps! let's check the amount and times
+    // TODO: Not just 0 to 1, do real step info
+    vtkMultiBlockDataSet* multiblock = vtkMultiBlockDataSet::SafeDownCast(input);
+
+    int num = multiblock->GetNumberOfBlocks();
+
+    double tRange[2];
+    tRange[0] = 0;
+    tRange[1] = 1;
+
+    double tSteps[num];
+    for (int i=0; i<num; i++) {
+        tSteps[i] = i/num;
+    }
+    info->Set(vtkStreamingDemandDrivenPipeline::TIME_RANGE(), tRange, 2);
+    info->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), tSteps, num);
+    info->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
+
+    return 1;
+}
+
+int FemStepSourceAlgorithm::RequestData(vtkInformation* reqInfo, vtkInformationVector** inVector, vtkInformationVector* outVector)
+{
+//
+    Base::Console().Message("RequestData\n");
+
+    vtkInformation* outInfo = outVector->GetInformationObject(0);
+    vtkUnstructuredGrid* output = vtkUnstructuredGrid::SafeDownCast(outInfo->Get(vtkDataObject::DATA_OBJECT()));
+    if (!output)
+    {
+        Base::Console().Message("No output\n");
+        return 0;
+    }
+
+    // check if we have step data
+    auto input = GetInput();
+    if (!input) {
+        Base::Console().Message("No Data\n");
+        return 0;
+    }
+
+    if (!input->IsA("vtkMultiBlockDataSet")) {
+        Base::Console().Message("Data is not multiblock, return directly");
+        outInfo->Set(vtkDataObject::DATA_OBJECT(), input);
+        return 1;
+    }
+    vtkMultiBlockDataSet* multiblock = vtkMultiBlockDataSet::SafeDownCast(input);
+
+    // determine what time is being asked for
+    double reqTime = 0.0;
+    if (outInfo->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP()))
+    {
+        reqTime = outInfo->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
+    }
+
+    // calculate the idx for the multiblock
+    int idx = static_cast<int>(round(reqTime/(1.0/double(multiblock->GetNumberOfBlocks()))));
+    outInfo->Set(vtkDataObject::DATA_OBJECT(), multiblock->GetBlock(idx));
+    return 1;
+}
+
+
+
+PROPERTY_SOURCE(Fem::FemPostPipeline, Fem::FemPostObject)
+const char* FemPostPipeline::ModeEnums[] = {"Serial", "Parallel", nullptr};
+
+FemPostPipeline::FemPostPipeline() : Fem::FemPostObject(), App::GroupExtension()
+{
+    GroupExtension::initExtension(this);
+
     ADD_PROPERTY_TYPE(Functions,
                       (nullptr),
                       "Pipeline",
                       App::Prop_Hidden,
                       "The function provider which groups all pipeline functions");
     ADD_PROPERTY_TYPE(Mode,
-                      (long(2)),
+                      (long(0)),
                       "Pipeline",
                       App::Prop_None,
                       "Selects the pipeline data transition mode.\n"
                       "In serial, every filter gets the output of the previous one as input.\n"
-                      "In parallel, every filter gets the pipeline source as input.\n"
-                      "In custom, every filter keeps its input set by the user.");
+                      "In parallel, every filter gets the pipeline source as input.\n");
+    ADD_PROPERTY_TYPE(Step,
+                      (long(0)),
+                      "Pipeline",
+                      App::Prop_None,
+                      "Selects which step of the data is used for processing in the pipeline.\n"
+                      "If the data does not have any steps, this is ignored.");
+
     Mode.setEnums(ModeEnums);
+
+    // create our source algorithm
+    m_source_algorithm = vtkSmartPointer<FemStepSourceAlgorithm>::New();
 }
 
 FemPostPipeline::~FemPostPipeline() = default;
 
 short FemPostPipeline::mustExecute() const
 {
-    if (Mode.isTouched()) {
+    if (Mode.isTouched() || Step.isTouched() ) {
         return 1;
     }
 
     return FemPostObject::mustExecute();
-}
-
-DocumentObjectExecReturn* FemPostPipeline::execute()
-{
-    return Fem::FemPostObject::execute();
 }
 
 
@@ -138,60 +242,100 @@ void FemPostPipeline::read(Base::FileInfo File)
 void FemPostPipeline::scale(double s)
 {
     Data.scale(s);
+    onChanged(&Data);
 }
 
 void FemPostPipeline::onChanged(const Property* prop)
 {
-    if (prop == &Filter || prop == &Mode) {
+   /* onChanged handles the Pipeline setup: we connect the inputs and outputs
+     * of our child filters correctly according to the new settings
+     */
 
-        // if we are in custom mode the user is free to set the input
-        // thus nothing needs to be done here
-        if (Mode.getValue() == 2) {  // custom
-            return;
-        }
+
+    // use the correct data as source
+    if (prop == &Data) {
+        m_source_algorithm->SetInputData(Data.getValue());
+    }
+
+    // connect all filters correctly to the source
+    if (prop == &Group || prop == &Mode) {
+
+        Base::Console().Message("onChanged in Pipeline\n");
 
         // we check if all connections are right and add new ones if needed
-        std::vector<App::DocumentObject*> objs = Filter.getValues();
+        std::vector<App::DocumentObject*> objs = Group.getValues();
 
         if (objs.empty()) {
             return;
         }
 
+        FemPostFilter* filter = NULL;
         std::vector<App::DocumentObject*>::iterator it = objs.begin();
-        FemPostFilter* filter = static_cast<FemPostFilter*>(*it);
-
-        // the first filter must always grab the data
-        if (filter->Input.getValue()) {
-            filter->Input.setValue(nullptr);
-        }
-
-        // all the others need to be connected to the previous filter or grab the data,
-        // dependent on mode
-        ++it;
         for (; it != objs.end(); ++it) {
-            auto* nextFilter = static_cast<FemPostFilter*>(*it);
 
-            if (Mode.getValue() == 0) {  // serial mode
-                if (nextFilter->Input.getValue() != filter) {
-                    nextFilter->Input.setValue(filter);
+            // prepare the filter: make all connections new
+            FemPostFilter* nextFilter = static_cast<FemPostFilter*>(*it);
+            nextFilter->getActiveFilterPipeline().source->RemoveAllInputConnections(0);
+
+            // handle input modes
+            if (Mode.getValue() == 0) {
+                // serial: the next filter gets the previous output, the first one gets our input
+                if (filter == NULL) {
+                    nextFilter->getActiveFilterPipeline().source->SetInputConnection(m_source_algorithm->GetOutputPort(0));
+                } else {
+                    nextFilter->getActiveFilterPipeline().source->SetInputConnection(filter->getActiveFilterPipeline().target->GetOutputPort());
                 }
+
             }
-            else {  // Parallel mode
-                if (nextFilter->Input.getValue()) {
-                    nextFilter->Input.setValue(nullptr);
-                }
+            else if (Mode.getValue() == 1) {
+                // parallel: all filters get out input
+                nextFilter->getActiveFilterPipeline().source->SetInputConnection(m_source_algorithm->GetOutputPort(0));
+            }
+            else {
+                throw Base::ValueError("Unknown Mode set for Pipeline");
             }
 
             filter = nextFilter;
         };
     }
 
-    App::GeoFeature::onChanged(prop);
+}
+
+void FemPostPipeline::filterChanged(FemPostFilter* filter)
+{
+    //we only need to update the following children if we are in serial mode
+    if (Mode.getValue() == 0) {
+
+        std::vector<App::DocumentObject*> objs = Group.getValues();
+
+        if (objs.empty()) {
+            return;
+        }
+        bool started = false;
+        std::vector<App::DocumentObject*>::iterator it = objs.begin();
+        for (; it != objs.end(); ++it) {
+
+            if (started) {
+                (*it)->touch();
+            }
+
+            if (*it == filter) {
+                started = true;
+            }
+        }
+    }
+}
+
+void FemPostPipeline::pipelineChanged(FemPostFilter* filter) {
+    // one of our filters has changed its active pipeline. We need to reconnect it properly.
+    // As we are cheap we just reconnect everything
+    // TODO: Do more efficiently
+    onChanged(&Group);
 }
 
 void FemPostPipeline::recomputeChildren()
 {
-    for (const auto& obj : Filter.getValues()) {
+    for (const auto& obj : Group.getValues()) {
         obj->touch();
     }
 }
@@ -199,18 +343,18 @@ void FemPostPipeline::recomputeChildren()
 FemPostObject* FemPostPipeline::getLastPostObject()
 {
 
-    if (Filter.getValues().empty()) {
+    if (Group.getValues().empty()) {
         return this;
     }
 
-    return static_cast<FemPostObject*>(Filter.getValues().back());
+    return static_cast<FemPostObject*>(Group.getValues().back());
 }
 
 bool FemPostPipeline::holdsPostObject(FemPostObject* obj)
 {
 
-    std::vector<App::DocumentObject*>::const_iterator it = Filter.getValues().begin();
-    for (; it != Filter.getValues().end(); ++it) {
+    std::vector<App::DocumentObject*>::const_iterator it = Group.getValues().begin();
+    for (; it != Group.getValues().end(); ++it) {
 
         if (*it == obj) {
             return true;
