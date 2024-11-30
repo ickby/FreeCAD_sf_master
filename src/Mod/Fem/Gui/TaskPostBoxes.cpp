@@ -487,6 +487,24 @@ TaskPostSteps::TaskPostSteps(ViewProviderFemPostObject* view, QWidget* parent)
     proxy = new QWidget(this);
     ui->setupUi(proxy);
     this->groupLayout()->addWidget(proxy);
+    setupConnections();
+
+    // populate the data
+    auto pipeline = static_cast<Fem::FemPostPipeline*>(getObject());
+    ui->Type->setText(QString::fromStdString(pipeline->getStepType()));
+
+    auto unit = pipeline->getStepUnit();
+    auto steps = pipeline->getStepValues();
+    for (unsigned long i=0; i<steps.size(); i++) {
+        QTableWidgetItem *idx = new QTableWidgetItem(QString::number(i));
+        QTableWidgetItem *value = new QTableWidgetItem(Base::Quantity(steps[i], unit).getUserString());
+
+        int rowIdx = ui->StepTable->rowCount();
+        ui->StepTable->insertRow (rowIdx);
+        ui->StepTable->setItem(rowIdx, 0, idx);
+        ui->StepTable->setItem(rowIdx, 1, value);
+    }
+    ui->StepTable->selectRow(pipeline->Step.getValue());
 }
 
 TaskPostSteps::~TaskPostSteps() = default;
@@ -501,7 +519,11 @@ void TaskPostSteps::setupConnections()
 
 void TaskPostSteps::onSelectionChanged()
 {
-
+    auto selection = ui->StepTable->selectedItems();
+    if (selection.count() > 0) {
+        static_cast<Fem::FemPostPipeline*>(getObject())->Step.setValue(selection.front()->row());
+        recompute();
+    }
 }
 
 
