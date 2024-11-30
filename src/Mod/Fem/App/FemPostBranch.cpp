@@ -161,7 +161,15 @@ void FemPostBranch::onChanged(const Property* prop)
 
             filter = nextFilter;
         };
+    }
 
+    if (prop == &Step) {
+        //Update all children with the new step
+        for (const auto& obj : Group.getValues()) {
+            if (obj->isDerivedFrom(FemPostFilter::getClassTypeId())) {
+                static_cast<Fem::FemPostFilter*>(obj)->Step.setValue(Step.getValue());
+            }
+        }
     }
 
     if (prop == &Output) {

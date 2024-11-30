@@ -23,7 +23,11 @@
 #ifndef Fem_FemPostPipeline_H
 #define Fem_FemPostPipeline_H
 
+<<<<<<< HEAD
 
+=======
+#include "Base/Unit.h"
+>>>>>>> 782848c556 (FEM: Make multistep work for eigenmodes)
 #include "App/GroupExtension.h"
 
 #include "FemPostFilter.h"
@@ -45,16 +49,20 @@ namespace Fem
 class FemStepSourceAlgorithm : public vtkUnstructuredGridAlgorithm
 {
 public:
-  static FemStepSourceAlgorithm* New();
-  vtkTypeMacro(FemStepSourceAlgorithm, vtkUnstructuredGridAlgorithm);
+    static FemStepSourceAlgorithm* New();
+    vtkTypeMacro(FemStepSourceAlgorithm, vtkUnstructuredGridAlgorithm);
 
+    void setDataObject(vtkSmartPointer<vtkDataObject> data);
+    std::vector<double> getStepValues();
 
 protected:
-  FemStepSourceAlgorithm();
-  ~FemStepSourceAlgorithm() override;
+    FemStepSourceAlgorithm();
+    ~FemStepSourceAlgorithm() override;
 
-  int RequestInformation(vtkInformation* reqInfo, vtkInformationVector** inVector, vtkInformationVector* outVector) override;
-  int RequestData(vtkInformation* reqInfo, vtkInformationVector** inVector, vtkInformationVector* outVector) override;
+    vtkSmartPointer<vtkDataObject> m_data;
+
+    int RequestInformation(vtkInformation* reqInfo, vtkInformationVector** inVector, vtkInformationVector* outVector) override;
+    int RequestData(vtkInformation* reqInfo, vtkInformationVector** inVector, vtkInformationVector* outVector) override;
 };
 
 
@@ -67,10 +75,12 @@ public:
     FemPostPipeline();
     ~FemPostPipeline() override;
 
-    App::PropertyLinkList Filter;
     App::PropertyLink Functions;
     App::PropertyEnumeration Mode;
-    App::PropertyInteger Step;
+    App::PropertyEnumeration Step;
+
+
+    virtual vtkDataSet* getDataSet() override;
 
     short mustExecute() const override;
     PyObject* getPyObject() override;
@@ -87,6 +97,7 @@ public:
 
     // load from results
     void load(FemResultObject* res);
+    void load(std::vector<FemResultObject*> res, std::vector<double> values, Base::Unit unit, std::string step_type);
 
     // Pipeline handling
     void filterChanged(FemPostFilter* filter);
@@ -95,11 +106,19 @@ public:
     FemPostObject* getLastPostObject();
     bool holdsPostObject(FemPostObject* obj);
 
+    // step handling
+    bool hasSteps();
+    std::string getStepType();
+    Base::Unit getStepUnit();
+    unsigned int getStepNumber();
+    std::vector<double> getStepValues();
+
 protected:
     void onChanged(const App::Property* prop) override;
 
 private:
     static const char* ModeEnums[];
+    App::Enumeration  m_stepEnum;
     vtkSmartPointer<FemStepSourceAlgorithm> m_source_algorithm;
 
     template<class TReader>

@@ -55,7 +55,7 @@ public:
 
 protected:
     void updateFunctionSize();
-    virtual void setupTaskDialog(TaskDlgPost* dlg);
+    virtual void setupTaskDialog(TaskDlgPost* dlg) override;
 };
 
 }  // namespace FemGui

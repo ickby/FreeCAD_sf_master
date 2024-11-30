@@ -38,10 +38,14 @@
 #include <vtkXMLUnstructuredGridReader.h>
 #include <vtkMultiBlockDataSet.h>
 #include <vtkStreamingDemandDrivenPipeline.h>
+#include <vtkPointData.h>
+#include <vtkFloatArray.h>
+#include <vtkStringArray.h>
 #endif
 
 #include <Base/Console.h>
 #include <cmath>
+#include <QString>
 
 #include "FemMesh.h"
 #include "FemMeshObject.h"
@@ -59,7 +63,9 @@ vtkStandardNewMacro(FemStepSourceAlgorithm);
 
 FemStepSourceAlgorithm::FemStepSourceAlgorithm::FemStepSourceAlgorithm()
 {
-
+    // we are a source
+    SetNumberOfInputPorts(0);
+    SetNumberOfOutputPorts(1);
 }
 
 
@@ -67,46 +73,80 @@ FemStepSourceAlgorithm::FemStepSourceAlgorithm::~FemStepSourceAlgorithm()
 {
 }
 
-int FemStepSourceAlgorithm::RequestInformation(vtkInformation*reqInfo, vtkInformationVector **inVector, vtkInformationVector* outVector)
+void FemStepSourceAlgorithm::setDataObject(vtkSmartPointer<vtkDataObject> data ) {
+    m_data = data;
+    Update();
+}
+
+
+std::vector<double> FemStepSourceAlgorithm::getStepValues()
 {
-    Base::Console().Message("RequestInformation\n");
-
-    if (!this->Superclass::RequestInformation(reqInfo, inVector, outVector))
-    {
-        Base::Console().Message("Superclass return\n");
-        return 0;
-    }
-
-    vtkInformation* info = outVector->GetInformationObject(0);
 
     // check if we have step data
-    auto input = GetInput();
-    if (!input) {
-        Base::Console().Message("No Input data");
-        return 1;
-    }
-
-    if (!input->IsA("vtkMultiBlockDataSet")) {
-        Base::Console().Message("No Multistep\n");
-        return 1;
+    if (!m_data || !m_data->IsA("vtkMultiBlockDataSet")) {
+        return std::vector<double>();
     }
 
     // we have multiple steps! let's check the amount and times
-    // TODO: Not just 0 to 1, do real step info
-    vtkMultiBlockDataSet* multiblock = vtkMultiBlockDataSet::SafeDownCast(input);
+    vtkSmartPointer<vtkMultiBlockDataSet> multiblock = vtkMultiBlockDataSet::SafeDownCast(m_data);
 
-    int num = multiblock->GetNumberOfBlocks();
+    unsigned long nblocks = multiblock->GetNumberOfBlocks();
+    std::vector<double> tSteps(nblocks);
 
-    double tRange[2];
-    tRange[0] = 0;
-    tRange[1] = 1;
+    for (unsigned long i=0; i<nblocks; i++) {
 
-    double tSteps[num];
-    for (int i=0; i<num; i++) {
-        tSteps[i] = i/num;
+        vtkDataObject* block = multiblock->GetBlock(i);
+        // check if the TimeValue field is available
+        if (!block->GetFieldData()->HasArray("TimeValue")) {
+            break;
+        }
+
+        //store the time value!
+        vtkDataArray* TimeValue = block->GetFieldData()->GetArray("TimeValue");
+        if (!TimeValue->IsA("vtkFloatArray") ||
+            TimeValue->GetNumberOfTuples() < 1) {
+            break;
+        }
+
+        tSteps[i] = vtkFloatArray::SafeDownCast(TimeValue)->GetValue(0);
     }
+
+    if (tSteps.size() != nblocks) {
+        // not every block had time data
+        return std::vector<double>();
+    }
+
+    return tSteps;
+}
+
+int FemStepSourceAlgorithm::RequestInformation(vtkInformation*reqInfo, vtkInformationVector **inVector, vtkInformationVector* outVector)
+{
+
+    if (!this->Superclass::RequestInformation(reqInfo, inVector, outVector))
+    {
+        return 0;
+    }
+
+
+    std::stringstream strm;
+    outVector->Print(strm);
+    Base::Console().Message("Request data:\n%s\n", strm.str());
+
+    std::vector<double> steps = getStepValues();
+
+    if (steps.empty()) {
+        Base::Console().Message("Not fuly setup with time values\n");
+        return 1;
+    }
+
+    double tRange[2] = {steps.front(), steps.back()};
+    double tSteps[steps.size()];
+    std::copy(steps.begin(), steps.end(), tSteps);
+
+    // finally set the time info!
+    vtkInformation* info = outVector->GetInformationObject(0);
     info->Set(vtkStreamingDemandDrivenPipeline::TIME_RANGE(), tRange, 2);
-    info->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), tSteps, num);
+    info->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), tSteps, steps.size());
     info->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
 
     return 1;
@@ -114,41 +154,42 @@ int FemStepSourceAlgorithm::RequestInformation(vtkInformation*reqInfo, vtkInform
 
 int FemStepSourceAlgorithm::RequestData(vtkInformation* reqInfo, vtkInformationVector** inVector, vtkInformationVector* outVector)
 {
-//
-    Base::Console().Message("RequestData\n");
+
+    std::stringstream strstm;
+    outVector->Print(strstm);
+    Base::Console().Message("Request Data out Vector: %s\n", strstm.str());
 
     vtkInformation* outInfo = outVector->GetInformationObject(0);
     vtkUnstructuredGrid* output = vtkUnstructuredGrid::SafeDownCast(outInfo->Get(vtkDataObject::DATA_OBJECT()));
-    if (!output)
-    {
-        Base::Console().Message("No output\n");
+
+    if (!output || !m_data) {
         return 0;
     }
 
-    // check if we have step data
-    auto input = GetInput();
-    if (!input) {
-        Base::Console().Message("No Data\n");
-        return 0;
-    }
-
-    if (!input->IsA("vtkMultiBlockDataSet")) {
-        Base::Console().Message("Data is not multiblock, return directly");
-        outInfo->Set(vtkDataObject::DATA_OBJECT(), input);
+    if (!m_data->IsA("vtkMultiBlockDataSet")) {
+        // no multi step data, return directly
+        outInfo->Set(vtkDataObject::DATA_OBJECT(), m_data);
         return 1;
     }
-    vtkMultiBlockDataSet* multiblock = vtkMultiBlockDataSet::SafeDownCast(input);
 
-    // determine what time is being asked for
-    double reqTime = 0.0;
+    vtkSmartPointer<vtkMultiBlockDataSet> multiblock = vtkMultiBlockDataSet::SafeDownCast(m_data);
+    // find the block asked for (lazy implementation)
+    unsigned long idx = 0;
     if (outInfo->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP()))
     {
-        reqTime = outInfo->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
+        auto time = outInfo->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
+        auto steps = getStepValues();
+
+        // we have float values, so be aware of roundign erros. lets subtract the searched time and then use the smalles value
+        for(auto& step : steps)
+            step = std::abs(step-time);
+
+        auto it = std::min_element(std::begin(steps), std::end(steps));
+        idx = std::distance(std::begin(steps), it);
     }
 
-    // calculate the idx for the multiblock
-    int idx = static_cast<int>(round(reqTime/(1.0/double(multiblock->GetNumberOfBlocks()))));
-    outInfo->Set(vtkDataObject::DATA_OBJECT(), multiblock->GetBlock(idx));
+    auto block = multiblock->GetBlock(idx);
+    output->ShallowCopy(block);
     return 1;
 }
 
@@ -177,8 +218,7 @@ FemPostPipeline::FemPostPipeline() : Fem::FemPostObject(), App::GroupExtension()
                       (long(0)),
                       "Pipeline",
                       App::Prop_None,
-                      "Selects which step of the data is used for processing in the pipeline.\n"
-                      "If the data does not have any steps, this is ignored.");
+                      "The step used to calculate the data in the pipeline processing (read only, set via pipeline object).");
 
     Mode.setEnums(ModeEnums);
 
@@ -190,13 +230,26 @@ FemPostPipeline::~FemPostPipeline() = default;
 
 short FemPostPipeline::mustExecute() const
 {
-    if (Mode.isTouched() || Step.isTouched() ) {
+    if (Mode.isTouched() ) {
         return 1;
     }
 
     return FemPostObject::mustExecute();
 }
 
+vtkDataSet* FemPostPipeline::getDataSet() {
+
+    vtkDataObject* data = m_source_algorithm->GetOutputDataObject(0);
+    if (!data) {
+        return nullptr;
+    }
+
+    if (data->IsA("vtkDataSet")) {
+        return vtkDataSet::SafeDownCast(data);
+    }
+
+    return nullptr;
+}
 
 bool FemPostPipeline::canRead(Base::FileInfo File)
 {
@@ -254,13 +307,59 @@ void FemPostPipeline::onChanged(const Property* prop)
 
     // use the correct data as source
     if (prop == &Data) {
-        m_source_algorithm->SetInputData(Data.getValue());
+        m_source_algorithm->setDataObject(Data.getValue());
+
+        // change the step enum to correct values
+        std::string val;
+        if (Step.hasEnums() && Step.getValue() >= 0) {
+            val = Step.getValueAsString();
+        }
+
+        std::vector<double> steps = m_source_algorithm->getStepValues();
+        std::vector<std::string> step_values;
+        if (steps.empty()) {
+            step_values.push_back("No steps available");
+        }
+        else {
+            auto unit = getStepUnit();
+            for (const double& step : steps) {
+                auto quantity = Base::Quantity(step, unit);
+                step_values.push_back(quantity.getUserString().toStdString());
+            }
+        }
+
+        App::Enumeration empty;
+        Step.setValue(empty);
+        m_stepEnum.setEnums(step_values);
+        Step.setValue(m_stepEnum);
+
+        std::vector<std::string>::iterator it = std::find(step_values.begin(), step_values.end(), val);
+        if (!val.empty() && it != step_values.end()) {
+            Step.setValue(val.c_str());
+        }
+
+        Step.purgeTouched();
+        recomputeChildren();
     }
+
+    if (prop == &Step) {
+
+        // update the algorithm for the visulization
+        auto steps = getStepValues();
+        if (!steps.empty() &&
+            Step.getValue() < long(steps.size())) {
+
+            double time = steps[Step.getValue()];
+            m_source_algorithm->UpdateTimeStep(time);
+        }
+
+        // inform the downstream pipeline
+        recomputeChildren();
+    }
+
 
     // connect all filters correctly to the source
     if (prop == &Group || prop == &Mode) {
-
-        Base::Console().Message("onChanged in Pipeline\n");
 
         // we check if all connections are right and add new ones if needed
         std::vector<App::DocumentObject*> objs = Group.getValues();
@@ -299,6 +398,8 @@ void FemPostPipeline::onChanged(const Property* prop)
         };
     }
 
+    FemPostObject::onChanged(prop);
+
 }
 
 void FemPostPipeline::filterChanged(FemPostFilter* filter)
@@ -335,8 +436,21 @@ void FemPostPipeline::pipelineChanged(FemPostFilter* filter) {
 
 void FemPostPipeline::recomputeChildren()
 {
+    // get the step we use
+    double step = 0;
+    auto steps = getStepValues();
+    if (!steps.empty() &&
+         Step.getValue() < steps.size()) {
+
+        step = steps[Step.getValue()];
+    }
+
     for (const auto& obj : Group.getValues()) {
         obj->touch();
+
+        if (obj->isDerivedFrom(FemPostFilter::getClassTypeId())) {
+            static_cast<Fem::FemPostFilter*>(obj)->Step.setValue(step);
+        }
     }
 }
 
@@ -363,6 +477,79 @@ bool FemPostPipeline::holdsPostObject(FemPostObject* obj)
     return false;
 }
 
+
+
+bool FemPostPipeline::hasSteps()
+{
+    // lazy implementation
+    return !m_source_algorithm->getStepValues().empty();
+}
+
+std::string FemPostPipeline::getStepType()
+{
+    vtkSmartPointer<vtkDataObject> data = Data.getValue();
+
+    // check if we have step data
+    if (!data || !data->IsA("vtkMultiBlockDataSet")) {
+        return std::string("no steps");
+    }
+
+    // we have multiple steps! let's check the amount and times
+    vtkSmartPointer<vtkMultiBlockDataSet> multiblock = vtkMultiBlockDataSet::SafeDownCast(data);
+    if (!multiblock->GetFieldData()->HasArray("TimeInfo")) {
+        return std::string("unknown");
+    }
+
+    vtkAbstractArray* TimeInfo = multiblock->GetFieldData()->GetAbstractArray("TimeInfo");
+    if (!TimeInfo ||
+        !TimeInfo->IsA("vtkStringArray") ||
+         TimeInfo->GetNumberOfTuples() < 2) {
+
+        return std::string("unknown");
+    }
+
+    return vtkStringArray::SafeDownCast(TimeInfo)->GetValue(0);
+}
+
+Base::Unit FemPostPipeline::getStepUnit()
+{
+    vtkSmartPointer<vtkDataObject> data = Data.getValue();
+
+    // check if we have step data
+    if (!data || !data->IsA("vtkMultiBlockDataSet")) {
+        // units cannot be undefined, so use time
+        return Base::Unit::TimeSpan;
+    }
+
+    // we have multiple steps! let's check the amount and times
+    vtkSmartPointer<vtkMultiBlockDataSet> multiblock = vtkMultiBlockDataSet::SafeDownCast(data);
+    if (!multiblock->GetFieldData()->HasArray("TimeInfo")) {
+        // units cannot be undefined, so use time
+        return Base::Unit::TimeSpan;
+    }
+
+    vtkAbstractArray* TimeInfo = multiblock->GetFieldData()->GetAbstractArray("TimeInfo");
+    if (!TimeInfo->IsA("vtkStringArray") ||
+         TimeInfo->GetNumberOfTuples() < 2) {
+
+        // units cannot be undefined, so use time
+        return Base::Unit::TimeSpan;
+    }
+
+    return Base::Unit(QString::fromStdString(vtkStringArray::SafeDownCast(TimeInfo)->GetValue(1)));
+}
+
+std::vector<double> FemPostPipeline::getStepValues()
+{
+    return m_source_algorithm->getStepValues();
+}
+
+unsigned int FemPostPipeline::getStepNumber()
+{
+    // lazy implementation
+    return getStepValues().size();
+}
+
 void FemPostPipeline::load(FemResultObject* res)
 {
     if (!res->Mesh.getValue()) {
@@ -385,6 +572,52 @@ void FemPostPipeline::load(FemResultObject* res)
     FemVTKTools::exportFreeCADResult(res, grid);
 
     Data.setValue(grid);
+}
+
+// set multiple result objects as steps for one pipeline
+// Notes:
+//      1. values vector must contain growing value, smalles first
+void FemPostPipeline::load(std::vector<FemResultObject*> res, std::vector<double> values, Base::Unit unit, std::string step_type) {
+
+    if (res.size() != values.size() ) {
+        Base::Console().Error("Result values and step values have different length.\n");
+        return;
+    }
+
+    auto multiblock = vtkSmartPointer<vtkMultiBlockDataSet>::New();
+    for (ulong i=0; i<res.size(); i++) {
+
+        if (!res[i]->Mesh.getValue()->isDerivedFrom(Fem::FemMeshObject::getClassTypeId())) {
+            Base::Console().Error("Result mesh object is not derived from Fem::FemMeshObject.\n");
+            return;
+        }
+
+        // first copy the mesh over
+        const FemMesh& mesh = static_cast<FemMeshObject*>(res[i]->Mesh.getValue())->FemMesh.getValue();
+        vtkSmartPointer<vtkUnstructuredGrid> grid = vtkSmartPointer<vtkUnstructuredGrid>::New();
+        FemVTKTools::exportVTKMesh(&mesh, grid);
+
+        // Now copy the point data over
+        FemVTKTools::exportFreeCADResult(res[i], grid);
+
+        // add time information
+        vtkFloatArray* TimeValue = vtkFloatArray::New();
+        TimeValue->SetNumberOfComponents(1);
+        TimeValue->SetName("TimeValue");
+        TimeValue->InsertNextValue(values[i]);
+        grid->GetFieldData()->AddArray(TimeValue);
+
+        multiblock->SetBlock(i, grid);
+    }
+
+    // setup the time information for the multiblock
+    vtkStringArray* TimeInfo = vtkStringArray::New();
+    TimeInfo->SetName("TimeInfo");
+    TimeInfo->InsertNextValue(step_type);
+    TimeInfo->InsertNextValue(unit.getString().toStdString());
+    multiblock->GetFieldData()->AddArray(TimeInfo);
+
+    Data.setValue(multiblock);
 }
 
 PyObject* FemPostPipeline::getPyObject()

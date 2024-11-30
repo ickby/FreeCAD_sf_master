@@ -46,6 +46,11 @@ PROPERTY_SOURCE(Fem::FemPostFilter, Fem::FemPostObject)
 
 FemPostFilter::FemPostFilter()
 {
+    ADD_PROPERTY_TYPE(Step,
+                      ((long)0),
+                      "Data",
+                      App::Prop_ReadOnly,
+                      "The step used to calculate the data");
 
 }
 
@@ -134,7 +139,12 @@ DocumentObjectExecReturn* FemPostFilter::execute()
             //Data.setValue(pipe.filterTarget->GetOutputDataObject(0));
         }
         else {
-            pipe.target->Update();
+            if (Step.getValue()>0) {
+                pipe.target->UpdateTimeStep(Step.getValue());
+            }
+            else {
+                pipe.target->Update();
+            }
             Data.setValue(pipe.target->GetOutputDataObject(0));
         }
     }

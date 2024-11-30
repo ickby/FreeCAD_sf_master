@@ -46,12 +46,26 @@ FemPostObject::FemPostObject()
 
 FemPostObject::~FemPostObject() = default;
 
+vtkDataSet* FemPostObject::getDataSet() {
+
+    if (!Data.getValue()) {
+        return nullptr;
+    }
+
+    if (Data.getValue()->IsA("vtkDataSet")) {
+        return vtkDataSet::SafeDownCast(Data.getValue());
+    }
+
+    // we could be a composite dataset... hope that our subclasses handle this,
+    // as this should only be possible for input data (So FemPostPipeline)
+    return nullptr;
+}
+
 vtkBoundingBox FemPostObject::getBoundingBox()
 {
 
     vtkBoundingBox box;
-
-    vtkDataSet* dset = vtkDataSet::SafeDownCast(Data.getValue());
+    vtkDataSet* dset = getDataSet();
     if (dset) {
         box.AddBounds(dset->GetBounds());
     }
