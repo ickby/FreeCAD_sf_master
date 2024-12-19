@@ -73,12 +73,8 @@ std::vector<App::DocumentObject*> ViewProviderFemPostPipeline::claimChildren3D()
 void ViewProviderFemPostPipeline::updateData(const App::Property* prop)
 {
     FemGui::ViewProviderFemPostObject::updateData(prop);
-<<<<<<< HEAD
     Fem::FemPostPipeline* pipeline = getObject<Fem::FemPostPipeline>();
-=======
-    Fem::FemPostPipeline* pipeline = static_cast<Fem::FemPostPipeline*>(getObject());
 
->>>>>>> 782848c556 (FEM: Make multistep work for eigenmodes)
     if (prop == &pipeline->Functions) {
         updateFunctionSize();
     }
