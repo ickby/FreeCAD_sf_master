@@ -36,6 +36,7 @@
 #include <vtkXMLRectilinearGridReader.h>
 #include <vtkXMLStructuredGridReader.h>
 #include <vtkXMLUnstructuredGridReader.h>
+#include <vtkXMLMultiBlockDataReader.h>
 #include <vtkMultiBlockDataSet.h>
 #include <vtkStreamingDemandDrivenPipeline.h>
 #include <vtkPointData.h>
@@ -255,7 +256,7 @@ bool FemPostPipeline::canRead(Base::FileInfo File)
 {
 
     // from FemResult only unstructural mesh is supported in femvtktoools.cpp
-    return File.hasExtension({"vtk", "vtp", "vts", "vtr", "vti", "vtu", "pvtu"});
+    return File.hasExtension({"vtk", "vtp", "vts", "vtr", "vti", "vtu", "pvtu", "vtm"});
 }
 
 void FemPostPipeline::read(Base::FileInfo File)
@@ -286,6 +287,9 @@ void FemPostPipeline::read(Base::FileInfo File)
     }
     else if (File.hasExtension("vtk")) {
         readXMLFile<vtkDataSetReader>(File.filePath());
+    }
+    else if (File.hasExtension("vtm")) {
+        readXMLFile<vtkXMLMultiBlockDataReader>(File.filePath());
     }
     else {
         throw Base::FileException("Unknown extension");
@@ -584,6 +588,12 @@ void FemPostPipeline::load(std::vector<FemResultObject*> res, std::vector<double
         return;
     }
 
+     // setup the time information for the multiblock
+    vtkStringArray* TimeInfo = vtkStringArray::New();
+    TimeInfo->SetName("TimeInfo");
+    TimeInfo->InsertNextValue(step_type);
+    TimeInfo->InsertNextValue(unit.getString().toStdString());
+
     auto multiblock = vtkSmartPointer<vtkMultiBlockDataSet>::New();
     for (ulong i=0; i<res.size(); i++) {
 
@@ -606,17 +616,12 @@ void FemPostPipeline::load(std::vector<FemResultObject*> res, std::vector<double
         TimeValue->SetName("TimeValue");
         TimeValue->InsertNextValue(values[i]);
         grid->GetFieldData()->AddArray(TimeValue);
+        grid->GetFieldData()->AddArray(TimeInfo);
 
         multiblock->SetBlock(i, grid);
     }
 
-    // setup the time information for the multiblock
-    vtkStringArray* TimeInfo = vtkStringArray::New();
-    TimeInfo->SetName("TimeInfo");
-    TimeInfo->InsertNextValue(step_type);
-    TimeInfo->InsertNextValue(unit.getString().toStdString());
     multiblock->GetFieldData()->AddArray(TimeInfo);
-
     Data.setValue(multiblock);
 }
 
