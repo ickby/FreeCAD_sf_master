@@ -23,11 +23,7 @@
 #ifndef Fem_FemPostPipeline_H
 #define Fem_FemPostPipeline_H
 
-<<<<<<< HEAD
-
-=======
 #include "Base/Unit.h"
->>>>>>> 782848c556 (FEM: Make multistep work for eigenmodes)
 #include "App/GroupExtension.h"
 
 #include "FemPostFilter.h"
