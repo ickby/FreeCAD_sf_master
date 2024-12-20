@@ -40,7 +40,7 @@ class Ui_TaskPostDataAtPoint;
 class Ui_TaskPostScalarClip;
 class Ui_TaskPostWarpVector;
 class Ui_TaskPostCut;
-class Ui_TaskPostSteps;
+class Ui_TaskPostFrames;
 
 class SoFontStyle;
 class SoText2;
@@ -279,13 +279,13 @@ public:
 
 // ***************************************************************************
 // steps
-class TaskPostSteps: public TaskPostBox
+class TaskPostFrames: public TaskPostBox
 {
     Q_OBJECT
 
 public:
-    explicit TaskPostSteps(ViewProviderFemPostObject* view, QWidget* parent = nullptr);
-    ~TaskPostSteps() override;
+    explicit TaskPostFrames(ViewProviderFemPostObject* view, QWidget* parent = nullptr);
+    ~TaskPostFrames() override;
 
     void applyPythonCode() override;
 
@@ -294,7 +294,7 @@ private:
     void onSelectionChanged();
 
     QWidget* proxy;
-    std::unique_ptr<Ui_TaskPostSteps> ui;
+    std::unique_ptr<Ui_TaskPostFrames> ui;
 };
 
 

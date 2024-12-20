@@ -60,9 +60,9 @@ using namespace Fem;
 using namespace App;
 
 
-vtkStandardNewMacro(FemStepSourceAlgorithm);
+vtkStandardNewMacro(FemFrameSourceAlgorithm);
 
-FemStepSourceAlgorithm::FemStepSourceAlgorithm::FemStepSourceAlgorithm()
+FemFrameSourceAlgorithm::FemFrameSourceAlgorithm::FemFrameSourceAlgorithm()
 {
     // we are a source
     SetNumberOfInputPorts(0);
@@ -70,29 +70,29 @@ FemStepSourceAlgorithm::FemStepSourceAlgorithm::FemStepSourceAlgorithm()
 }
 
 
-FemStepSourceAlgorithm::FemStepSourceAlgorithm::~FemStepSourceAlgorithm()
+FemFrameSourceAlgorithm::FemFrameSourceAlgorithm::~FemFrameSourceAlgorithm()
 {
 }
 
-void FemStepSourceAlgorithm::setDataObject(vtkSmartPointer<vtkDataObject> data ) {
+void FemFrameSourceAlgorithm::setDataObject(vtkSmartPointer<vtkDataObject> data ) {
     m_data = data;
     Update();
 }
 
 
-std::vector<double> FemStepSourceAlgorithm::getStepValues()
+std::vector<double> FemFrameSourceAlgorithm::getFrameValues()
 {
 
-    // check if we have step data
+    // check if we have frame data
     if (!m_data || !m_data->IsA("vtkMultiBlockDataSet")) {
         return std::vector<double>();
     }
 
-    // we have multiple steps! let's check the amount and times
+    // we have multiple frames! let's check the amount and times
     vtkSmartPointer<vtkMultiBlockDataSet> multiblock = vtkMultiBlockDataSet::SafeDownCast(m_data);
 
     unsigned long nblocks = multiblock->GetNumberOfBlocks();
-    std::vector<double> tSteps(nblocks);
+    std::vector<double> tFrames(nblocks);
 
     for (unsigned long i=0; i<nblocks; i++) {
 
@@ -109,18 +109,18 @@ std::vector<double> FemStepSourceAlgorithm::getStepValues()
             break;
         }
 
-        tSteps[i] = vtkFloatArray::SafeDownCast(TimeValue)->GetValue(0);
+        tFrames[i] = vtkFloatArray::SafeDownCast(TimeValue)->GetValue(0);
     }
 
-    if (tSteps.size() != nblocks) {
+    if (tFrames.size() != nblocks) {
         // not every block had time data
         return std::vector<double>();
     }
 
-    return tSteps;
+    return tFrames;
 }
 
-int FemStepSourceAlgorithm::RequestInformation(vtkInformation*reqInfo, vtkInformationVector **inVector, vtkInformationVector* outVector)
+int FemFrameSourceAlgorithm::RequestInformation(vtkInformation*reqInfo, vtkInformationVector **inVector, vtkInformationVector* outVector)
 {
 
     if (!this->Superclass::RequestInformation(reqInfo, inVector, outVector))
@@ -132,26 +132,26 @@ int FemStepSourceAlgorithm::RequestInformation(vtkInformation*reqInfo, vtkInform
     std::stringstream strm;
     outVector->Print(strm);
 
-    std::vector<double> steps = getStepValues();
+    std::vector<double> frames = getFrameValues();
 
-    if (steps.empty()) {
+    if (frames.empty()) {
         return 1;
     }
 
-    double tRange[2] = {steps.front(), steps.back()};
-    double tSteps[steps.size()];
-    std::copy(steps.begin(), steps.end(), tSteps);
+    double tRange[2] = {frames.front(), frames.back()};
+    double tFrames[frames.size()];
+    std::copy(frames.begin(), frames.end(), tFrames);
 
     // finally set the time info!
     vtkInformation* info = outVector->GetInformationObject(0);
     info->Set(vtkStreamingDemandDrivenPipeline::TIME_RANGE(), tRange, 2);
-    info->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), tSteps, steps.size());
+    info->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), tFrames, frames.size());
     info->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
 
     return 1;
 }
 
-int FemStepSourceAlgorithm::RequestData(vtkInformation* reqInfo, vtkInformationVector** inVector, vtkInformationVector* outVector)
+int FemFrameSourceAlgorithm::RequestData(vtkInformation* reqInfo, vtkInformationVector** inVector, vtkInformationVector* outVector)
 {
 
     std::stringstream strstm;
@@ -165,7 +165,7 @@ int FemStepSourceAlgorithm::RequestData(vtkInformation* reqInfo, vtkInformationV
     }
 
     if (!m_data->IsA("vtkMultiBlockDataSet")) {
-        // no multi step data, return directly
+        // no multi frame data, return directly
         outInfo->Set(vtkDataObject::DATA_OBJECT(), m_data);
         return 1;
     }
@@ -176,14 +176,14 @@ int FemStepSourceAlgorithm::RequestData(vtkInformation* reqInfo, vtkInformationV
     if (outInfo->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP()))
     {
         auto time = outInfo->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
-        auto steps = getStepValues();
+        auto frames = getFrameValues();
 
         // we have float values, so be aware of roundign erros. lets subtract the searched time and then use the smalles value
-        for(auto& step : steps)
-            step = std::abs(step-time);
+        for(auto& frame : frames)
+            frame = std::abs(frame-time);
 
-        auto it = std::min_element(std::begin(steps), std::end(steps));
-        idx = std::distance(std::begin(steps), it);
+        auto it = std::min_element(std::begin(frames), std::end(frames));
+        idx = std::distance(std::begin(frames), it);
     }
 
     auto block = multiblock->GetBlock(idx);
@@ -212,16 +212,16 @@ FemPostPipeline::FemPostPipeline() : Fem::FemPostObject(), App::GroupExtension()
                       "Selects the pipeline data transition mode.\n"
                       "In serial, every filter gets the output of the previous one as input.\n"
                       "In parallel, every filter gets the pipeline source as input.\n");
-    ADD_PROPERTY_TYPE(Step,
+    ADD_PROPERTY_TYPE(Frame,
                       (long(0)),
                       "Pipeline",
                       App::Prop_None,
-                      "The step used to calculate the data in the pipeline processing (read only, set via pipeline object).");
+                      "The frame used to calculate the data in the pipeline processing (read only, set via pipeline object).");
 
     Mode.setEnums(ModeEnums);
 
     // create our source algorithm
-    m_source_algorithm = vtkSmartPointer<FemStepSourceAlgorithm>::New();
+    m_source_algorithm = vtkSmartPointer<FemFrameSourceAlgorithm>::New();
 }
 
 FemPostPipeline::~FemPostPipeline() = default;
@@ -310,47 +310,47 @@ void FemPostPipeline::onChanged(const Property* prop)
     if (prop == &Data) {
         m_source_algorithm->setDataObject(Data.getValue());
 
-        // change the step enum to correct values
+        // change the frame enum to correct values
         std::string val;
-        if (Step.hasEnums() && Step.getValue() >= 0) {
-            val = Step.getValueAsString();
+        if (Frame.hasEnums() && Frame.getValue() >= 0) {
+            val = Frame.getValueAsString();
         }
 
-        std::vector<double> steps = m_source_algorithm->getStepValues();
-        std::vector<std::string> step_values;
-        if (steps.empty()) {
-            step_values.push_back("No steps available");
+        std::vector<double> frames = m_source_algorithm->getFrameValues();
+        std::vector<std::string> frame_values;
+        if (frames.empty()) {
+            frame_values.push_back("No frames available");
         }
         else {
-            auto unit = getStepUnit();
-            for (const double& step : steps) {
-                auto quantity = Base::Quantity(step, unit);
-                step_values.push_back(quantity.getUserString().toStdString());
+            auto unit = getFrameUnit();
+            for (const double& frame : frames) {
+                auto quantity = Base::Quantity(frame, unit);
+                frame_values.push_back(quantity.getUserString().toStdString());
             }
         }
 
         App::Enumeration empty;
-        Step.setValue(empty);
-        m_stepEnum.setEnums(step_values);
-        Step.setValue(m_stepEnum);
+        Frame.setValue(empty);
+        m_frameEnum.setEnums(frame_values);
+        Frame.setValue(m_frameEnum);
 
-        std::vector<std::string>::iterator it = std::find(step_values.begin(), step_values.end(), val);
-        if (!val.empty() && it != step_values.end()) {
-            Step.setValue(val.c_str());
+        std::vector<std::string>::iterator it = std::find(frame_values.begin(), frame_values.end(), val);
+        if (!val.empty() && it != frame_values.end()) {
+            Frame.setValue(val.c_str());
         }
 
-        Step.purgeTouched();
+        Frame.purgeTouched();
         recomputeChildren();
     }
 
-    if (prop == &Step) {
+    if (prop == &Frame) {
 
         // update the algorithm for the visulization
-        auto steps = getStepValues();
-        if (!steps.empty() &&
-            Step.getValue() < long(steps.size())) {
+        auto frames = getFrameValues();
+        if (!frames.empty() &&
+            Frame.getValue() < long(frames.size())) {
 
-            double time = steps[Step.getValue()];
+            double time = frames[Frame.getValue()];
             m_source_algorithm->UpdateTimeStep(time);
         }
 
@@ -437,20 +437,20 @@ void FemPostPipeline::pipelineChanged(FemPostFilter* filter) {
 
 void FemPostPipeline::recomputeChildren()
 {
-    // get the step we use
-    double step = 0;
-    auto steps = getStepValues();
-    if (!steps.empty() &&
-         Step.getValue() < steps.size()) {
+    // get the frame we use
+    double frame = 0;
+    auto frames = getFrameValues();
+    if (!frames.empty() &&
+         Frame.getValue() < frames.size()) {
 
-        step = steps[Step.getValue()];
+        frame = frames[Frame.getValue()];
     }
 
     for (const auto& obj : Group.getValues()) {
         obj->touch();
 
         if (obj->isDerivedFrom(FemPostFilter::getClassTypeId())) {
-            static_cast<Fem::FemPostFilter*>(obj)->Step.setValue(step);
+            static_cast<Fem::FemPostFilter*>(obj)->Frame.setValue(frame);
         }
     }
 }
@@ -480,22 +480,22 @@ bool FemPostPipeline::holdsPostObject(FemPostObject* obj)
 
 
 
-bool FemPostPipeline::hasSteps()
+bool FemPostPipeline::hasFrames()
 {
     // lazy implementation
-    return !m_source_algorithm->getStepValues().empty();
+    return !m_source_algorithm->getFrameValues().empty();
 }
 
-std::string FemPostPipeline::getStepType()
+std::string FemPostPipeline::getFrameType()
 {
     vtkSmartPointer<vtkDataObject> data = Data.getValue();
 
-    // check if we have step data
+    // check if we have frame data
     if (!data || !data->IsA("vtkMultiBlockDataSet")) {
-        return std::string("no steps");
+        return std::string("no frames");
     }
 
-    // we have multiple steps! let's check the amount and times
+    // we have multiple frames! let's check the amount and times
     vtkSmartPointer<vtkMultiBlockDataSet> multiblock = vtkMultiBlockDataSet::SafeDownCast(data);
     if (!multiblock->GetFieldData()->HasArray("TimeInfo")) {
         return std::string("unknown");
@@ -512,17 +512,17 @@ std::string FemPostPipeline::getStepType()
     return vtkStringArray::SafeDownCast(TimeInfo)->GetValue(0);
 }
 
-Base::Unit FemPostPipeline::getStepUnit()
+Base::Unit FemPostPipeline::getFrameUnit()
 {
     vtkSmartPointer<vtkDataObject> data = Data.getValue();
 
-    // check if we have step data
+    // check if we have frame data
     if (!data || !data->IsA("vtkMultiBlockDataSet")) {
         // units cannot be undefined, so use time
         return Base::Unit::TimeSpan;
     }
 
-    // we have multiple steps! let's check the amount and times
+    // we have multiple frames! let's check the amount and times
     vtkSmartPointer<vtkMultiBlockDataSet> multiblock = vtkMultiBlockDataSet::SafeDownCast(data);
     if (!multiblock->GetFieldData()->HasArray("TimeInfo")) {
         // units cannot be undefined, so use time
@@ -540,15 +540,15 @@ Base::Unit FemPostPipeline::getStepUnit()
     return Base::Unit(QString::fromStdString(vtkStringArray::SafeDownCast(TimeInfo)->GetValue(1)));
 }
 
-std::vector<double> FemPostPipeline::getStepValues()
+std::vector<double> FemPostPipeline::getFrameValues()
 {
-    return m_source_algorithm->getStepValues();
+    return m_source_algorithm->getFrameValues();
 }
 
-unsigned int FemPostPipeline::getStepNumber()
+unsigned int FemPostPipeline::getFrameNumber()
 {
     // lazy implementation
-    return getStepValues().size();
+    return getFrameValues().size();
 }
 
 void FemPostPipeline::load(FemResultObject* res)
@@ -575,20 +575,20 @@ void FemPostPipeline::load(FemResultObject* res)
     Data.setValue(grid);
 }
 
-// set multiple result objects as steps for one pipeline
+// set multiple result objects as frames for one pipeline
 // Notes:
-//      1. values vector must contain growing value, smalles first
-void FemPostPipeline::load(std::vector<FemResultObject*> res, std::vector<double> values, Base::Unit unit, std::string step_type) {
+//      1. values vector must contain growing value, smallest first
+void FemPostPipeline::load(std::vector<FemResultObject*> res, std::vector<double> values, Base::Unit unit, std::string frame_type) {
 
     if (res.size() != values.size() ) {
-        Base::Console().Error("Result values and step values have different length.\n");
+        Base::Console().Error("Result values and frame values have different length.\n");
         return;
     }
 
      // setup the time information for the multiblock
     vtkStringArray* TimeInfo = vtkStringArray::New();
     TimeInfo->SetName("TimeInfo");
-    TimeInfo->InsertNextValue(step_type);
+    TimeInfo->InsertNextValue(frame_type);
     TimeInfo->InsertNextValue(unit.getString().toStdString());
 
     auto multiblock = vtkSmartPointer<vtkMultiBlockDataSet>::New();
