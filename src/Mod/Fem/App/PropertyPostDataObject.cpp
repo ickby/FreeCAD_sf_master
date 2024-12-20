@@ -430,6 +430,7 @@ void PropertyPostDataObject::RestoreDocFile(Base::Reader& reader)
     Base::FileInfo xml(reader.getFileName());
     // create a temporary file and copy the content from the zip stream
     Base::FileInfo fi(App::Application::getTempFileName());
+    Base::FileInfo fo;
 
     // read in the ASCII file and write back to the file stream
     Base::ofstream file(fi, std::ios::out | std::ios::binary);
@@ -468,14 +469,13 @@ void PropertyPostDataObject::RestoreDocFile(Base::Reader& reader)
 
             // first unzip the file into a datafolder
             zipios::ZipInputStream ZipReader(fi.filePath());
-            auto datafolder = Base::FileInfo(App::Application::getTempPath() + "vtk_extract_datadir");
-            datafolder.createDirectories();
+            fo = Base::FileInfo(App::Application::getTempPath() + "vtk_extract_datadir");
+            fo.createDirectories();
 
             try {
                 zipios::ConstEntryPointer entry = ZipReader.getNextEntry();
                 while(entry->isValid()) {
-                    Base::FileInfo entry_path(datafolder.filePath() + entry->getName());
-                    Base::Console().Message(("Zip file entry: " + entry_path.filePath() + "\n").c_str());
+                    Base::FileInfo entry_path(fo.filePath() + entry->getName());
                     if (entry->isDirectory()) {
                         // seems not to be called
                         entry_path.createDirectories();
@@ -499,8 +499,9 @@ void PropertyPostDataObject::RestoreDocFile(Base::Reader& reader)
                 // there is no further entry
             }
 
-            // create the reader, and change the file for it to read
-            fi = Base::FileInfo(datafolder.filePath() + "/datafile.vtm");
+            // create the reader, and change the file for it to read. Also delete zip file, not needed anymore
+            fi.deleteFile();
+            fi = Base::FileInfo(fo.filePath() + "/datafile.vtm");
             xmlReader = vtkSmartPointer<vtkXMLMultiBlockDataReader>::New();
         }
 
@@ -534,4 +535,7 @@ void PropertyPostDataObject::RestoreDocFile(Base::Reader& reader)
 
     // delete the temp file
     fi.deleteFile();
+    if (xml.extension() == "zip") {
+        fo.deleteDirectoryRecursive();
+    }
 }
