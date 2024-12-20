@@ -46,7 +46,7 @@ PROPERTY_SOURCE(Fem::FemPostFilter, Fem::FemPostObject)
 
 FemPostFilter::FemPostFilter()
 {
-    ADD_PROPERTY_TYPE(Step,
+    ADD_PROPERTY_TYPE(Frame,
                       ((long)0),
                       "Data",
                       App::Prop_ReadOnly,
@@ -139,8 +139,8 @@ DocumentObjectExecReturn* FemPostFilter::execute()
             //Data.setValue(pipe.filterTarget->GetOutputDataObject(0));
         }
         else {
-            if (Step.getValue()>0) {
-                pipe.target->UpdateTimeStep(Step.getValue());
+            if (Frame.getValue()>0) {
+                pipe.target->UpdateTimeStep(Frame.getValue());
             }
             else {
                 pipe.target->Update();

@@ -70,7 +70,7 @@ public:
     FemPostFilter();
     ~FemPostFilter() override;
 
-    App::PropertyFloat Step;
+    App::PropertyFloat Frame;
 
     void onChanged(const App::Property* prop) override;
     App::DocumentObjectExecReturn* execute() override;

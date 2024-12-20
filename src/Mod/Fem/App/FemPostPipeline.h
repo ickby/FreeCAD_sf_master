@@ -40,20 +40,20 @@
 namespace Fem
 {
 
-// algorithm that allows multi step handling: if data is stored in MultiBlock dataset
-// this source enables the downstream filters to query the blocks as different time steps
-class FemStepSourceAlgorithm : public vtkUnstructuredGridAlgorithm
+// algorithm that allows multi frame handling: if data is stored in MultiBlock dataset
+// this source enables the downstream filters to query the blocks as different time frames
+class FemFrameSourceAlgorithm : public vtkUnstructuredGridAlgorithm
 {
 public:
-    static FemStepSourceAlgorithm* New();
-    vtkTypeMacro(FemStepSourceAlgorithm, vtkUnstructuredGridAlgorithm);
+    static FemFrameSourceAlgorithm* New();
+    vtkTypeMacro(FemFrameSourceAlgorithm, vtkUnstructuredGridAlgorithm);
 
     void setDataObject(vtkSmartPointer<vtkDataObject> data);
-    std::vector<double> getStepValues();
+    std::vector<double> getFrameValues();
 
 protected:
-    FemStepSourceAlgorithm();
-    ~FemStepSourceAlgorithm() override;
+    FemFrameSourceAlgorithm();
+    ~FemFrameSourceAlgorithm() override;
 
     vtkSmartPointer<vtkDataObject> m_data;
 
@@ -73,7 +73,7 @@ public:
 
     App::PropertyLink Functions;
     App::PropertyEnumeration Mode;
-    App::PropertyEnumeration Step;
+    App::PropertyEnumeration Frame;
 
 
     virtual vtkDataSet* getDataSet() override;
@@ -93,7 +93,7 @@ public:
 
     // load from results
     void load(FemResultObject* res);
-    void load(std::vector<FemResultObject*> res, std::vector<double> values, Base::Unit unit, std::string step_type);
+    void load(std::vector<FemResultObject*> res, std::vector<double> values, Base::Unit unit, std::string frame_type);
 
     // Pipeline handling
     void filterChanged(FemPostFilter* filter);
@@ -102,20 +102,20 @@ public:
     FemPostObject* getLastPostObject();
     bool holdsPostObject(FemPostObject* obj);
 
-    // step handling
-    bool hasSteps();
-    std::string getStepType();
-    Base::Unit getStepUnit();
-    unsigned int getStepNumber();
-    std::vector<double> getStepValues();
+    // frame handling
+    bool hasFrames();
+    std::string getFrameType();
+    Base::Unit getFrameUnit();
+    unsigned int getFrameNumber();
+    std::vector<double> getFrameValues();
 
 protected:
     void onChanged(const App::Property* prop) override;
 
 private:
     static const char* ModeEnums[];
-    App::Enumeration  m_stepEnum;
-    vtkSmartPointer<FemStepSourceAlgorithm> m_source_algorithm;
+    App::Enumeration  m_frameEnum;
+    vtkSmartPointer<FemFrameSourceAlgorithm> m_source_algorithm;
 
     template<class TReader>
     void readXMLFile(std::string file)

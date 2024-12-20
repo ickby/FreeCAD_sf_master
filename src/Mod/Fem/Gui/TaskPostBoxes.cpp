@@ -59,7 +59,7 @@
 #include "ui_TaskPostDisplay.h"
 #include "ui_TaskPostScalarClip.h"
 #include "ui_TaskPostWarpVector.h"
-#include "ui_TaskPostSteps.h"
+#include "ui_TaskPostFrames.h"
 
 
 #include "FemSettings.h"
@@ -476,12 +476,12 @@ void TaskPostFunction::applyPythonCode()
 
 
 // ***************************************************************************
-// Steps
-TaskPostSteps::TaskPostSteps(ViewProviderFemPostObject* view, QWidget* parent)
+// Frames
+TaskPostFrames::TaskPostFrames(ViewProviderFemPostObject* view, QWidget* parent)
     : TaskPostBox(view,
-                  Gui::BitmapFactory().pixmap("FEM_PostSteps"),
-                  tr("Result Steps"),
-                  parent), ui(new Ui_TaskPostSteps)
+                  Gui::BitmapFactory().pixmap("FEM_PostFrames"),
+                  tr("Result Frames"),
+                  parent), ui(new Ui_TaskPostFrames)
 {
     // we load the views widget
     proxy = new QWidget(this);
@@ -491,44 +491,44 @@ TaskPostSteps::TaskPostSteps(ViewProviderFemPostObject* view, QWidget* parent)
 
     // populate the data
     auto pipeline = static_cast<Fem::FemPostPipeline*>(getObject());
-    ui->Type->setText(QString::fromStdString(pipeline->getStepType()));
+    ui->Type->setText(QString::fromStdString(pipeline->getFrameType()));
 
-    auto unit = pipeline->getStepUnit();
-    auto steps = pipeline->getStepValues();
+    auto unit = pipeline->getFrameUnit();
+    auto steps = pipeline->getFrameValues();
     for (unsigned long i=0; i<steps.size(); i++) {
         QTableWidgetItem *idx = new QTableWidgetItem(QString::number(i));
         QTableWidgetItem *value = new QTableWidgetItem(Base::Quantity(steps[i], unit).getUserString());
 
-        int rowIdx = ui->StepTable->rowCount();
-        ui->StepTable->insertRow (rowIdx);
-        ui->StepTable->setItem(rowIdx, 0, idx);
-        ui->StepTable->setItem(rowIdx, 1, value);
+        int rowIdx = ui->FrameTable->rowCount();
+        ui->FrameTable->insertRow (rowIdx);
+        ui->FrameTable->setItem(rowIdx, 0, idx);
+        ui->FrameTable->setItem(rowIdx, 1, value);
     }
-    ui->StepTable->selectRow(pipeline->Step.getValue());
+    ui->FrameTable->selectRow(pipeline->Frame.getValue());
 }
 
-TaskPostSteps::~TaskPostSteps() = default;
+TaskPostFrames::~TaskPostFrames() = default;
 
-void TaskPostSteps::setupConnections()
+void TaskPostFrames::setupConnections()
 {
-    connect(ui->StepTable,
+    connect(ui->FrameTable,
             qOverload<>(&QTableWidget::itemSelectionChanged),
             this,
-            &TaskPostSteps::onSelectionChanged);
+            &TaskPostFrames::onSelectionChanged);
 }
 
-void TaskPostSteps::onSelectionChanged()
+void TaskPostFrames::onSelectionChanged()
 {
-    auto selection = ui->StepTable->selectedItems();
+    auto selection = ui->FrameTable->selectedItems();
     if (selection.count() > 0) {
-        static_cast<Fem::FemPostPipeline*>(getObject())->Step.setValue(selection.front()->row());
+        static_cast<Fem::FemPostPipeline*>(getObject())->Frame.setValue(selection.front()->row());
         recompute();
     }
 }
 
 
 
-void TaskPostSteps::applyPythonCode()
+void TaskPostFrames::applyPythonCode()
 {
     // we apply the views widgets python code
 }

@@ -79,8 +79,8 @@ void ViewProviderFemPostPipeline::updateData(const App::Property* prop)
         updateFunctionSize();
     }
 
-    if (prop == &pipeline->Step) {
-        // Step is pipeline property, not post object, parent updateData does not catch it for update
+    if (prop == &pipeline->Frame) {
+        // Frame is pipeline property, not post object, parent updateData does not catch it for update
         updateVtk();
     }
 }
@@ -246,7 +246,7 @@ void ViewProviderFemPostPipeline::setupTaskDialog(TaskDlgPost* dlg)
     // add the function box
     assert(dlg->getView() == this);
     ViewProviderFemPostObject::setupTaskDialog(dlg);
-    dlg->appendBox(new TaskPostSteps(this));
+    dlg->appendBox(new TaskPostFrames(this));
 }
 
 
