@@ -131,12 +131,10 @@ int FemStepSourceAlgorithm::RequestInformation(vtkInformation*reqInfo, vtkInform
 
     std::stringstream strm;
     outVector->Print(strm);
-    Base::Console().Message("Request data:\n%s\n", strm.str());
 
     std::vector<double> steps = getStepValues();
 
     if (steps.empty()) {
-        Base::Console().Message("Not fuly setup with time values\n");
         return 1;
     }
 
@@ -158,7 +156,6 @@ int FemStepSourceAlgorithm::RequestData(vtkInformation* reqInfo, vtkInformationV
 
     std::stringstream strstm;
     outVector->Print(strstm);
-    Base::Console().Message("Request Data out Vector: %s\n", strstm.str());
 
     vtkInformation* outInfo = outVector->GetInformationObject(0);
     vtkUnstructuredGrid* output = vtkUnstructuredGrid::SafeDownCast(outInfo->Get(vtkDataObject::DATA_OBJECT()));
