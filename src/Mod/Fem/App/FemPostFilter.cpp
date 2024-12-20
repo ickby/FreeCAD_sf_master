@@ -132,21 +132,13 @@ DocumentObjectExecReturn* FemPostFilter::execute()
             return StdReturn;
         }
 
-        if ((m_activePipeline == "DataAlongLine") || (m_activePipeline == "DataAtPoint")) {
-            //TODO:  this is broken now
-            //pipe.filterSource->SetSourceData();
-            //pipe.filterTarget->Update();
-            //Data.setValue(pipe.filterTarget->GetOutputDataObject(0));
+        if (Frame.getValue()>0) {
+            pipe.target->UpdateTimeStep(Frame.getValue());
         }
         else {
-            if (Frame.getValue()>0) {
-                pipe.target->UpdateTimeStep(Frame.getValue());
-            }
-            else {
-                pipe.target->Update();
-            }
-            Data.setValue(pipe.target->GetOutputDataObject(0));
+            pipe.target->Update();
         }
+        Data.setValue(pipe.target->GetOutputDataObject(0));
     }
 
     return StdReturn;
@@ -265,7 +257,9 @@ FemPostDataAlongLineFilter::FemPostDataAlongLineFilter()
     m_line->SetResolution(Resolution.getValue());
 
 
+    auto passthrough = vtkSmartPointer<vtkPassThrough>::New();
     m_probe = vtkSmartPointer<vtkProbeFilter>::New();
+    m_probe->SetSourceConnection(passthrough->GetOutputPort(0));
     m_probe->SetInputConnection(m_line->GetOutputPort());
     m_probe->SetValidPointMaskArrayName("ValidPointArray");
     m_probe->SetPassPointArrays(1);
@@ -276,8 +270,8 @@ FemPostDataAlongLineFilter::FemPostDataAlongLineFilter()
     m_probe->SetTolerance(0.01);
 #endif
 
-    clip.filterSource = m_probe;
-    clip.filterTarget = m_probe;
+    clip.source = passthrough;
+    clip.target = m_probe;
 
     addFilterPipeline(clip, "DataAlongLine");
     setActiveFilterPipeline("DataAlongLine");
@@ -436,7 +430,9 @@ FemPostDataAtPointFilter::FemPostDataAtPointFilter()
     m_point->SetCenter(vec.x, vec.y, vec.z);
     m_point->SetRadius(0);
 
+    auto passthrough = vtkSmartPointer<vtkPassThrough>::New();
     m_probe = vtkSmartPointer<vtkProbeFilter>::New();
+    m_probe->SetSourceConnection(passthrough->GetOutputPort(0));
     m_probe->SetInputConnection(m_point->GetOutputPort());
     m_probe->SetValidPointMaskArrayName("ValidPointArray");
     m_probe->SetPassPointArrays(1);
@@ -447,8 +443,8 @@ FemPostDataAtPointFilter::FemPostDataAtPointFilter()
     m_probe->SetTolerance(0.01);
 #endif
 
-    clip.filterSource = m_probe;
-    clip.filterTarget = m_probe;
+    clip.source = passthrough;
+    clip.target = m_probe;
 
     addFilterPipeline(clip, "DataAtPoint");
     setActiveFilterPipeline("DataAtPoint");
