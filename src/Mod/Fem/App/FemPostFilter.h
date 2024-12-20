@@ -57,7 +57,6 @@ protected:
     struct FilterPipeline
     {
         vtkSmartPointer<vtkAlgorithm> source, target;
-        vtkSmartPointer<vtkProbeFilter> filterSource, filterTarget;
         std::vector<vtkSmartPointer<vtkAlgorithm>> algorithmStorage;
     };
 
