@@ -50,6 +50,7 @@ class FemExport FemPostFilter: public Fem::FemPostObject
     PROPERTY_HEADER_WITH_OVERRIDE(Fem::FemPostFilter);
 
 protected:
+    vtkSmartPointer<vtkDataSet> getInputData();
     std::vector<std::string> getInputVectorFields();
     std::vector<std::string> getInputScalarFields();
 

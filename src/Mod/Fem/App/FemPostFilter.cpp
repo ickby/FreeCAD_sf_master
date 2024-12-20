@@ -144,17 +144,22 @@ DocumentObjectExecReturn* FemPostFilter::execute()
     return StdReturn;
 }
 
-std::vector<std::string> FemPostFilter::getInputVectorFields()
-{
+vtkSmartPointer<vtkDataSet> FemPostFilter::getInputData() {
+
     if (getActiveFilterPipeline().source->GetNumberOfInputConnections(0) == 0) {
-        return std::vector<std::string>();
+        return nullptr;
     }
 
     vtkAlgorithmOutput* output = getActiveFilterPipeline().source->GetInputConnection(0,0);
     vtkAlgorithm* algo = output->GetProducer();
     algo->Update();
 
-    vtkDataSet* dset = vtkDataSet::SafeDownCast(algo->GetOutputDataObject(0));
+    return vtkDataSet::SafeDownCast(algo->GetOutputDataObject(0));
+}
+
+std::vector<std::string> FemPostFilter::getInputVectorFields()
+{
+    vtkDataSet* dset = getInputData();
     if (!dset) {
         return std::vector<std::string>();
     }
@@ -173,15 +178,7 @@ std::vector<std::string> FemPostFilter::getInputVectorFields()
 
 std::vector<std::string> FemPostFilter::getInputScalarFields()
 {
-    if (getActiveFilterPipeline().source->GetNumberOfInputConnections(0) == 0) {
-        return std::vector<std::string>();
-    }
-
-    vtkAlgorithmOutput* output = getActiveFilterPipeline().source->GetInputConnection(0,0);
-    vtkAlgorithm* algo = output->GetProducer();
-    algo->Update();
-
-    vtkDataSet* dset = vtkDataSet::SafeDownCast(algo->GetOutputDataObject(0));
+    vtkDataSet* dset = getInputData();
     if (!dset) {
         return std::vector<std::string>();
     }
@@ -741,19 +738,18 @@ FemPostContoursFilter::FemPostContoursFilter()
 FemPostContoursFilter::~FemPostContoursFilter() = default;
 
 DocumentObjectExecReturn* FemPostContoursFilter::execute()
-{ /*TODO: Fix
+{
     // update list of available fields and their vectors
     if (!m_blockPropertyChanges) {
         refreshFields();
         refreshVectors();
     }
-*/
+
     // recalculate the filter
     auto returnObject = Fem::FemPostFilter::execute();
-/*
+
     // delete contour field
-    vtkSmartPointer<vtkDataObject> data = getInputData();
-    vtkDataSet* dset = vtkDataSet::SafeDownCast(data);
+    vtkDataSet* dset = getInputData();
     if (!dset) {
         return returnObject;
     }
@@ -762,12 +758,12 @@ DocumentObjectExecReturn* FemPostContoursFilter::execute()
     if (!m_blockPropertyChanges) {
         refreshFields();
     }
-*/
+
     return returnObject;
 }
 
 void FemPostContoursFilter::onChanged(const Property* prop)
-{/*TODO: Fix
+{
     if (m_blockPropertyChanges) {
         return;
     }
@@ -784,8 +780,7 @@ void FemPostContoursFilter::onChanged(const Property* prop)
         double p[2];
 
         // get the field and its data
-        vtkSmartPointer<vtkDataObject> data = getInputData();
-        vtkDataSet* dset = vtkDataSet::SafeDownCast(data);
+        vtkDataSet* dset = getInputData();
         if (!dset) {
             return;
         }
@@ -863,7 +858,7 @@ void FemPostContoursFilter::onChanged(const Property* prop)
                 m_blockPropertyChanges = false;
             }
         }
-    }*/
+    }
 
     Fem::FemPostFilter::onChanged(prop);
 }
@@ -889,7 +884,7 @@ void FemPostContoursFilter::recalculateContours(double min, double max)
 }
 
 void FemPostContoursFilter::refreshFields()
-{/*TODO: Fix
+{
     m_blockPropertyChanges = true;
 
     std::string fieldName;
@@ -899,8 +894,7 @@ void FemPostContoursFilter::refreshFields()
 
     std::vector<std::string> FieldsArray;
 
-    vtkSmartPointer<vtkDataObject> data = getInputData();
-    vtkDataSet* dset = vtkDataSet::SafeDownCast(data);
+    vtkDataSet* dset = getInputData();
     if (!dset) {
         m_blockPropertyChanges = false;
         return;
@@ -931,16 +925,15 @@ void FemPostContoursFilter::refreshFields()
     }
 
     m_blockPropertyChanges = false;
-    */
+
 }
 
 void FemPostContoursFilter::refreshVectors()
-{/*TODO: Fix
+{
     // refreshes the list of available vectors for the current Field
     m_blockPropertyChanges = true;
 
-    vtkSmartPointer<vtkDataObject> data = getInputData();
-    vtkDataSet* dset = vtkDataSet::SafeDownCast(data);
+    vtkDataSet* dset = getInputData();
     if (!dset) {
         m_blockPropertyChanges = false;
         return;
@@ -983,7 +976,6 @@ void FemPostContoursFilter::refreshVectors()
     }
 
     m_blockPropertyChanges = false;
-    */
 }
 
 
@@ -1127,10 +1119,8 @@ short int FemPostScalarClipFilter::mustExecute() const
 }
 
 void FemPostScalarClipFilter::setConstraintForField()
-{/*
-    TODO: Fix
-    vtkSmartPointer<vtkDataObject> data = getInputData();
-    vtkDataSet* dset = vtkDataSet::SafeDownCast(data);
+{
+    vtkDataSet* dset = getInputData();
     if (!dset) {
         return;
     }
@@ -1146,7 +1136,6 @@ void FemPostScalarClipFilter::setConstraintForField()
     m_constraints.LowerBound = p[0];
     m_constraints.UpperBound = p[1];
     m_constraints.StepSize = (p[1] - p[0]) / 100.;
-    */
 }
 
 
