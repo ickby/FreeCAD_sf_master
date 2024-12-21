@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (c) 2024 Stefan Tröger <stefantroeger@gmx.net>              *
+ *   Copyright (c) 2015 Stefan Tröger <stefantroeger@gmx.net>              *
  *                                                                         *
  *   This file is part of the FreeCAD CAx development system.              *
  *                                                                         *
@@ -20,52 +20,38 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef Fem_FemPostGroup_H
-#define Fem_FemPostGroup_H
+#ifndef FEM_VIEWPROVIDERFEMPOSTBRANCHFILTER_H
+#define FEM_VIEWPROVIDERFEMPOSTBRANCHFILTER_H
 
-#include "Base/Unit.h"
-#include "App/GroupExtension.h"
-#include "FemPostFilter.h"
+#include "ViewProviderFemPostObject.h"
+#include <Gui/ViewProviderGroupExtension.h>
 
-namespace Fem
+
+namespace Gui
+{
+class SelectionChanges;
+class SoFCColorBar;
+}  // namespace Gui
+
+namespace FemGui
 {
 
-// object grouping FEM filters and building the structure of the pipeline
-class FemExport FemPostGroupExtension : public App::GroupExtension {
+class TaskDlgPost;
 
-    using inherited = App::GroupExtension;
-    EXTENSION_PROPERTY_HEADER_WITH_OVERRIDE(Fem::FemPostGroupExtension);
+class FemGuiExport ViewProviderFemPostBranchFilter: public ViewProviderFemPostObject, public Gui::ViewProviderGroupExtension
+{
+    PROPERTY_HEADER_WITH_EXTENSIONS(FemGui::ViewProviderFemPostBranchFilter);
 
 public:
-    /// Constructor
-    FemPostGroupExtension();
-    ~FemPostGroupExtension() override;
-
-    void initExtension(App::ExtensionContainer* obj) override;
-
-    App::PropertyEnumeration Mode;
-    App::PropertyLinkList Filter;
-
-    // Pipeline handling
-    virtual void filterChanged(FemPostFilter*) {};          // settings change in filter
-    virtual void filterPipelineChanged(FemPostFilter*) {};  // pipeline change in filter
-    virtual void recomputeChildren();
-    virtual FemPostObject* getLastPostObject();
-    virtual bool holdsPostObject(FemPostObject* obj);
-
-    // general
-    static App::DocumentObject* getGroupOfObject(const App::DocumentObject* obj);
+    ViewProviderFemPostBranchFilter();
+    ~ViewProviderFemPostBranchFilter() override;
 
 protected:
-    void extensionOnChanged(const App::Property* p) override;
-    void onExtendedUnsetupObject() override;
+    virtual void setupTaskDialog(TaskDlgPost* dlg) override;
 
-private:
-    bool m_blockChange = false;
-    static const char* ModeEnums[];
 };
 
-}  // namespace Fem
+}
 
 
-#endif  // Fem_FemPostGroup_H
+#endif  // FEM_VIEWPROVIDERFEMPOSTBRANCHFILTER_H
