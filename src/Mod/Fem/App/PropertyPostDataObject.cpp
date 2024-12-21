@@ -410,21 +410,6 @@ void PropertyPostDataObject::SaveDocFile(Base::Writer& writer) const
     fi.deleteFile();
 }
 
-void read_from_zip(zipios::ConstEntryPointer entry, Base::FileInfo path, zipios::ZipInputStream& ZipReader) {
-
-    Base::FileInfo entry_path(path.filePath() + entry->getName());
-    if (entry->isDirectory()) {
-        entry_path.createDirectories();
-    }
-    else {
-        Base::ofstream file(entry_path, std::ios::out | std::ios::binary);
-        std::streambuf* buf = file.rdbuf();
-        ZipReader >> buf;
-        file.flush();
-        file.close();
-    }
-}
-
 void PropertyPostDataObject::RestoreDocFile(Base::Reader& reader)
 {
     Base::FileInfo xml(reader.getFileName());

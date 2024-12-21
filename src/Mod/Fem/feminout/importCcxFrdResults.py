@@ -62,28 +62,23 @@ def setupPipeline(doc, analysis, results_name, result_data):
     import ObjectsFem
     from . import importToolsFem
 
-    print("Setup pipeline")
 
     # create a results pipeline if not already existing
     pipeline_name = "Pipeline_" + results_name
     pipeline_obj = doc.getObject(pipeline_name)
     if pipeline_obj is None:
 
-        print("Create pipeline object")
         pipeline_obj = ObjectsFem.makePostVtkResult(doc, result_data, results_name)
         pipeline_visibility = True
         if analysis:
             analysis.addObject(pipeline_obj)
-        print("Done creation of new pipeline")
     else:
         if FreeCAD.GuiUp:
             # store pipeline visibility because pipeline_obj.load makes the
             # pipeline always visible
             pipeline_visibility = pipeline_obj.ViewObject.Visibility
 
-        print("Start Loading")
         pipeline_obj.load(*result_data)
-        print("Done loading results")
 
     # update the pipeline
     pipeline_obj.recomputeChildren()
@@ -100,7 +95,6 @@ def setupPipeline(doc, analysis, results_name, result_data):
         # restore pipeline visibility
         pipeline_obj.ViewObject.Visibility = pipeline_visibility
 
-    print("Done setup pipeline")
 
 def importFrd(filename, analysis=None, result_name_prefix="", result_analysis_type=""):
     import ObjectsFem
