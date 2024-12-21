@@ -24,7 +24,7 @@
 #define Fem_FemPostPipeline_H
 
 #include "Base/Unit.h"
-#include "App/GroupExtension.h"
+#include "FemPostGroupExtension.h"
 
 #include "FemPostFilter.h"
 #include "FemPostFunction.h"
@@ -62,7 +62,7 @@ protected:
 };
 
 
-class FemExport FemPostPipeline: public Fem::FemPostObject, public App::GroupExtension
+class FemExport FemPostPipeline: public Fem::FemPostObject, public Fem::FemPostGroupExtension
 {
     PROPERTY_HEADER_WITH_EXTENSIONS(Fem::FemPostPipeline);
 
@@ -71,12 +71,11 @@ public:
     FemPostPipeline();
     ~FemPostPipeline() override;
 
-    App::PropertyLink Functions;
-    App::PropertyEnumeration Mode;
     App::PropertyEnumeration Frame;
 
 
     virtual vtkDataSet* getDataSet() override;
+    Fem::FemPostFunctionProvider* getFunctionProvider();
 
     short mustExecute() const override;
     PyObject* getPyObject() override;
@@ -95,12 +94,10 @@ public:
     void load(FemResultObject* res);
     void load(std::vector<FemResultObject*> res, std::vector<double> values, Base::Unit unit, std::string frame_type);
 
-    // Pipeline handling
-    void filterChanged(FemPostFilter* filter);
-    void pipelineChanged(FemPostFilter* filter);
-    void recomputeChildren();
-    FemPostObject* getLastPostObject();
-    bool holdsPostObject(FemPostObject* obj);
+    // Group pipeline handling
+    void filterChanged(FemPostFilter* filter) override;
+    void filterPipelineChanged(FemPostFilter* filter) override;
+    void recomputeChildren() override;
 
     // frame handling
     bool hasFrames();
@@ -113,7 +110,6 @@ protected:
     void onChanged(const App::Property* prop) override;
 
 private:
-    static const char* ModeEnums[];
     App::Enumeration  m_frameEnum;
     vtkSmartPointer<FemFrameSourceAlgorithm> m_source_algorithm;
 
