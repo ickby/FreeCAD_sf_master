@@ -336,6 +336,8 @@ if(BUILD_FEM_VTK)
         ViewProviderFemPostObject.cpp
         ViewProviderFemPostPipeline.h
         ViewProviderFemPostPipeline.cpp
+        ViewProviderFemPostBranchFilter.h
+        ViewProviderFemPostBranchFilter.cpp
         ViewProviderFemPostFunction.h
         ViewProviderFemPostFunction.cpp
         ViewProviderFemPostFilter.h

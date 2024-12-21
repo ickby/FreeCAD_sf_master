@@ -1822,29 +1822,18 @@ void setupFilter(Gui::Command* cmd, std::string Name)
 
     // at first we must determine the pipeline of the selection object
     // (which can be a pipeline itself)
-    bool selectionIsPipeline = false;
-    Fem::FemPostPipeline* pipeline = nullptr;
-    if (selObject->isDerivedFrom<Fem::FemPostPipeline>()) {
-        pipeline = static_cast<Fem::FemPostPipeline*>(selObject);
-        selectionIsPipeline = true;
-    }
-    else {
-        auto parents = selObject->getInList();
-        if (!parents.empty()) {
-            for (auto parentObject : parents) {
-                if (parentObject->isDerivedFrom<Fem::FemPostPipeline>()) {
-                    pipeline = static_cast<Fem::FemPostPipeline*>(parentObject);
-                }
-            }
+    App::DocumentObject* pipeline = nullptr;
+    if(selObject->hasExtension(Fem::FemPostGroupExtension::getExtensionClassTypeId())) {
+        pipeline = selObject;
+    } else {
+        pipeline = Fem::FemPostGroupExtension::getGroupOfObject(selObject);
+        if (!pipeline || !pipeline->isDerivedFrom(Fem::FemPostObject::getClassTypeId())) {
+            QMessageBox::warning(
+                Gui::getMainWindow(),
+                qApp->translate("setupFilter", "Error: Object not in a post processing group"),
+                qApp->translate("setupFilter", "The filter could not be set up: Object not in a post processing group."));
+            return;
         }
-    }
-
-    if (!pipeline) {
-        QMessageBox::warning(
-            Gui::getMainWindow(),
-            qApp->translate("setupFilter", "Error: no post processing object selected."),
-            qApp->translate("setupFilter", "The filter could not be set up."));
-        return;
     }
 
     // create the object and add it to the pipeline
@@ -2016,30 +2005,15 @@ void CmdFemPostClipFilter::activated(int)
 bool CmdFemPostClipFilter::isActive()
 {
     // only allow one object
-    if (getSelection().getSelection().size() > 1) {
+    auto selection = getSelection().getSelection();
+    if (selection.size() > 1) {
         return false;
     }
-    // only activate if a result is either a post pipeline or a possible filter
-    if (getSelection().getObjectsOfType<Fem::FemPostPipeline>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostClipFilter>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostDataAlongLineFilter>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostScalarClipFilter>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostContoursFilter>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostCutFilter>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostWarpVectorFilter>().size() == 1) {
-        return true;
+    // only activate if a post object is selected
+    for (auto obj : selection ) {
+        if (obj.pObject->isDerivedFrom(Fem::FemPostObject::getClassTypeId())) {
+            return true;
+        }
     }
     return false;
 }
@@ -2068,30 +2042,15 @@ void CmdFemPostCutFilter::activated(int)
 bool CmdFemPostCutFilter::isActive()
 {
     // only allow one object
-    if (getSelection().getSelection().size() > 1) {
+    auto selection = getSelection().getSelection();
+    if (selection.size() > 1) {
         return false;
     }
-    // only activate if a result is either a post pipeline or a possible filter
-    if (getSelection().getObjectsOfType<Fem::FemPostPipeline>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostClipFilter>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostContoursFilter>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostCutFilter>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostScalarClipFilter>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostDataAlongLineFilter>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostWarpVectorFilter>().size() == 1) {
-        return true;
+    // only activate if a post object is selected
+    for (auto obj : selection ) {
+        if (obj.pObject->isDerivedFrom(Fem::FemPostObject::getClassTypeId())) {
+            return true;
+        }
     }
     return false;
 }
@@ -2120,27 +2079,15 @@ void CmdFemPostDataAlongLineFilter::activated(int)
 bool CmdFemPostDataAlongLineFilter::isActive()
 {
     // only allow one object
-    if (getSelection().getSelection().size() > 1) {
+    auto selection = getSelection().getSelection();
+    if (selection.size() > 1) {
         return false;
     }
-    // only activate if a result is either a post pipeline or a possible filter
-    if (getSelection().getObjectsOfType<Fem::FemPostPipeline>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostClipFilter>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostContoursFilter>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostCutFilter>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostScalarClipFilter>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostWarpVectorFilter>().size() == 1) {
-        return true;
+    // only activate if a post object is selected
+    for (auto obj : selection ) {
+        if (obj.pObject->isDerivedFrom(Fem::FemPostObject::getClassTypeId())) {
+            return true;
+        }
     }
     return false;
 }
@@ -2170,27 +2117,15 @@ void CmdFemPostDataAtPointFilter::activated(int)
 bool CmdFemPostDataAtPointFilter::isActive()
 {
     // only allow one object
-    if (getSelection().getSelection().size() > 1) {
+    auto selection = getSelection().getSelection();
+    if (selection.size() > 1) {
         return false;
     }
-    // only activate if a result is either a post pipeline or a possible filter
-    if (getSelection().getObjectsOfType<Fem::FemPostPipeline>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostClipFilter>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostCutFilter>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostDataAlongLineFilter>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostScalarClipFilter>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostWarpVectorFilter>().size() == 1) {
-        return true;
+    // only activate if a post object is selected
+    for (auto obj : selection ) {
+        if (obj.pObject->isDerivedFrom(Fem::FemPostObject::getClassTypeId())) {
+            return true;
+        }
     }
     return false;
 }
@@ -2295,27 +2230,15 @@ void CmdFemPostScalarClipFilter::activated(int)
 bool CmdFemPostScalarClipFilter::isActive()
 {
     // only allow one object
-    if (getSelection().getSelection().size() > 1) {
+    auto selection = getSelection().getSelection();
+    if (selection.size() > 1) {
         return false;
     }
-    // only activate if a result is either a post pipeline or a possible other filter
-    if (getSelection().getObjectsOfType<Fem::FemPostPipeline>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostClipFilter>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostContoursFilter>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostCutFilter>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostDataAlongLineFilter>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostWarpVectorFilter>().size() == 1) {
-        return true;
+    // only activate if a post object is selected
+    for (auto obj : selection ) {
+        if (obj.pObject->isDerivedFrom(Fem::FemPostObject::getClassTypeId())) {
+            return true;
+        }
     }
     return false;
 }
@@ -2344,27 +2267,15 @@ void CmdFemPostWarpVectorFilter::activated(int)
 bool CmdFemPostWarpVectorFilter::isActive()
 {
     // only allow one object
-    if (getSelection().getSelection().size() > 1) {
+    auto selection = getSelection().getSelection();
+    if (selection.size() > 1) {
         return false;
     }
-    // only activate if a result is either a post pipeline or a possible other filter
-    if (getSelection().getObjectsOfType<Fem::FemPostPipeline>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostClipFilter>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostCutFilter>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostContoursFilter>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostDataAlongLineFilter>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostScalarClipFilter>().size() == 1) {
-        return true;
+    // only activate if a post object is selected
+    for (auto obj : selection ) {
+        if (obj.pObject->isDerivedFrom(Fem::FemPostObject::getClassTypeId())) {
+            return true;
+        }
     }
     return false;
 }
@@ -2393,27 +2304,15 @@ void CmdFemPostContoursFilter::activated(int)
 bool CmdFemPostContoursFilter::isActive()
 {
     // only allow one object
-    if (getSelection().getSelection().size() > 1) {
+    auto selection = getSelection().getSelection();
+    if (selection.size() > 1) {
         return false;
     }
-    // only activate if a result is either a post pipeline or a possible other filter
-    if (getSelection().getObjectsOfType<Fem::FemPostPipeline>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostClipFilter>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostCutFilter>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostDataAlongLineFilter>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostScalarClipFilter>().size() == 1) {
-        return true;
-    }
-    else if (getSelection().getObjectsOfType<Fem::FemPostWarpVectorFilter>().size() == 1) {
-        return true;
+    // only activate if a post object is selected
+    for (auto obj : selection ) {
+        if (obj.pObject->isDerivedFrom(Fem::FemPostObject::getClassTypeId())) {
+            return true;
+        }
     }
     return false;
 }
@@ -2780,6 +2679,42 @@ bool CmdFemPostPipelineFromResult::isActive()
     return (results.size() == 1) ? true : false;
 }
 
+//================================================================================================
+DEF_STD_CMD_A(CmdFemPostBranchFilter)
+
+CmdFemPostBranchFilter::CmdFemPostBranchFilter()
+    : Command("FEM_PostBranchFilter")
+{
+    sAppModule = "Fem";
+    sGroup = QT_TR_NOOP("Fem");
+    sMenuText = QT_TR_NOOP("Pipeline branch");
+    sToolTipText = QT_TR_NOOP("Branches the pipeline, and allows to build colplex arrangements");
+    sWhatsThis = "FEM_PostBranchFilter";
+    sStatusTip = sToolTipText;
+    sPixmap = "FEM_PostBranchFilter";
+}
+
+void CmdFemPostBranchFilter::activated(int)
+{
+    setupFilter(this, "Branch");
+}
+
+bool CmdFemPostBranchFilter::isActive()
+{
+    // only allow one object
+    auto selection = getSelection().getSelection();
+    if (selection.size() > 1) {
+        return false;
+    }
+    // only activate if a post object is selected
+    for (auto obj : selection ) {
+        if (obj.pObject->isDerivedFrom(Fem::FemPostObject::getClassTypeId())) {
+            return true;
+        }
+    }
+    return false;
+}
+
 #endif
 
 
@@ -2835,6 +2770,7 @@ void CreateFemCommands()
     rcCmdMgr.addCommand(new CmdFemPostLinearizedStressesFilter);
     rcCmdMgr.addCommand(new CmdFemPostFunctions);
     rcCmdMgr.addCommand(new CmdFemPostPipelineFromResult);
+    rcCmdMgr.addCommand(new CmdFemPostBranchFilter);
     rcCmdMgr.addCommand(new CmdFemPostScalarClipFilter);
     rcCmdMgr.addCommand(new CmdFemPostWarpVectorFilter);
 #endif
