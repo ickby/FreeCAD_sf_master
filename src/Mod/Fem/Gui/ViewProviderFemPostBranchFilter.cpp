@@ -21,6 +21,8 @@
  ***************************************************************************/
 
 #include "PreCompiled.h"
+
+#include "TaskPostBoxes.h"
 #include "ViewProviderFemPostBranchFilter.h"
 
 
@@ -42,8 +44,8 @@ ViewProviderFemPostBranchFilter::~ViewProviderFemPostBranchFilter()
 
 void ViewProviderFemPostBranchFilter::setupTaskDialog(TaskDlgPost* dlg)
 {
-    //assert(dlg->getView() == this);
-    //dlg->appendBox(new TaskPostDisplay(this));
+    // add the branch ui
+    dlg->appendBox(new TaskPostBranch(this));
 
     // add the display options
     FemGui::ViewProviderFemPostObject::setupTaskDialog(dlg);

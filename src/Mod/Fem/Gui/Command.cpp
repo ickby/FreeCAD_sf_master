@@ -2688,7 +2688,7 @@ CmdFemPostBranchFilter::CmdFemPostBranchFilter()
     sAppModule = "Fem";
     sGroup = QT_TR_NOOP("Fem");
     sMenuText = QT_TR_NOOP("Pipeline branch");
-    sToolTipText = QT_TR_NOOP("Branches the pipeline, and allows to build colplex arrangements");
+    sToolTipText = QT_TR_NOOP("Branches the pipeline into a new path");
     sWhatsThis = "FEM_PostBranchFilter";
     sStatusTip = sToolTipText;
     sPixmap = "FEM_PostBranchFilter";
