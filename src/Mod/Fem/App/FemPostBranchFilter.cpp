@@ -170,6 +170,15 @@ void FemPostBranchFilter::onChanged(const Property* prop)
         else {
             setActiveFilterPipeline("append");
         }
+        // inform toplevel pipeline we changed
+        App::DocumentObject* group = FemPostGroupExtension::getGroupOfObject(this);
+        if (!group) {
+            return;
+        }
+        if (group->hasExtension(FemPostGroupExtension::getExtensionClassTypeId())) {
+            auto postgroup = group->getExtensionByType<FemPostGroupExtension>();
+            postgroup->filterChanged(this);
+        }
     }
 
     FemPostFilter::onChanged(prop);
@@ -177,6 +186,7 @@ void FemPostBranchFilter::onChanged(const Property* prop)
 
 void FemPostBranchFilter::filterChanged(FemPostFilter* filter)
 {
+
     //we only need to update the following children if we are in serial mode
     if (Mode.getValue() == 0) {
 
