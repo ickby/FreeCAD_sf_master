@@ -369,39 +369,35 @@ void FemPostPipeline::onChanged(const Property* prop)
 
 
     // connect all filters correctly to the source
-    if (prop == &Filter || prop == &Mode) {
+    if (prop == &Group || prop == &Mode) {
 
         // we check if all connections are right and add new ones if needed
-        std::vector<App::DocumentObject*> objs = Filter.getValues();
+        std::vector<FemPostFilter*> objs = getFilter();
 
         if (objs.empty()) {
             return;
         }
 
         FemPostFilter* filter = NULL;
-        std::vector<App::DocumentObject*>::iterator it = objs.begin();
+        std::vector<FemPostFilter*>::iterator it = objs.begin();
         for (; it != objs.end(); ++it) {
 
             // prepare the filter: make all connections new
-            FemPostFilter* nextFilter = static_cast<FemPostFilter*>(*it);
+            FemPostFilter* nextFilter = *it;
             nextFilter->getActiveFilterPipeline().source->RemoveAllInputConnections(0);
 
-            // handle input modes
-            if (Mode.getValue() == 0) {
+            // handle input modes (Parallel is seperated, alll other settings are serial, just in case an old document is loaded with "custom" mode, idx 2)
+            if (Mode.getValue() == 1) {
+                // parallel: all filters get out input
+                nextFilter->getActiveFilterPipeline().source->SetInputConnection(m_source_algorithm->GetOutputPort(0));
+            }
+            else {
                 // serial: the next filter gets the previous output, the first one gets our input
                 if (filter == NULL) {
                     nextFilter->getActiveFilterPipeline().source->SetInputConnection(m_source_algorithm->GetOutputPort(0));
                 } else {
                     nextFilter->getActiveFilterPipeline().source->SetInputConnection(filter->getActiveFilterPipeline().target->GetOutputPort());
                 }
-
-            }
-            else if (Mode.getValue() == 1) {
-                // parallel: all filters get out input
-                nextFilter->getActiveFilterPipeline().source->SetInputConnection(m_source_algorithm->GetOutputPort(0));
-            }
-            else {
-                throw Base::ValueError("Unknown Mode set for Pipeline");
             }
 
             filter = nextFilter;
@@ -602,6 +598,48 @@ void FemPostPipeline::load(std::vector<FemResultObject*> res, std::vector<double
 
     multiblock->GetFieldData()->AddArray(TimeInfo);
     Data.setValue(multiblock);
+}
+
+void FemPostPipeline::handleChangedPropertyName(Base::XMLReader& reader,
+                                                const char* typeName,
+                                                const char* propName)
+{
+    if (strcmp(propName, "Filter") == 0
+        && Base::Type::fromName(typeName) == App::PropertyLinkList::getClassTypeId()) {
+
+        // add the formerly filter values to the group
+        App::PropertyLinkList filter;
+        filter.setContainer(this);
+        filter.Restore(reader);
+        auto group_filter = filter.getValues();
+        auto group = Group.getValues();
+        group.insert( group.end(), group_filter.begin(), group_filter.end() );
+        Group.setValues(group);
+    }
+    else if (strcmp(propName, "Functions") == 0
+             && Base::Type::fromName(typeName) == App::PropertyLink::getClassTypeId()) {
+
+        // add the formerly Functions values to the group
+        App::PropertyLink functions;
+        functions.setContainer(this);
+        functions.Restore(reader);
+        if(functions.getValue()) {
+            auto group = Group.getValues();
+            group.push_back(functions.getValue());
+            Group.setValues(group);
+        }
+    }
+    else {
+        FemPostObject::handleChangedPropertyName(reader, typeName, propName);
+    }
+}
+
+void FemPostPipeline::onDocumentRestored() {
+    // if a old document was loaded with "custom" mode setting, the current value
+    // would be out of range. Reset it to "serial"
+    if(Mode.getValue()>1 || Mode.getValue() < 0) {
+        Mode.setValue(long(0));
+    }
 }
 
 PyObject* FemPostPipeline::getPyObject()
