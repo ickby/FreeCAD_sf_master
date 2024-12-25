@@ -59,7 +59,6 @@
 using namespace Fem;
 using namespace App;
 
-
 vtkStandardNewMacro(FemFrameSourceAlgorithm);
 
 FemFrameSourceAlgorithm::FemFrameSourceAlgorithm::FemFrameSourceAlgorithm()
@@ -202,7 +201,6 @@ FemPostPipeline::FemPostPipeline()
     : FemPostObject()
     , FemPostGroupExtension()
 {
-
     FemPostGroupExtension::initExtension(this);
 
     ADD_PROPERTY_TYPE(Frame,
@@ -220,7 +218,7 @@ FemPostPipeline::~FemPostPipeline() = default;
 
 short FemPostPipeline::mustExecute() const
 {
-    if (Mode.isTouched()) {
+    if (Mode.isTouched() ) {
         return 1;
     }
 
@@ -458,7 +456,6 @@ void FemPostPipeline::recomputeChildren()
     double frame = 0;
     auto frames = getFrameValues();
     if (!frames.empty() && Frame.getValue() < long(frames.size())) {
-
         frame = frames[Frame.getValue()];
     }
 
@@ -521,7 +518,6 @@ Base::Unit FemPostPipeline::getFrameUnit()
 
     vtkAbstractArray* TimeInfo = multiblock->GetFieldData()->GetAbstractArray("TimeInfo");
     if (!TimeInfo->IsA("vtkStringArray") || TimeInfo->GetNumberOfTuples() < 2) {
-
         // units cannot be undefined, so use time
         return Base::Unit::TimeSpan;
     }
@@ -595,6 +591,7 @@ void FemPostPipeline::load(std::vector<FemResultObject*> res,
         // first copy the mesh over
         const FemMesh& mesh =
             static_cast<FemMeshObject*>(res[i]->Mesh.getValue())->FemMesh.getValue();
+
         vtkSmartPointer<vtkUnstructuredGrid> grid = vtkSmartPointer<vtkUnstructuredGrid>::New();
         FemVTKTools::exportVTKMesh(&mesh, grid);
 

@@ -528,7 +528,6 @@ void TaskPostFrames::onSelectionChanged()
     }
 }
 
-
 void TaskPostFrames::applyPythonCode()
 {
     // we apply the views widgets python code
@@ -586,7 +585,6 @@ void TaskPostBranch::onOutputIndexChanged(int idx)
 {
     static_cast<Fem::FemPostBranchFilter*>(getObject())->Output.setValue(idx);
 }
-
 
 void TaskPostBranch::applyPythonCode()
 {
