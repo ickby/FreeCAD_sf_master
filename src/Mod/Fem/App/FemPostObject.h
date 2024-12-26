@@ -26,8 +26,11 @@
 
 #include "PropertyPostDataObject.h"
 #include <App/GeoFeature.h>
+#include <App/PropertyStandard.h>
 #include <vtkBoundingBox.h>
 #include <vtkDataSet.h>
+#include <vtkTransformFilter.h>
+#include <vtkSmartPointer.h>
 
 
 namespace Fem
@@ -45,6 +48,7 @@ public:
     ~FemPostObject() override;
 
     Fem::PropertyPostDataObject Data;
+    App::PropertyBool TransformData;
 
     // returns the DataSet from the data property. Better use this
     // instead of casting Data.getValue(), as data does not need to be a dataset,
@@ -56,6 +60,14 @@ public:
 
     vtkBoundingBox getBoundingBox();
     void writeVTK(const char* filename) const;
+
+protected:
+    // placement is applied via transform filter. However, we do not know
+    // how this filter should be used to create data. This is to be implemented
+    // by the derived classes.
+    vtkSmartPointer<vtkTransformFilter> m_transform_filter;
+
+    void onChanged(const App::Property* prop) override;
 };
 
 }  // namespace Fem

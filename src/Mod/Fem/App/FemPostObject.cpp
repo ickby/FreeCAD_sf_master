@@ -26,6 +26,7 @@
 #include <vtkDataSet.h>
 #include <vtkXMLDataSetWriter.h>
 #include <vtkXMLMultiBlockDataWriter.h>
+#include <vtkTransform.h>
 #endif
 
 #include <Base/Exception.h>
@@ -43,6 +44,23 @@ PROPERTY_SOURCE(Fem::FemPostObject, App::GeoFeature)
 FemPostObject::FemPostObject()
 {
     ADD_PROPERTY(Data, (nullptr));
+
+    ADD_PROPERTY_TYPE(TransformData,
+                     (true),
+                     "Base",
+                     App::Prop_None,
+                     "Transforms the result data additionally to geometry when\n"
+                     "applying the placement (valid for all vector fields, not scalars)");
+
+    m_transform_filter = vtkSmartPointer<vtkTransformFilter>::New();
+
+    // define default transform
+    double data[16];
+    auto matrix = Placement.getValue().toMatrix();
+    matrix.getMatrix(data);
+    vtkTransform* transform = vtkTransform::New();
+    transform->SetMatrix(data);
+    m_transform_filter->SetTransform(transform);
 }
 
 FemPostObject::~FemPostObject() = default;
@@ -84,6 +102,29 @@ PyObject* FemPostObject::getPyObject()
     }
 
     return Py::new_reference_to(PythonObject);
+}
+
+void FemPostObject::onChanged(const App::Property* prop)
+{
+    if(prop == &Placement) {
+        // we update the transform filter to match the placement!
+        double data[16];
+        auto matrix = Placement.getValue().toMatrix();
+        matrix.getMatrix(data);
+        vtkTransform* transform = vtkTransform::New();
+        transform->SetMatrix(data);
+        m_transform_filter->SetTransform(transform);
+        //note: no call to Update(), as we do not know the frame to use. has to happen
+        //in derived class
+
+        // placement would not recompute, as it is a "not touch" prop.
+        this->touch();
+
+    } else if (prop == &TransformData) {
+        m_transform_filter->SetTransformAllInputVectors(TransformData.getValue());
+    }
+
+    App::GeoFeature::onChanged(prop);
 }
 
 namespace

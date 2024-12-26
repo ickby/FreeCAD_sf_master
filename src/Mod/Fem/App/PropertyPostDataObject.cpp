@@ -353,7 +353,7 @@ void PropertyPostDataObject::SaveDocFile(Base::Writer& writer) const
         if (success) {
             // ZIP file we store all data in
             zipios::ZipOutputStream ZipWriter(fi.filePath());
-            ZipWriter.putNextEntry("dummy"); //need to add a dummy first, as the read stream always omits the first entry for unknown reasons
+            ZipWriter.putNextEntry("dummy"); //need to add a dummy first, as the read stream preloads the first entry, and we cannot get the file name...
             add_to_zip(datafolder, datafolder.filePath().length(), ZipWriter);
             ZipWriter.close();
             datafolder.deleteDirectoryRecursive();
