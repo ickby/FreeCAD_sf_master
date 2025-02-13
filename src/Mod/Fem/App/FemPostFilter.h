@@ -70,7 +70,6 @@ protected:
     void addFilterPipeline(const FilterPipeline& p, std::string name);
     FilterPipeline& getFilterPipeline(std::string name);
     void setActiveFilterPipeline(std::string name);
-    void ensureFilterPipelines();
 
     // Transformation handling
     void setTransformLocation(TransformLocation loc);
@@ -86,7 +85,6 @@ public:
     void onChanged(const App::Property* prop) override;
     App::DocumentObjectExecReturn* execute() override;
 
-    bool canConnect();
     vtkSmartPointer<vtkAlgorithm> getFilterInput();
     vtkSmartPointer<vtkAlgorithm> getFilterOutput();
 

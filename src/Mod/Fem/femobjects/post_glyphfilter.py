@@ -29,6 +29,11 @@ __url__ = "https://www.freecad.org"
 #  \ingroup FEM
 #  \brief Post processing filter creating glyphs for vector fields
 
+# IMPORTANT: Never import vtk directly. Often vtk is compiled with different QT
+# version than FreeCAD, and "import vtk" crashes by importing ui components.
+# Always import the filter and data modules only.
+from vtkmodules.vtkFiltersCore import vtkPassThrough
+
 from . import base_fempythonobject
 _PropHelper = base_fempythonobject._PropHelper
 
@@ -63,21 +68,16 @@ class PostGlyphFilter(base_fempythonobject.BaseFemPythonObject):
 
     def _setupFilterPipeline(self, obj):
 
-        print("setup pipeline")
-
         # create all vtkalgorithms and set them as filter pipeline
-        from vtkmodules.vtkFiltersCore import vtkPassThrough
+
 
         self._pass = vtkPassThrough()
         obj.addFilterPipeline("default", self._pass, self._pass)
         obj.setActiveFilterPipeline("default")
 
-    def onChanged(self, obj, prop):
-        print("changed: ", prop)
 
     def onDocumentRestored(self, obj):
 
-        print("document restored")
         # resetup the pipeline
         self._setupFilterPipeline(obj)
 

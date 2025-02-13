@@ -56,7 +56,6 @@ PyObject* FemPostFilterPy::addFilterPipeline(PyObject* args)
     PyObject *source = nullptr;
     PyObject *target = nullptr;
 
-    Base::Console().Message("addFilterPipeline called\n");
     if (PyArg_ParseTuple(args, "sOO", &name, &source, &target)) {
 
         // extract the algorithms

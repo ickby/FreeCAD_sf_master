@@ -432,13 +432,6 @@ void FemPostPipeline::onChanged(const Property* prop)
 
             // prepare the filter: make all connections new
             FemPostFilter* nextFilter = *it;
-            if (!nextFilter->canConnect()) {
-                // this may be the case if we reload from document and have
-                // python filters. They load their vtk algorithms after they are added
-                // to the pipeline.
-                continue;
-            }
-
             nextFilter->getFilterInput()->RemoveAllInputConnections(0);
 
             // handle input modes (Parallel is seperated, alll other settings are serial, just in

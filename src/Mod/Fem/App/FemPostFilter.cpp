@@ -55,26 +55,25 @@ FemPostFilter::FemPostFilter()
                       App::Prop_ReadOnly,
                       "The step used to calculate the data");
 
+    // the default pipeline: just a passthrough
+    // this is used to simplify the python filter handling,
+    // as those do not have filter pipelines setup till later
+    // in the document loading process.
+    auto filter = vtkPassThrough::New();
+    auto pipeline = FemPostFilter::FilterPipeline();
+    pipeline.algorithmStorage.push_back(filter);
+    pipeline.source = filter;
+    pipeline.target = filter;
+    addFilterPipeline(pipeline, "__passthrough__");
 }
 
 FemPostFilter::~FemPostFilter() = default;
 
-// Ensures the pipelines are set up correctly, throws exception otherwise
-void FemPostFilter::ensureFilterPipelines()
-{
-    if (m_pipelines.empty() || (m_pipelines.count(m_activePipeline) != 1)) {
-        throw Base::AbortException("Filter pipelines not setup correctly");
-    }
-}
 
 void FemPostFilter::addFilterPipeline(const FemPostFilter::FilterPipeline& p, std::string name)
 {
     m_pipelines[name] = p;
 
-    // make sure active pipeline is well defined the moment it is possible
-    // Note: Mostly needed to make FeaturePython filters behave well, e.g.
-    // when the implementation of setupFilterPipelines does not set the active
-    // pipeline correctly
     if (m_activePipeline.empty()) {
         m_activePipeline = name;
     }
@@ -82,14 +81,11 @@ void FemPostFilter::addFilterPipeline(const FemPostFilter::FilterPipeline& p, st
 
 FemPostFilter::FilterPipeline& FemPostFilter::getFilterPipeline(std::string name)
 {
-    ensureFilterPipelines();
     return m_pipelines.at(name);
 }
 
 void FemPostFilter::setActiveFilterPipeline(std::string name)
 {
-    ensureFilterPipelines();
-
     if (m_pipelines.count(name) == 0) {
         throw Base::ValueError("Not a filter pipline name");
     }
@@ -117,15 +113,8 @@ void FemPostFilter::setActiveFilterPipeline(std::string name)
     }
 }
 
-bool FemPostFilter::canConnect()
-{
-    return !m_pipelines.empty() && (m_pipelines.count(m_activePipeline)==1);
-}
-
 vtkSmartPointer<vtkAlgorithm> FemPostFilter::getFilterInput()
 {
-    ensureFilterPipelines();
-
     if (m_use_transform &&
         m_transform_location == TransformLocation::input) {
 
@@ -137,8 +126,6 @@ vtkSmartPointer<vtkAlgorithm> FemPostFilter::getFilterInput()
 
 vtkSmartPointer<vtkAlgorithm> FemPostFilter::getFilterOutput()
 {
-    ensureFilterPipelines();
-
     if (m_use_transform &&
         m_transform_location == TransformLocation::output) {
 
@@ -164,7 +151,6 @@ void FemPostFilter::onChanged(const App::Property* prop)
 {
 
     if (prop == &Placement) {
-        ensureFilterPipelines();
 
         if (Placement.getValue().isIdentity() && m_use_transform) {
             // remove transform from pipeline
@@ -222,7 +208,6 @@ DocumentObjectExecReturn* FemPostFilter::execute()
 
 vtkSmartPointer<vtkDataSet> FemPostFilter::getInputData() {
 
-    ensureFilterPipelines();
     auto active = m_pipelines[m_activePipeline];
     if (active.source->GetNumberOfInputConnections(0) == 0) {
         return nullptr;
