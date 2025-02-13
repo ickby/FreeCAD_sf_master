@@ -183,7 +183,7 @@ ViewProviderFemPostObject::ViewProviderFemPostObject()
     LineWidth.setConstraints(&sizeRange);
     PointSize.setConstraints(&sizeRange);
 
-    sPixmap = "fem-femmesh-from-shape";
+    sPixmap = "FEM_PostPipelineFromResult";
 
     // create the subnodes which do the visualization work
     m_transpType = new SoTransparencyType();

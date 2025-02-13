@@ -30,10 +30,13 @@
 #include <vtkAlgorithmOutput.h>
 #endif
 
+#include <App/FeaturePythonPyImp.h>
 #include <App/Document.h>
 #include <Base/Console.h>
 
 #include "FemPostFilter.h"
+#include "FemPostFilterPy.h"
+
 #include "FemPostPipeline.h"
 #include "FemPostBranchFilter.h"
 
@@ -56,22 +59,45 @@ FemPostFilter::FemPostFilter()
 
 FemPostFilter::~FemPostFilter() = default;
 
+// Ensures the pipelines are set up correctly, throws exception otherwise
+void FemPostFilter::ensureFilterPipelines()
+{
+    if (m_pipelines.empty() || (m_pipelines.count(m_activePipeline) != 1)) {
+        throw Base::AbortException("Filter pipelines not setup correctly");
+    }
+}
+
 void FemPostFilter::addFilterPipeline(const FemPostFilter::FilterPipeline& p, std::string name)
 {
     m_pipelines[name] = p;
+
+    // make sure active pipeline is well defined the moment it is possible
+    // Note: Mostly needed to make FeaturePython filters behave well, e.g.
+    // when the implementation of setupFilterPipelines does not set the active
+    // pipeline correctly
+    if (m_activePipeline.empty()) {
+        m_activePipeline = name;
+    }
 }
 
 FemPostFilter::FilterPipeline& FemPostFilter::getFilterPipeline(std::string name)
 {
-    return m_pipelines[name];
+    ensureFilterPipelines();
+    return m_pipelines.at(name);
 }
 
 void FemPostFilter::setActiveFilterPipeline(std::string name)
 {
+    ensureFilterPipelines();
+
+    if (m_pipelines.count(name) == 0) {
+        throw Base::ValueError("Not a filter pipline name");
+    }
+
     if (m_activePipeline != name && isValid()) {
 
-        // disable all inputs of current pipeline
-        if (m_activePipeline != "" and m_pipelines.find( m_activePipeline ) != m_pipelines.end()) {
+        // disable all inputs of currently active pipeline
+        if (m_pipelines.count(m_activePipeline) == 1) {
             m_pipelines[m_activePipeline].source->RemoveAllInputConnections(0);
         }
 
@@ -91,8 +117,15 @@ void FemPostFilter::setActiveFilterPipeline(std::string name)
     }
 }
 
+bool FemPostFilter::canConnect()
+{
+    return !m_pipelines.empty() && (m_pipelines.count(m_activePipeline)==1);
+}
+
 vtkSmartPointer<vtkAlgorithm> FemPostFilter::getFilterInput()
 {
+    ensureFilterPipelines();
+
     if (m_use_transform &&
         m_transform_location == TransformLocation::input) {
 
@@ -104,6 +137,8 @@ vtkSmartPointer<vtkAlgorithm> FemPostFilter::getFilterInput()
 
 vtkSmartPointer<vtkAlgorithm> FemPostFilter::getFilterOutput()
 {
+    ensureFilterPipelines();
+
     if (m_use_transform &&
         m_transform_location == TransformLocation::output) {
 
@@ -129,6 +164,8 @@ void FemPostFilter::onChanged(const App::Property* prop)
 {
 
     if (prop == &Placement) {
+        ensureFilterPipelines();
+
         if (Placement.getValue().isIdentity() && m_use_transform) {
             // remove transform from pipeline
             if (m_transform_location == TransformLocation::output) {
@@ -166,27 +203,26 @@ DocumentObjectExecReturn* FemPostFilter::execute()
 {
 
     // the pipelines are setup correctly, all we need to do is to update and take out the data.
-    if (!m_pipelines.empty() && !m_activePipeline.empty()) {
-        auto output = getFilterOutput();
+    auto output = getFilterOutput();
 
-        if (output->GetNumberOfInputConnections(0) == 0) {
-            return StdReturn;
-        }
-
-        if (Frame.getValue()>0) {
-            output->UpdateTimeStep(Frame.getValue());
-        }
-        else {
-            output->Update();
-        }
-        Data.setValue(output->GetOutputDataObject(0));
+    if (output->GetNumberOfInputConnections(0) == 0) {
+        return StdReturn;
     }
+
+    if (Frame.getValue()>0) {
+        output->UpdateTimeStep(Frame.getValue());
+    }
+    else {
+        output->Update();
+    }
+    Data.setValue(output->GetOutputDataObject(0));
 
     return StdReturn;
 }
 
 vtkSmartPointer<vtkDataSet> FemPostFilter::getInputData() {
 
+    ensureFilterPipelines();
     auto active = m_pipelines[m_activePipeline];
     if (active.source->GetNumberOfInputConnections(0) == 0) {
         return nullptr;
@@ -241,6 +277,44 @@ void FemPostFilter::setTransformLocation(TransformLocation loc)
 {
     m_transform_location = loc;
 }
+
+PyObject* FemPostFilter::getPyObject()
+{
+    if (PythonObject.is(Py::_None())) {
+        // ref counter is set to 1
+        PythonObject = Py::Object(new FemPostFilterPy(this), true);
+    }
+
+    return Py::new_reference_to(PythonObject);
+}
+
+
+// Python Filter feature ---------------------------------------------------------
+
+namespace App
+{
+/// @cond DOXERR
+PROPERTY_SOURCE_TEMPLATE(Fem::PostFilterPython, Fem::FemPostFilter)
+template<> const char* Fem::PostFilterPython::getViewProviderName(void) const
+{
+    return "FemGui::ViewProviderFemPostObject";
+}
+template<> PyObject* Fem::PostFilterPython::getPyObject()
+{
+    if (PythonObject.is(Py::_None())) {
+        // ref counter is set to 1
+        PythonObject = Py::Object(new App::FeaturePythonPyT<FemPostFilterPy>(this), true);
+    }
+    return Py::new_reference_to(PythonObject);
+}
+
+/// @endcond
+
+// explicit template instantiation
+template class FemExport FeaturePythonT<Fem::FemPostFilter>;
+}// namespace App
+
+
 
 // ***************************************************************************
 // in the following, the different filters sorted alphabetically

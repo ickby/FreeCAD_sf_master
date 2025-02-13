@@ -70,6 +70,20 @@ if(NOT FREECAD_LIBPACK_USE OR FREECAD_LIBPACK_CHECKFILE_CLBUNDLER OR FREECAD_LIB
         SetupOpenGL()
     endif(BUILD_GUI)
     SetupSalomeSMESH()
+    if (BUILD_FEM_VTK)
+        # SMESH VTK handling does not add WrappingPythonCore, hence we need to redo it here
+        find_package(VTK REQUIRED COMPONENTS WrappingPythonCore
+                                             CommonCore
+                                             CommonDataModel
+                                             FiltersVerdict
+                                             IOXML
+                                             FiltersCore
+                                             FiltersGeneral
+                                             IOLegacy
+                                             FiltersExtraction
+                                             FiltersSources
+                                             FiltersGeometry)
+    endif (BUILD_FEM_VTK)
     if (BUILD_FEM_NETGEN)
         find_package(NETGEN)
     endif(BUILD_FEM_NETGEN)

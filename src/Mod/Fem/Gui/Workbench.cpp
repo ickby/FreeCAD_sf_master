@@ -206,6 +206,7 @@ Gui::ToolBarItem* Workbench::setupToolBars() const
              << "FEM_PostFilterCutFunction"
              << "FEM_PostFilterClipRegion"
              << "FEM_PostFilterContours"
+             << "FEM_PostFilterGlyph"
              << "FEM_PostFilterDataAlongLine"
              << "FEM_PostFilterLinearizedStresses"
              << "FEM_PostFilterDataAtPoint"

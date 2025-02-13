@@ -198,6 +198,7 @@ SET(FemObjects_SRCS
     femobjects/mesh_netgen.py
     femobjects/mesh_region.py
     femobjects/mesh_result.py
+    femobjects/post_glyphfilter.py
     femobjects/result_mechanical.py
     femobjects/solver_ccxtools.py
 )

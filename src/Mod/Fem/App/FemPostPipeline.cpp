@@ -138,13 +138,11 @@ int FemFrameSourceAlgorithm::RequestInformation(vtkInformation* reqInfo,
     }
 
     double tRange[2] = {frames.front(), frames.back()};
-    double tFrames[frames.size()];
-    std::copy(frames.begin(), frames.end(), tFrames);
 
     // finally set the time info!
     vtkInformation* info = outVector->GetInformationObject(0);
     info->Set(vtkStreamingDemandDrivenPipeline::TIME_RANGE(), tRange, 2);
-    info->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), tFrames, frames.size());
+    info->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &frames[0], frames.size());
     info->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
 
     return 1;
@@ -434,6 +432,13 @@ void FemPostPipeline::onChanged(const Property* prop)
 
             // prepare the filter: make all connections new
             FemPostFilter* nextFilter = *it;
+            if (!nextFilter->canConnect()) {
+                // this may be the case if we reload from document and have
+                // python filters. They load their vtk algorithms after they are added
+                // to the pipeline.
+                continue;
+            }
+
             nextFilter->getFilterInput()->RemoveAllInputConnections(0);
 
             // handle input modes (Parallel is seperated, alll other settings are serial, just in

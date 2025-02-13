@@ -638,6 +638,20 @@ def makePostVtkFilterContours(doc, base_vtk_result, name="VtkFilterContours"):
     base_vtk_result.addObject(obj)
     return obj
 
+def makePostFilterGlyph(doc, base_vtk_result, name="FilterGlyph"):
+    """makePostVtkFilterGlyph(document, [name]):
+    creates a FEM post processing filter that visualizes vector fields with glyphs
+    """
+    obj = doc.addObject("Fem::PostFilterPython", name)
+    from femobjects import post_glyphfilter
+
+    post_glyphfilter.PostGlyphFilter(obj)
+    base_vtk_result.addObject(obj)
+    #if FreeCAD.GuiUp:
+    #    from femviewprovider import view_result_mechanical
+
+    #    view_result_mechanical.VPResultMechanical(obj.ViewObject)
+    return obj
 
 def makePostVtkResult(doc, result_data, name="VtkResult"):
     """makePostVtkResult(document, base_result, [name]):
@@ -658,7 +672,6 @@ def makePostVtkResult(doc, result_data, name="VtkResult"):
         # to assure the user sees something, set the default to Surface
         obj.ViewObject.DisplayMode = "Surface"
     return obj
-
 
 # ********* solver objects ***********************************************************************
 def makeEquationDeformation(doc, base_solver=None, name="Deformation"):
