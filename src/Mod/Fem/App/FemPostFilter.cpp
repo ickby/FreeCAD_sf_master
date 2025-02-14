@@ -214,8 +214,19 @@ vtkSmartPointer<vtkDataSet> FemPostFilter::getInputData() {
     }
 
     vtkAlgorithmOutput* output = active.source->GetInputConnection(0,0);
+    if(!output) {
+        return nullptr;
+    }
     vtkAlgorithm* algo = output->GetProducer();
-    algo->Update();
+    if(!algo) {
+        return nullptr;
+    }
+    if (Frame.getValue()>0) {
+        algo->UpdateTimeStep(Frame.getValue());
+    }
+    else {
+        algo->Update();
+    }
 
     return vtkDataSet::SafeDownCast(algo->GetOutputDataObject(0));
 }

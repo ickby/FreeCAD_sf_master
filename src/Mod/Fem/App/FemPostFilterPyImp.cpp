@@ -86,7 +86,7 @@ PyObject* FemPostFilterPy::addFilterPipeline(PyObject* args)
 PyObject* FemPostFilterPy::setActiveFilterPipeline(PyObject* args)
 {
     const char* name;
-    if (!PyArg_ParseTuple(args, "s", &name)) {
+    if (PyArg_ParseTuple(args, "s", &name)) {
         getFemPostFilterPtr()->setActiveFilterPipeline(std::string(name));
     }
 
@@ -101,6 +101,33 @@ PyObject* FemPostFilterPy::getParentPostGroup(PyObject* args)
     }
 
     return Py_None;
+}
+
+PyObject* FemPostFilterPy::getInputVectorFields(PyObject* args)
+{
+    std::vector<std::string> vector_fields = getFemPostFilterPtr()->getInputVectorFields();
+
+    // convert to python list of strings
+    Py::List list;
+    for (std::string& field : vector_fields) {
+        list.append(Py::String(field));
+    }
+
+    return  Py::new_reference_to(list);
+}
+
+
+PyObject* FemPostFilterPy::getInputScalarFields(PyObject* args)
+{
+    std::vector<std::string> scalar_fields = getFemPostFilterPtr()->getInputScalarFields();
+
+    // convert to python list of strings
+    Py::List list;
+    for (std::string& field : scalar_fields) {
+        list.append(Py::String(field));
+    }
+
+    return  Py::new_reference_to(list);
 }
 
 PyObject* FemPostFilterPy::getCustomAttributes(const char* /*attr*/) const
