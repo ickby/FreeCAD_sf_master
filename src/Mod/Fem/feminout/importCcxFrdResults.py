@@ -62,7 +62,6 @@ def setupPipeline(doc, analysis, results_name, result_data):
     import ObjectsFem
     from . import importToolsFem
 
-
     # create a results pipeline if not already existing
     pipeline_name = "Pipeline_" + results_name
     pipeline_obj = doc.getObject(pipeline_name)
@@ -223,13 +222,16 @@ def importFrd(filename, analysis=None, result_name_prefix="", result_analysis_ty
                 else:
                     multistep_result.append(res_obj)
 
-
             # we have collected all result objects, lets create the multistep result pipeline
             if len(m["Results"]) > 1:
                 unit = FreeCAD.Units.Frequency
                 description = "Eigenmodes"
-                setupPipeline(doc, analysis, results_name, [multistep_result, multistep_value, unit, description])
-
+                setupPipeline(
+                    doc,
+                    analysis,
+                    results_name,
+                    [multistep_result, multistep_value, unit, description],
+                )
 
         elif result_analysis_type == "check":
             results_name = f"{result_name_prefix}Check"

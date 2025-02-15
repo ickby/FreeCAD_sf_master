@@ -79,7 +79,8 @@ void FemFrameSourceAlgorithm::setDataObject(vtkSmartPointer<vtkDataObject> data)
     Update();
 }
 
-bool FemFrameSourceAlgorithm::isValid() {
+bool FemFrameSourceAlgorithm::isValid()
+{
     return m_data.GetPointer() != nullptr;
 }
 
@@ -318,7 +319,8 @@ App::DocumentObjectExecReturn* FemPostPipeline::execute()
 
             double time = frames[Frame.getValue()];
             m_transform_filter->UpdateTimeStep(time);
-        } else {
+        }
+        else {
             m_transform_filter->Update();
         }
 
@@ -389,7 +391,8 @@ void FemPostPipeline::onChanged(const Property* prop)
             m_block_property = true;
             Frame.setValue(val.c_str());
             m_block_property = false;
-        } else {
+        }
+        else {
             // frame gets updated
             Frame.setValue(long(0));
         }
@@ -399,7 +402,7 @@ void FemPostPipeline::onChanged(const Property* prop)
 
     if (prop == &Frame && !m_block_property) {
 
-        //Update all children with the new frame
+        // Update all children with the new frame
         double value = 0;
         auto frames = m_source_algorithm->getFrameValues();
         if (!frames.empty() && frames.size() > ulong(Frame.getValue())) {
@@ -477,7 +480,7 @@ void FemPostPipeline::filterChanged(FemPostFilter* filter)
 
             if (started) {
                 (*it)->touch();
-                if((*it)->hasExtension(Fem::FemPostGroupExtension::getExtensionClassTypeId())) {
+                if ((*it)->hasExtension(Fem::FemPostGroupExtension::getExtensionClassTypeId())) {
                     (*it)->getExtension<FemPostGroupExtension>()->recomputeChildren();
                 }
             }

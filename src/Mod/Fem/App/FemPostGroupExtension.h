@@ -31,7 +31,8 @@ namespace Fem
 {
 
 // object grouping FEM filters and building the structure of the pipeline
-class FemExport FemPostGroupExtension : public App::GroupExtension {
+class FemExport FemPostGroupExtension: public App::GroupExtension
+{
 
     using inherited = App::GroupExtension;
     EXTENSION_PROPERTY_HEADER_WITH_OVERRIDE(Fem::FemPostGroupExtension);

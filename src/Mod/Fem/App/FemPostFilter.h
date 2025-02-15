@@ -45,7 +45,11 @@
 namespace Fem
 {
 
-enum TransformLocation { input, output };
+enum TransformLocation
+{
+    input,
+    output
+};
 
 class FemExport FemPostFilter: public Fem::FemPostObject
 {
@@ -89,7 +93,7 @@ private:
     bool m_use_transform = false;
     TransformLocation m_transform_location = TransformLocation::output;
 
-    void pipelineChanged(); // inform parents that the pipeline changed
+    void pipelineChanged();  // inform parents that the pipeline changed
 };
 
 class FemExport FemPostSmoothFilterExtension: public App::DocumentObjectExtension
