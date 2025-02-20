@@ -991,7 +991,8 @@ bool ViewProviderFemPostObject::setEdit(int ModNum)
 void ViewProviderFemPostObject::setupTaskDialog(TaskDlgPost* dlg)
 {
     assert(dlg->getView() == this);
-    dlg->appendBox(new TaskPostDisplay(this));
+    auto panel = new TaskPostDisplay(this);
+    dlg->addTaskBox(panel->windowIcon().pixmap(32), panel);
 }
 
 void ViewProviderFemPostObject::unsetEdit(int ModNum)

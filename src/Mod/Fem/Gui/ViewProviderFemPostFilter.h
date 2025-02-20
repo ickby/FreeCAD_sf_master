@@ -23,11 +23,15 @@
 #ifndef FEM_VIEWPROVIDERFEMPOSTFILTER_H
 #define FEM_VIEWPROVIDERFEMPOSTFILTER_H
 
+#include <Gui/ViewProviderFeaturePython.h>
 #include "ViewProviderFemPostObject.h"
-
 
 namespace FemGui
 {
+
+// Viewprovider for the python filters
+using ViewProviderPostFilterPython  = Gui::ViewProviderFeaturePythonT<ViewProviderFemPostObject>;
+
 
 // ***************************************************************************
 // in the following, the different filters sorted alphabetically

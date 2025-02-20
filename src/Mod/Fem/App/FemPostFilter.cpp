@@ -293,7 +293,7 @@ namespace App
 PROPERTY_SOURCE_TEMPLATE(Fem::PostFilterPython, Fem::FemPostFilter)
 template<> const char* Fem::PostFilterPython::getViewProviderName(void) const
 {
-    return "FemGui::ViewProviderFemPostObject";
+    return "FemGui::ViewProviderPostFilterPython";
 }
 template<> PyObject* Fem::PostFilterPython::getPyObject()
 {

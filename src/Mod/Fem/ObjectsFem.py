@@ -638,7 +638,7 @@ def makePostVtkFilterContours(doc, base_vtk_result, name="VtkFilterContours"):
     base_vtk_result.addObject(obj)
     return obj
 
-def makePostFilterGlyph(doc, base_vtk_result, name="FilterGlyph"):
+def makePostFilterGlyph(doc, base_vtk_result, name="Glyph"):
     """makePostVtkFilterGlyph(document, [name]):
     creates a FEM post processing filter that visualizes vector fields with glyphs
     """
@@ -647,10 +647,9 @@ def makePostFilterGlyph(doc, base_vtk_result, name="FilterGlyph"):
 
     post_glyphfilter.PostGlyphFilter(obj)
     base_vtk_result.addObject(obj)
-    #if FreeCAD.GuiUp:
-    #    from femviewprovider import view_result_mechanical
-
-    #    view_result_mechanical.VPResultMechanical(obj.ViewObject)
+    if FreeCAD.GuiUp:
+        from femviewprovider import view_post_glyphfilter
+        view_post_glyphfilter.VPPostGlyphFilter(obj.ViewObject)
     return obj
 
 def makePostVtkResult(doc, result_data, name="VtkResult"):

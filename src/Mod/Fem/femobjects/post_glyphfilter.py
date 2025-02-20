@@ -1,5 +1,5 @@
 # ***************************************************************************
-# *   Copyright (c) 2016 Bernd Hahnebach <bernd@bimstatik.org>              *
+# *   Copyright (c) 2025 Stefan Tröger <stefantroeger@gmx.net>              *
 # *                                                                         *
 # *   This file is part of the FreeCAD CAx development system.              *
 # *                                                                         *
@@ -61,7 +61,7 @@ class PostGlyphFilter(base_fempythonobject.BaseFemPythonObject):
                 type="App::PropertyEnumeration",
                 name="Glyph",
                 group="Glyph",
-                doc="The form the glyph has",
+                doc="The form of the glyph",
                 value=["Arrow", "Cube"],
             ),
             _PropHelper(
@@ -69,14 +69,14 @@ class PostGlyphFilter(base_fempythonobject.BaseFemPythonObject):
                 name="OrientationData",
                 group="Glyph",
                 doc="Which vector field is used to orient the glyphs",
-                value=["Not oriented"],
+                value=["None"],
             ),
             _PropHelper(
                 type="App::PropertyEnumeration",
                 name="ScaleData",
                 group="Scale",
                 doc="Which data field is used to scale the glyphs",
-                value=["Not scaled"],
+                value=["None"],
             ),
             _PropHelper(
                 type="App::PropertyEnumeration",
@@ -94,7 +94,7 @@ class PostGlyphFilter(base_fempythonobject.BaseFemPythonObject):
             ),
             _PropHelper(
                 type="App::PropertyEnumeration",
-                name="MaskingMode",
+                name="MaskMode",
                 group="Masking",
                 doc="Which vertices are used as glyph locations",
                 value=["Use All", "Every Nth", "Uniform Samping"],
@@ -118,11 +118,11 @@ class PostGlyphFilter(base_fempythonobject.BaseFemPythonObject):
 
     def __setupMaskingFilter(self, obj, masking):
 
-        if obj.MaskingMode == "Use All":
+        if obj.MaskMode == "Use All":
             masking.RandomModeOff()
             masking.SetOnRatio(1)
             masking.SetMaximumNumberOfPoints(int(1e10))
-        elif obj.MaskingMode == "Every Nth":
+        elif obj.MaskMode == "Every Nth":
             masking.RandomModeOff()
             masking.SetOnRatio(obj.Stride)
             masking.SetMaximumNumberOfPoints(int(1e10))
@@ -134,7 +134,7 @@ class PostGlyphFilter(base_fempythonobject.BaseFemPythonObject):
     def __setupGlyphFilter(self, obj, glyph):
 
         # scaling
-        if obj.ScaleData != "Not scaled":
+        if obj.ScaleData != "None":
 
             glyph.ScalingOn()
             if obj.ScaleData in obj.getInputVectorFields():
@@ -164,7 +164,7 @@ class PostGlyphFilter(base_fempythonobject.BaseFemPythonObject):
         glyph.SetScaleFactor(obj.ScaleFactor)
 
         # Orientation
-        if obj.OrientationData != "Not oriented":
+        if obj.OrientationData != "None":
             glyph.OrientOn()
             glyph.SetInputArrayToProcess(1,0,0,0,obj.OrientationData)
         else:
@@ -213,13 +213,13 @@ class PostGlyphFilter(base_fempythonobject.BaseFemPythonObject):
         all_fields.sort()
 
         current_orient = obj.OrientationData
-        enumeration = ["Not oriented"] + vector_fields
+        enumeration = ["None"] + vector_fields
         obj.OrientationData = enumeration
         if current_orient in enumeration:
             obj.OrientationData = current_orient
 
         current_scale = obj.ScaleData
-        enumeration = ["Not scaled"] + all_fields
+        enumeration = ["None"] + all_fields
         obj.ScaleData = enumeration
         if current_scale in enumeration:
             obj.ScaleData = current_scale
@@ -237,20 +237,20 @@ class PostGlyphFilter(base_fempythonobject.BaseFemPythonObject):
         if prop == "Glyph":
             obj.setActiveFilterPipeline(obj.Glyph)
 
-        if prop == "MaskingMode":
+        if prop == "MaskMode":
             for filter in self._algorithms:
                 masking = self._algorithms[filter][1]
                 self.__setupMaskingFilter(obj, masking)
 
         if prop == "Stride":
             # if mode is use all stride setting needs to stay at one
-            if obj.MaskingMode == "Every Nth":
+            if obj.MaskMode == "Every Nth":
                 for filter in self._algorithms:
                     masking = self._algorithms[filter][1]
                     masking.SetOnRatio(obj.Stride)
 
         if prop == "MaxNumber":
-            if obj.MaskingMode == "Uniform Sampling":
+            if obj.MaskMode == "Uniform Sampling":
                 for filter in self._algorithms:
                     masking = self._algorithms[filter][1]
                     masking.SetMaximumNumberOfPoints(obj.MaxNumber)
