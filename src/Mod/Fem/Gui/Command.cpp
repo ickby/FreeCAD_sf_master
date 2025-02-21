@@ -1822,15 +1822,18 @@ void setupFilter(Gui::Command* cmd, std::string Name)
     // at first we must determine the pipeline of the selection object
     // (which can be a pipeline itself)
     App::DocumentObject* pipeline = nullptr;
-    if(selObject->hasExtension(Fem::FemPostGroupExtension::getExtensionClassTypeId())) {
+    if (selObject->hasExtension(Fem::FemPostGroupExtension::getExtensionClassTypeId())) {
         pipeline = selObject;
-    } else {
+    }
+    else {
         pipeline = Fem::FemPostGroupExtension::getGroupOfObject(selObject);
         if (!pipeline || !pipeline->isDerivedFrom<Fem::FemPostObject>()) {
             QMessageBox::warning(
                 Gui::getMainWindow(),
                 qApp->translate("setupFilter", "Error: Object not in a post processing group"),
-                qApp->translate("setupFilter", "The filter could not be set up: Object not in a post processing group."));
+                qApp->translate(
+                    "setupFilter",
+                    "The filter could not be set up: Object not in a post processing group."));
             return;
         }
     }
@@ -1844,7 +1847,8 @@ void setupFilter(Gui::Command* cmd, std::string Name)
     // add it as subobject to the pipeline
     cmd->doCommand(Gui::Command::Doc,
                    "App.ActiveDocument.%s.addObject(App.ActiveDocument.%s)",
-                   pipeline->getNameInDocument(), FeatName.c_str());
+                   pipeline->getNameInDocument(),
+                   FeatName.c_str());
 
     // set display to assure the user sees the new object
     cmd->doCommand(Gui::Command::Doc,
@@ -1861,7 +1865,7 @@ void setupFilter(Gui::Command* cmd, std::string Name)
     auto selObjectView = static_cast<FemGui::ViewProviderFemPostObject*>(
         Gui::Application::Instance->getViewProvider(selObject));
 
-    //TODO: FIX
+    // TODO: FIX
     /*cmd->doCommand(Gui::Command::Doc,
                    "App.activeDocument().ActiveObject.ViewObject.Field = \"%s\"",
                    selObjectView->Field.getValueAsString());
@@ -2009,7 +2013,7 @@ bool CmdFemPostClipFilter::isActive()
         return false;
     }
     // only activate if a post object is selected
-    for (auto obj : selection ) {
+    for (auto obj : selection) {
         if (obj.pObject->isDerivedFrom<Fem::FemPostObject>()) {
             return true;
         }
@@ -2046,7 +2050,7 @@ bool CmdFemPostCutFilter::isActive()
         return false;
     }
     // only activate if a post object is selected
-    for (auto obj : selection ) {
+    for (auto obj : selection) {
         if (obj.pObject->isDerivedFrom<Fem::FemPostObject>()) {
             return true;
         }
@@ -2083,7 +2087,7 @@ bool CmdFemPostDataAlongLineFilter::isActive()
         return false;
     }
     // only activate if a post object is selected
-    for (auto obj : selection ) {
+    for (auto obj : selection) {
         if (obj.pObject->isDerivedFrom<Fem::FemPostObject>()) {
             return true;
         }
@@ -2121,7 +2125,7 @@ bool CmdFemPostDataAtPointFilter::isActive()
         return false;
     }
     // only activate if a post object is selected
-    for (auto obj : selection ) {
+    for (auto obj : selection) {
         if (obj.pObject->isDerivedFrom<Fem::FemPostObject>()) {
             return true;
         }
@@ -2234,7 +2238,7 @@ bool CmdFemPostScalarClipFilter::isActive()
         return false;
     }
     // only activate if a post object is selected
-    for (auto obj : selection ) {
+    for (auto obj : selection) {
         if (obj.pObject->isDerivedFrom<Fem::FemPostObject>()) {
             return true;
         }
@@ -2271,7 +2275,7 @@ bool CmdFemPostWarpVectorFilter::isActive()
         return false;
     }
     // only activate if a post object is selected
-    for (auto obj : selection ) {
+    for (auto obj : selection) {
         if (obj.pObject->isDerivedFrom<Fem::FemPostObject>()) {
             return true;
         }
@@ -2308,7 +2312,7 @@ bool CmdFemPostContoursFilter::isActive()
         return false;
     }
     // only activate if a post object is selected
-    for (auto obj : selection ) {
+    for (auto obj : selection) {
         if (obj.pObject->isDerivedFrom<Fem::FemPostObject>()) {
             return true;
         }
@@ -2380,7 +2384,8 @@ void CmdFemPostFunctions::activated(int iMsg)
                   "App.activeDocument().addObject('Fem::FemPost%sFunction','%s')",
                   name.c_str(),
                   FeatName.c_str());
-        doCommand(Doc, "App.ActiveDocument.%s.addObject(App.ActiveDocument.%s)",
+        doCommand(Doc,
+                  "App.ActiveDocument.%s.addObject(App.ActiveDocument.%s)",
                   provider->getNameInDocument(),
                   FeatName.c_str());
 
@@ -2706,7 +2711,7 @@ bool CmdFemPostBranchFilter::isActive()
         return false;
     }
     // only activate if a post object is selected
-    for (auto obj : selection ) {
+    for (auto obj : selection) {
         if (obj.pObject->isDerivedFrom<Fem::FemPostObject>()) {
             return true;
         }

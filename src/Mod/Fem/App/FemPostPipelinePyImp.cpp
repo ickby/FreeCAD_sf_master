@@ -66,12 +66,18 @@ PyObject* FemPostPipelinePy::scale(PyObject* args)
 
 PyObject* FemPostPipelinePy::load(PyObject* args)
 {
-    PyObject *py;
-    PyObject *list = nullptr;
-    PyObject *unitobj = nullptr;
+    PyObject* py;
+    PyObject* list = nullptr;
+    PyObject* unitobj = nullptr;
     const char* value_type;
 
-    if (PyArg_ParseTuple(args, "O|OO!s", &py, &list, &(Base::UnitPy::Type), &unitobj, &value_type)) {
+    if (PyArg_ParseTuple(args,
+                         "O|OO!s",
+                         &py,
+                         &list,
+                         &(Base::UnitPy::Type),
+                         &unitobj,
+                         &value_type)) {
 
         if (list == nullptr) {
 
@@ -81,7 +87,8 @@ PyObject* FemPostPipelinePy::load(PyObject* args)
                 PyErr_SetString(PyExc_TypeError, "object is not a result object");
                 return nullptr;
             }
-            App::DocumentObject* obj = static_cast<App::DocumentObjectPy*>(py)->getDocumentObjectPtr();
+            App::DocumentObject* obj =
+                static_cast<App::DocumentObjectPy*>(py)->getDocumentObjectPtr();
             if (!obj->isDerivedFrom<FemResultObject>()) {
                 PyErr_SetString(PyExc_TypeError, "object is not a result object");
                 return nullptr;
@@ -92,12 +99,13 @@ PyObject* FemPostPipelinePy::load(PyObject* args)
         }
         else if (list != nullptr && unitobj != nullptr) {
 
-            //multistep version!
+            // multistep version!
 
-            if ( !(PyTuple_Check(py)   || PyList_Check(py)) ||
-                !(PyTuple_Check(list) || PyList_Check(list)) ) {
+            if (!(PyTuple_Check(py) || PyList_Check(py))
+                || !(PyTuple_Check(list) || PyList_Check(list))) {
 
-                std::string error = std::string("Result and value must be list of ResultObjet and number respectively.");
+                std::string error = std::string(
+                    "Result and value must be list of ResultObjet and number respectively.");
                 throw Base::TypeError(error);
             }
 
@@ -110,7 +118,8 @@ PyObject* FemPostPipelinePy::load(PyObject* args)
             for (Py::Sequence::size_type i = 0; i < size; i++) {
                 Py::Object item = result_list[i];
                 if (!PyObject_TypeCheck(*item, &(DocumentObjectPy::Type))) {
-                    std::string error = std::string("type in result list must be 'ResultObject', not ");
+                    std::string error =
+                        std::string("type in result list must be 'ResultObject', not ");
                     throw Base::TypeError(error);
                 }
                 auto obj = static_cast<DocumentObjectPy*>(*item)->getDocumentObjectPtr();
@@ -120,7 +129,7 @@ PyObject* FemPostPipelinePy::load(PyObject* args)
                 results[i] = static_cast<FemResultObject*>(obj);
             }
 
-            //extract the values
+            // extract the values
             Py::Sequence values_list(list);
             size = values_list.size();
             std::vector<double> values;
