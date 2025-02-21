@@ -48,10 +48,19 @@ class VPPostGlyphFilter:
     def getIcon(self):
         return ":/icons/FEM_PostFilterGlyph.svg"
 
+    def getDisplayModes(self, obj):
+        # Mandatory, as the ViewProviderPostFilterPython does not add any
+        # display modes. We can choose here any that is supported by it:
+        # "Outline", "Nodes", "Surface", "Surface with Edges",
+        # "Wireframe", "Wireframe (surface only)", "Nodes (surface only)"
+
+        # only surface makes sense for the glyphs
+        return ["Surface"]
+
     def setDisplayMode(self, mode):
         # the post object viewprovider implements the different display modes
         # via vtk filter, not via masking modes. Hence we need to make sure
-        # to always stay in the "Default" masking mode
+        # to always stay in the "Default" masking mode, no matter the display mode
         return "Default"
 
     def setEdit(self, vobj, mode):
@@ -61,7 +70,7 @@ class VPPostGlyphFilter:
         # build up the task panel
         taskd = task_post_glyphfilter._TaskPanel(vobj)
 
-        #show it together with the !
+        #show it
         FreeCADGui.Control.showDialog(taskd)
 
         return True

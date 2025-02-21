@@ -51,7 +51,6 @@
 #endif
 
 #include <App/Document.h>
-#include <Base/Console.h>
 #include <Gui/Application.h>
 #include <Gui/Control.h>
 #include <Gui/Document.h>
@@ -391,7 +390,9 @@ void ViewProviderFemPostObject::updateVtk()
     }
 
     m_currentAlgorithm->Update();
-    updateProperties();
+    if (!isRestoring()) {
+        updateProperties();
+    }
     update3D();
 }
 
@@ -906,7 +907,9 @@ void ViewProviderFemPostObject::onChanged(const App::Property* prop)
     }
 
     if (prop == &Field && setupPipeline()) {
-        updateProperties();
+        if(!isRestoring()) {
+            updateProperties();
+        }
         WriteColorData(ResetColorBarRange);
     }
     else if (prop == &VectorMode && setupPipeline()) {

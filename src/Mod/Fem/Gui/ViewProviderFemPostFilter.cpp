@@ -35,8 +35,19 @@
 
 using namespace FemGui;
 
+PROPERTY_SOURCE(FemGui::ViewProviderFemPostFilterPythonBase, FemGui::ViewProviderFemPostObject)
+
+ViewProviderFemPostFilterPythonBase::ViewProviderFemPostFilterPythonBase() {}
+
+ViewProviderFemPostFilterPythonBase::~ViewProviderFemPostFilterPythonBase() = default;
+
+std::vector<std::string> ViewProviderFemPostFilterPythonBase::getDisplayModes() const
+{
+    return std::vector<std::string>();
+}
+
 namespace Gui {
-PROPERTY_SOURCE_TEMPLATE(FemGui::ViewProviderPostFilterPython, FemGui::ViewProviderFemPostObject)
+PROPERTY_SOURCE_TEMPLATE(FemGui::ViewProviderPostFilterPython, FemGui::ViewProviderFemPostFilterPythonBase)
 
 template<> PyObject* FemGui::ViewProviderPostFilterPython::getPyObject()
 {
@@ -48,7 +59,7 @@ template<> PyObject* FemGui::ViewProviderPostFilterPython::getPyObject()
 }
 
 // explicit template instantiation
-template class GuiExport ViewProviderFeaturePythonT<FemGui::ViewProviderFemPostObject>;
+template class GuiExport ViewProviderFeaturePythonT<FemGui::ViewProviderFemPostFilterPythonBase>;
 
 }
 

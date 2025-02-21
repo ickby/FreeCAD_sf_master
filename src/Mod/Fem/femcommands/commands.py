@@ -1156,7 +1156,7 @@ class _PostFilterGlyph(CommandManager):
         super().__init__()
         self.menutext = Qt.QT_TRANSLATE_NOOP("FEM_PostFilterGlyph", "Glyph filter")
         self.accel = "F, G"
-        self.tooltip = Qt.QT_TRANSLATE_NOOP("FEM_PostFilterGlyph", "Post processing filter that visualizes vertex data by glyphs")
+        self.tooltip = Qt.QT_TRANSLATE_NOOP("FEM_PostFilterGlyph", "Post processing filter that adds glyphs to the mesh vertices for vertex data visualization")
         self.is_active = "with_vtk_selresult"
         self.do_activated = "add_filter"
 
