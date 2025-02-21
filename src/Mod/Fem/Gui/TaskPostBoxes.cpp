@@ -1748,7 +1748,7 @@ void TaskPostCut::collectImplicitFunctions()
             QStringList items;
             std::size_t currentItem = 0;
             App::DocumentObject* currentFunction =
-                getObject<Fem::FemPostClipFilter>()->Function.getValue();
+                getObject<Fem::FemPostCutFilter>()->Function.getValue();
             const std::vector<App::DocumentObject*>& funcs = provider->Group.getValues();
             for (std::size_t i = 0; i < funcs.size(); ++i) {
                 items.push_back(QString::fromLatin1(funcs[i]->getNameInDocument()));
