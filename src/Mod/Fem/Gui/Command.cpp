@@ -1826,7 +1826,7 @@ void setupFilter(Gui::Command* cmd, std::string Name)
         pipeline = selObject;
     } else {
         pipeline = Fem::FemPostGroupExtension::getGroupOfObject(selObject);
-        if (!pipeline || !pipeline->isDerivedFrom(Fem::FemPostObject::getClassTypeId())) {
+        if (!pipeline || !pipeline->isDerivedFrom<Fem::FemPostObject>()) {
             QMessageBox::warning(
                 Gui::getMainWindow(),
                 qApp->translate("setupFilter", "Error: Object not in a post processing group"),
@@ -2010,7 +2010,7 @@ bool CmdFemPostClipFilter::isActive()
     }
     // only activate if a post object is selected
     for (auto obj : selection ) {
-        if (obj.pObject->isDerivedFrom(Fem::FemPostObject::getClassTypeId())) {
+        if (obj.pObject->isDerivedFrom<Fem::FemPostObject>()) {
             return true;
         }
     }
@@ -2047,7 +2047,7 @@ bool CmdFemPostCutFilter::isActive()
     }
     // only activate if a post object is selected
     for (auto obj : selection ) {
-        if (obj.pObject->isDerivedFrom(Fem::FemPostObject::getClassTypeId())) {
+        if (obj.pObject->isDerivedFrom<Fem::FemPostObject>()) {
             return true;
         }
     }
@@ -2084,7 +2084,7 @@ bool CmdFemPostDataAlongLineFilter::isActive()
     }
     // only activate if a post object is selected
     for (auto obj : selection ) {
-        if (obj.pObject->isDerivedFrom(Fem::FemPostObject::getClassTypeId())) {
+        if (obj.pObject->isDerivedFrom<Fem::FemPostObject>()) {
             return true;
         }
     }
@@ -2122,7 +2122,7 @@ bool CmdFemPostDataAtPointFilter::isActive()
     }
     // only activate if a post object is selected
     for (auto obj : selection ) {
-        if (obj.pObject->isDerivedFrom(Fem::FemPostObject::getClassTypeId())) {
+        if (obj.pObject->isDerivedFrom<Fem::FemPostObject>()) {
             return true;
         }
     }
@@ -2235,7 +2235,7 @@ bool CmdFemPostScalarClipFilter::isActive()
     }
     // only activate if a post object is selected
     for (auto obj : selection ) {
-        if (obj.pObject->isDerivedFrom(Fem::FemPostObject::getClassTypeId())) {
+        if (obj.pObject->isDerivedFrom<Fem::FemPostObject>()) {
             return true;
         }
     }
@@ -2272,7 +2272,7 @@ bool CmdFemPostWarpVectorFilter::isActive()
     }
     // only activate if a post object is selected
     for (auto obj : selection ) {
-        if (obj.pObject->isDerivedFrom(Fem::FemPostObject::getClassTypeId())) {
+        if (obj.pObject->isDerivedFrom<Fem::FemPostObject>()) {
             return true;
         }
     }
@@ -2309,7 +2309,7 @@ bool CmdFemPostContoursFilter::isActive()
     }
     // only activate if a post object is selected
     for (auto obj : selection ) {
-        if (obj.pObject->isDerivedFrom(Fem::FemPostObject::getClassTypeId())) {
+        if (obj.pObject->isDerivedFrom<Fem::FemPostObject>()) {
             return true;
         }
     }
@@ -2707,7 +2707,7 @@ bool CmdFemPostBranchFilter::isActive()
     }
     // only activate if a post object is selected
     for (auto obj : selection ) {
-        if (obj.pObject->isDerivedFrom(Fem::FemPostObject::getClassTypeId())) {
+        if (obj.pObject->isDerivedFrom<Fem::FemPostObject>()) {
             return true;
         }
     }
