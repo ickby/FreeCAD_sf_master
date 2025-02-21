@@ -60,11 +60,6 @@ PyObject* ViewProviderFemPostFilterPy::createDisplayTaskWidget(PyObject* args)
     return nullptr;
 }
 
-PyObject* ViewProviderFemPostFilterPy::autoRecompute(PyObject* args)
-{
-
-}
-
 PyObject* ViewProviderFemPostFilterPy::getCustomAttributes(const char* /*attr*/) const
 {
     return nullptr;

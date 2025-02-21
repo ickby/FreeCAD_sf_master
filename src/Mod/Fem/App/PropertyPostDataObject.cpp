@@ -58,6 +58,7 @@
 #include <zipios++/zipoutputstream.h>
 
 #include "PropertyPostDataObject.h"
+#include <vtkPythonUtil.h>
 
 
 using namespace Fem;
@@ -161,12 +162,21 @@ int PropertyPostDataObject::getDataType()
 
 PyObject* PropertyPostDataObject::getPyObject()
 {
-    // TODO: fetch the vtk python object from the data set and return it
-    return Py::new_reference_to(Py::None());
+    //create a copy first
+    auto copy = static_cast<PropertyPostDataObject*>(Copy());
+
+    // get the data python wrapper
+    PyObject* py_dataset = vtkPythonUtil::GetObjectFromPointer(copy->getValue());
+    auto result =  Py::new_reference_to(py_dataset);
+    delete copy;
+
+    return result;
 }
 
 void PropertyPostDataObject::setPyObject(PyObject* /*value*/)
-{}
+{
+    throw Base::NotImplementedError();
+}
 
 App::Property* PropertyPostDataObject::Copy() const
 {

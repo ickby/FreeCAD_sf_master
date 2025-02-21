@@ -35,6 +35,7 @@
 #include "FemPostFilterPy.cpp"
 // clang-format on
 
+#include <vtkUnstructuredGrid.h>
 #include <vtkPythonUtil.h>
 
 
@@ -95,6 +96,11 @@ PyObject* FemPostFilterPy::setActiveFilterPipeline(PyObject* args)
 
 PyObject* FemPostFilterPy::getParentPostGroup(PyObject* args)
 {
+    // we take no arguments
+    if (!PyArg_ParseTuple(args, "")) {
+        return nullptr;
+    }
+
     auto group = Fem::FemPostGroupExtension::getGroupOfObject(getFemPostFilterPtr());
     if (group) {
         return group->getPyObject();
@@ -103,8 +109,39 @@ PyObject* FemPostFilterPy::getParentPostGroup(PyObject* args)
     return Py_None;
 }
 
+PyObject* FemPostFilterPy::getInputData(PyObject* args)
+{
+    // we take no arguments
+    if (!PyArg_ParseTuple(args, "")) {
+        return nullptr;
+    }
+
+    // make a copy of the dataset
+    auto dataset = getFemPostFilterPtr()->getInputData();
+    vtkDataSet* copy;
+    switch (dataset->GetDataObjectType()) {
+        case VTK_UNSTRUCTURED_GRID:
+            copy = vtkUnstructuredGrid::New();
+            break;
+        default:
+            PyErr_SetString(PyExc_TypeError, "cannot return datatype object; not unstructured grid");
+            Py_Return;
+    }
+
+    // return the python wrapper
+    copy->DeepCopy(dataset);
+    PyObject* py_dataset = vtkPythonUtil::GetObjectFromPointer(copy);
+
+    return  Py::new_reference_to(py_dataset);
+}
+
 PyObject* FemPostFilterPy::getInputVectorFields(PyObject* args)
 {
+    // we take no arguments
+    if (!PyArg_ParseTuple(args, "")) {
+        return nullptr;
+    }
+
     std::vector<std::string> vector_fields = getFemPostFilterPtr()->getInputVectorFields();
 
     // convert to python list of strings
@@ -119,6 +156,11 @@ PyObject* FemPostFilterPy::getInputVectorFields(PyObject* args)
 
 PyObject* FemPostFilterPy::getInputScalarFields(PyObject* args)
 {
+    // we take no arguments
+    if (!PyArg_ParseTuple(args, "")) {
+        return nullptr;
+    }
+
     std::vector<std::string> scalar_fields = getFemPostFilterPtr()->getInputScalarFields();
 
     // convert to python list of strings

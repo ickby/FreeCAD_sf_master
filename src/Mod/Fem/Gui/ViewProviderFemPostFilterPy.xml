@@ -20,10 +20,5 @@
         <UserDocu>Returns the display option task panel for a post processing edit task dialog.</UserDocu>
       </Documentation>
     </Methode>
-    <Methode Name="autoRecompute">
-      <Documentation>
-        <UserDocu>Recomputes the document object if the auto apply setting is set to True, does nothing otherwise</UserDocu>
-      </Documentation>
-    </Methode>
   </PythonExport>
 </GenerateModel>

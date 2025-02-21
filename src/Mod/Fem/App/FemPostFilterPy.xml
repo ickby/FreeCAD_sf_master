@@ -28,14 +28,28 @@
                 <UserDocu>Returns the postprocessing group the filter is in (e.g. a pipeline or branch object). None is returned if not in any.</UserDocu>
             </Documentation>
         </Methode>
+                <Methode Name="getInputData">
+            <Documentation>
+                <UserDocu>
+Returns the dataset available at the filters input.
+Note: Can lead to a full recompute of the whole pipeline, hence best to call this only in "execute", where the user expects long calculation cycles.
+</UserDocu>
+            </Documentation>
+        </Methode>
         <Methode Name="getInputVectorFields">
             <Documentation>
-                <UserDocu>Returns the names of all vector fields available on this filters input.</UserDocu>
+                <UserDocu>
+Returns the names of all vector fields available on this filters input.
+Note: Can lead to a full recompute of the whole pipeline, hence best to call this only in "execute", where the user expects long calculation cycles.
+</UserDocu>
             </Documentation>
         </Methode>
         <Methode Name="getInputScalarFields">
             <Documentation>
-                <UserDocu>Returns the names of all scalar fields available on this filters input.</UserDocu>
+                <UserDocu>
+Returns the names of all scalar fields available on this filters input.
+Note: Can lead to a full recompute of the whole pipeline, hence best to call this only in "execute", where the user expects long calculation cycles.
+</UserDocu>
             </Documentation>
         </Methode>"
     </PythonExport>
