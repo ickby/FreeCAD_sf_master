@@ -35,9 +35,10 @@
 #include "FemPostFilterPy.cpp"
 // clang-format on
 
-#include <vtkUnstructuredGrid.h>
-#include <vtkPythonUtil.h>
-
+#ifdef BUILD_FEM_VTK_WRAPPER
+    #include <vtkUnstructuredGrid.h>
+    #include <vtkPythonUtil.h>
+#endif //BUILD_FEM_VTK
 
 using namespace Fem;
 
@@ -53,6 +54,7 @@ std::string FemPostFilterPy::representation() const
 
 PyObject* FemPostFilterPy::addFilterPipeline(PyObject* args)
 {
+#ifdef BUILD_FEM_VTK_WRAPPER
     const char* name;
     PyObject *source = nullptr;
     PyObject *target = nullptr;
@@ -80,8 +82,11 @@ PyObject* FemPostFilterPy::addFilterPipeline(PyObject* args)
         pipe.target = target_algo;
         getFemPostFilterPtr()->addFilterPipeline(pipe, name);
     }
-
     Py_Return;
+#else
+    PyErr_SetString(PyExc_NotImplementedError, "VTK python wrapper not available");
+    Py_Return;
+#endif
 }
 
 PyObject* FemPostFilterPy::setActiveFilterPipeline(PyObject* args)
@@ -111,6 +116,7 @@ PyObject* FemPostFilterPy::getParentPostGroup(PyObject* args)
 
 PyObject* FemPostFilterPy::getInputData(PyObject* args)
 {
+#ifdef BUILD_FEM_VTK_WRAPPER
     // we take no arguments
     if (!PyArg_ParseTuple(args, "")) {
         return nullptr;
@@ -133,6 +139,10 @@ PyObject* FemPostFilterPy::getInputData(PyObject* args)
     PyObject* py_dataset = vtkPythonUtil::GetObjectFromPointer(copy);
 
     return  Py::new_reference_to(py_dataset);
+#else
+    PyErr_SetString(PyExc_NotImplementedError, "VTK python wrapper not available");
+    Py_Return;
+#endif
 }
 
 PyObject* FemPostFilterPy::getInputVectorFields(PyObject* args)

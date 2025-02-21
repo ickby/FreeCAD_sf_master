@@ -42,6 +42,10 @@
 #include <vtkXMLUnstructuredGridReader.h>
 #endif
 
+#ifdef BUILD_FEM_VTK_WRAPPER
+#include <vtkPythonUtil.h>
+#endif
+
 #include <App/Application.h>
 #include <App/DocumentObject.h>
 #include <Base/Console.h>
@@ -58,7 +62,6 @@
 #include <zipios++/zipoutputstream.h>
 
 #include "PropertyPostDataObject.h"
-#include <vtkPythonUtil.h>
 
 
 using namespace Fem;
@@ -162,6 +165,7 @@ int PropertyPostDataObject::getDataType()
 
 PyObject* PropertyPostDataObject::getPyObject()
 {
+#ifdef BUILD_FEM_VTK_WRAPPER
     //create a copy first
     auto copy = static_cast<PropertyPostDataObject*>(Copy());
 
@@ -171,6 +175,10 @@ PyObject* PropertyPostDataObject::getPyObject()
     delete copy;
 
     return result;
+#else
+    PyErr_SetString(PyExc_NotImplementedError, "VTK python wrapper not available");
+    Py_Return;
+#endif
 }
 
 void PropertyPostDataObject::setPyObject(PyObject* /*value*/)
